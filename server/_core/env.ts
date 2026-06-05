@@ -7,4 +7,6 @@ export const ENV = {
   isProduction: process.env.NODE_ENV === "production",
   forgeApiUrl: process.env.BUILT_IN_FORGE_API_URL ?? "",
   forgeApiKey: process.env.BUILT_IN_FORGE_API_KEY ?? "",
+  // ── 독립 후: Google Gemini API 키 (.env 에 GEMINI_API_KEY=... 로 넣기) ──
+  geminiApiKey: process.env.GEMINI_API_KEY ?? "",
 };

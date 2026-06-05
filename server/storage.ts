@@ -1,20 +1,12 @@
-// Preconfigured storage helpers for Manus WebDev templates
-// Uploads via Forge Server presigned URL to S3 (PUT direct).
-// Downloads return /manus-storage/{key} paths served via 307 redirect.
+// 개인/로컬용 스토리지: 업로드한 사진을 프로젝트 폴더의 uploads/ 에 저장합니다.
+// (나중에 배포할 때는 이 파일만 S3/R2 등으로 바꾸면 됩니다.)
+import fs from "node:fs";
+import path from "node:path";
 
-import { ENV } from "./_core/env";
+const UPLOAD_DIR = path.resolve(process.cwd(), "uploads");
 
-function getForgeConfig() {
-  const forgeUrl = ENV.forgeApiUrl;
-  const forgeKey = ENV.forgeApiKey;
-
-  if (!forgeUrl || !forgeKey) {
-    throw new Error(
-      "Storage config missing: set BUILT_IN_FORGE_API_URL and BUILT_IN_FORGE_API_KEY",
-    );
-  }
-
-  return { forgeUrl: forgeUrl.replace(/\/+$/, ""), forgeKey };
+function ensureDir(dir: string) {
+  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
 }
 
 function normalizeKey(relKey: string): string {
@@ -28,70 +20,44 @@ function appendHashSuffix(relKey: string): string {
   return `${relKey.slice(0, lastDot)}_${hash}${relKey.slice(lastDot)}`;
 }
 
+function mimeFromKey(key: string): string {
+  const ext = path.extname(key).toLowerCase();
+  if (ext === ".png") return "image/png";
+  if (ext === ".webp") return "image/webp";
+  if (ext === ".gif") return "image/gif";
+  return "image/jpeg";
+}
+
+/** 파일을 uploads/ 아래에 저장하고, 앱에서 접근할 경로(url)를 돌려줍니다. */
 export async function storagePut(
   relKey: string,
   data: Buffer | Uint8Array | string,
-  contentType = "application/octet-stream",
+  _contentType = "application/octet-stream",
 ): Promise<{ key: string; url: string }> {
-  const { forgeUrl, forgeKey } = getForgeConfig();
   const key = appendHashSuffix(normalizeKey(relKey));
+  const filePath = path.join(UPLOAD_DIR, key);
+  ensureDir(path.dirname(filePath));
 
-  // 1. Get presigned PUT URL from Forge
-  const presignUrl = new URL("v1/storage/presign/put", forgeUrl + "/");
-  presignUrl.searchParams.set("path", key);
-
-  const presignResp = await fetch(presignUrl, {
-    headers: { Authorization: `Bearer ${forgeKey}` },
-  });
-
-  if (!presignResp.ok) {
-    const msg = await presignResp.text().catch(() => presignResp.statusText);
-    throw new Error(`Storage presign failed (${presignResp.status}): ${msg}`);
-  }
-
-  const { url: s3Url } = (await presignResp.json()) as { url: string };
-  if (!s3Url) throw new Error("Forge returned empty presign URL");
-
-  // 2. PUT file directly to S3
-  const blob =
-    typeof data === "string"
-      ? new Blob([data], { type: contentType })
-      : new Blob([data as any], { type: contentType });
-
-  const uploadResp = await fetch(s3Url, {
-    method: "PUT",
-    headers: { "Content-Type": contentType },
-    body: blob,
-  });
-
-  if (!uploadResp.ok) {
-    throw new Error(`Storage upload to S3 failed (${uploadResp.status})`);
-  }
+  const buf =
+    typeof data === "string" ? Buffer.from(data) : Buffer.from(data as Uint8Array);
+  fs.writeFileSync(filePath, buf);
 
   return { key, url: `/manus-storage/${key}` };
 }
 
+/** 저장된 파일의 앱 내 경로를 돌려줍니다. */
 export async function storageGet(relKey: string): Promise<{ key: string; url: string }> {
   const key = normalizeKey(relKey);
   return { key, url: `/manus-storage/${key}` };
 }
 
+/**
+ * 저장된 파일을 base64 데이터 URL로 돌려줍니다.
+ * (Gemini에 이미지를 인라인으로 넘기기 위함 — 로컬 파일은 외부에서 URL로 못 받으므로.)
+ */
 export async function storageGetSignedUrl(relKey: string): Promise<string> {
-  const { forgeUrl, forgeKey } = getForgeConfig();
   const key = normalizeKey(relKey);
-
-  const getUrl = new URL("v1/storage/presign/get", forgeUrl + "/");
-  getUrl.searchParams.set("path", key);
-
-  const resp = await fetch(getUrl, {
-    headers: { Authorization: `Bearer ${forgeKey}` },
-  });
-
-  if (!resp.ok) {
-    const msg = await resp.text().catch(() => resp.statusText);
-    throw new Error(`Storage signed URL failed (${resp.status}): ${msg}`);
-  }
-
-  const { url } = (await resp.json()) as { url: string };
-  return url;
+  const filePath = path.join(UPLOAD_DIR, key);
+  const buf = fs.readFileSync(filePath);
+  return `data:${mimeFromKey(key)};base64,${buf.toString("base64")}`;
 }
