@@ -824,7 +824,7 @@ export default function Home() {
       <header className="pt-12 pb-6 text-center">
         <div className="flex items-center justify-center gap-2 mb-1">
           <img
-            src="/manus-storage/geojirok_character_795a80de.png"
+            src="/favicon.png"
             alt="거지록"
             className="w-8 h-8 rounded-lg object-cover"
           />
