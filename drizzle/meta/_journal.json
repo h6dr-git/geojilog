@@ -1,0 +1,41 @@
+{
+  "version": "7",
+  "dialect": "mysql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "5",
+      "when": 1778480299075,
+      "tag": "0000_gray_mesmero",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "5",
+      "when": 1778480416332,
+      "tag": "0001_next_microchip",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1778483733607,
+      "tag": "0002_wonderful_molten_man",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "5",
+      "when": 1778484469313,
+      "tag": "0003_hot_vector",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "5",
+      "when": 1778637176338,
+      "tag": "0004_military_taskmaster",
+      "breakpoints": true
+    }
+  ]
+}

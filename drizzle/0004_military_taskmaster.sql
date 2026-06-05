@@ -1,0 +1,1 @@
+ALTER TABLE `savings_entries` ADD `memo` text;
