@@ -1,21 +1,71 @@
 import { desc, eq } from "drizzle-orm";
-import { drizzle } from "drizzle-orm/mysql2";
+import { drizzle } from "drizzle-orm/libsql";
+import { createClient } from "@libsql/client";
 import { InsertUser, users, savingsEntries, InsertSavingsEntry, userCategories, InsertUserCategory } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
-let _db: ReturnType<typeof drizzle> | null = null;
+// ──────────────────────────────────────────────────────────────
+// 개인/로컬용 DB: 계정·서버 없이 프로젝트 폴더의 파일 하나(local.db)에 저장합니다.
+// 환경변수 DATABASE_URL을 지정하면 그쪽을 사용합니다
+// (예: 나중에 배포할 때 Turso 같은 호스팅 SQLite의 주소).
+// ──────────────────────────────────────────────────────────────
+const DB_URL = process.env.DATABASE_URL || "file:local.db";
 
-// Lazily create the drizzle instance so local tooling can run without a DB.
+// 첫 연결 시 테이블이 없으면 만들어 둡니다(이미 있으면 그대로 둠).
+const CREATE_TABLES_SQL = `
+CREATE TABLE IF NOT EXISTS users (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  openId TEXT NOT NULL UNIQUE,
+  name TEXT,
+  email TEXT,
+  loginMethod TEXT,
+  role TEXT NOT NULL DEFAULT 'user',
+  createdAt INTEGER NOT NULL DEFAULT (unixepoch()),
+  updatedAt INTEGER NOT NULL DEFAULT (unixepoch()),
+  lastSignedIn INTEGER NOT NULL DEFAULT (unixepoch())
+);
+CREATE TABLE IF NOT EXISTS savings_entries (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  userId INTEGER NOT NULL,
+  date TEXT NOT NULL,
+  title TEXT NOT NULL,
+  description TEXT,
+  category TEXT NOT NULL,
+  ticker TEXT NOT NULL,
+  originalAmount INTEGER NOT NULL,
+  actualAmount INTEGER NOT NULL,
+  profit INTEGER NOT NULL,
+  aiEstimated TEXT NOT NULL DEFAULT 'no',
+  aiReason TEXT,
+  imageUrl TEXT,
+  memo TEXT,
+  createdAt INTEGER NOT NULL DEFAULT (unixepoch())
+);
+CREATE TABLE IF NOT EXISTS user_categories (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  userId INTEGER NOT NULL,
+  name TEXT NOT NULL,
+  color TEXT NOT NULL DEFAULT 'gray',
+  isDefault TEXT NOT NULL DEFAULT 'no',
+  createdAt INTEGER NOT NULL DEFAULT (unixepoch())
+);
+`;
+
+let _db: ReturnType<typeof drizzle> | null = null;
+let _initPromise: Promise<ReturnType<typeof drizzle>> | null = null;
+
+// Lazily create the drizzle instance and ensure tables exist.
 export async function getDb() {
-  if (!_db && process.env.DATABASE_URL) {
-    try {
-      _db = drizzle(process.env.DATABASE_URL);
-    } catch (error) {
-      console.warn("[Database] Failed to connect:", error);
-      _db = null;
-    }
+  if (_db) return _db;
+  if (!_initPromise) {
+    _initPromise = (async () => {
+      const client = createClient({ url: DB_URL });
+      await client.executeMultiple(CREATE_TABLES_SQL);
+      _db = drizzle(client);
+      return _db;
+    })();
   }
-  return _db;
+  return _initPromise;
 }
 
 export async function upsertUser(user: InsertUser): Promise<void> {
@@ -68,7 +118,8 @@ export async function upsertUser(user: InsertUser): Promise<void> {
       updateSet.lastSignedIn = new Date();
     }
 
-    await db.insert(users).values(values).onDuplicateKeyUpdate({
+    await db.insert(users).values(values).onConflictDoUpdate({
+      target: users.openId,
       set: updateSet,
     });
   } catch (error) {
@@ -104,7 +155,7 @@ export async function getSavingsEntries(userId: number) {
 export async function createSavingsEntry(data: InsertSavingsEntry) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
-  const [result] = await db.insert(savingsEntries).values(data).$returningId();
+  const [result] = await db.insert(savingsEntries).values(data).returning({ id: savingsEntries.id });
   return result;
 }
 
@@ -219,7 +270,7 @@ export async function getUserCategories(userId: number) {
 export async function createUserCategory(data: InsertUserCategory) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
-  const [result] = await db.insert(userCategories).values(data).$returningId();
+  const [result] = await db.insert(userCategories).values(data).returning({ id: userCategories.id });
   return result;
 }
 
