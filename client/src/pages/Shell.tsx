@@ -1,7 +1,8 @@
-// 앱 셸 — 하단 탭바로 홈/기록/프로필을 전환.
-// 1단계(뼈대): 기존 Home은 '기록' 탭에 그대로. 홈·프로필은 임시 화면(2·3단계에서 구현).
+// 앱 셸 — 하단 탭바로 홈/기록/프로필 전환.
+// 2단계: 홈 탭 = 새 HomeTab(자르르 중심). 기록 = 기존 Home. 프로필 = 임시.
 import { useState } from "react";
 import Home from "@/pages/Home";
+import HomeTab from "@/pages/HomeTab";
 import Hwasubun from "@/components/Hwasubun";
 import BottomNav, { type MainNavTab } from "@/components/BottomNav";
 
@@ -17,11 +18,11 @@ function Placeholder({ title }: { title: string }) {
 }
 
 export default function Shell() {
-  const [tab, setTab] = useState<MainNavTab>("records");
+  const [tab, setTab] = useState<MainNavTab>("home");
 
   return (
     <>
-      {tab === "home" && <Placeholder title="새 홈" />}
+      {tab === "home" && <HomeTab onRecord={() => setTab("records")} />}
       {tab === "records" && <Home />}
       {tab === "profile" && <Placeholder title="프로필" />}
       <BottomNav tab={tab} onChange={setTab} />
