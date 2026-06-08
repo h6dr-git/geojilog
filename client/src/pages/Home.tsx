@@ -14,6 +14,7 @@ import {
   Pencil, X, ChevronLeft, ChevronRight, BarChart2, Share2,
 } from "lucide-react";
 import SavingsStoryCard from "@/components/SavingsStoryCard";
+import Hwasubun from "@/components/Hwasubun";
 
 // ── 타입 ──────────────────────────────────────────────────────
 interface SavingsEntry {
@@ -822,13 +823,9 @@ export default function Home() {
 
       {/* ── 헤더 ── */}
       <header className="pt-12 pb-6 text-center">
-        <div className="flex items-center justify-center gap-2 mb-1">
-          <img
-            src="/favicon.png"
-            alt="거지록"
-            className="w-8 h-8 rounded-lg object-cover"
-          />
-          <p className="text-xs font-mono text-gray-400 tracking-widest uppercase">거지록</p>
+        <p className="text-[11px] font-mono text-gray-400 tracking-widest uppercase mb-2">거지록</p>
+        <div className="flex justify-center mb-1">
+          <Hwasubun level={Math.min(1, totalProfit / 50000)} size={116} />
         </div>
         <div className="text-5xl font-bold text-emerald-500 tabular-nums">
           {isLoading ? <span className="text-gray-200">₩ ···</span> : <>₩{fmt(totalProfit)}</>}
