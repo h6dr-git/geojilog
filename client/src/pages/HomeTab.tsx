@@ -1,14 +1,13 @@
-// 새 홈 탭 — 자르르 + 최근 7일 수익(진짜) + 사진기록 버튼(진짜).
-// 김집사 브리핑·절약 이야기 카드는 아직 '틀'(고정 텍스트) — 다음 단계에서 실제 계산으로 채움.
-import { type ChangeEvent, useRef, useState } from "react";
+// 홈 — 자르르의 집. 최근 7일 수익 + 사진 기록 진입 + 분석 구경/확인.
+// 촬영/분석은 Shell이 관리(비차단). 여기선 자르르 상태와 분석중/확인 UI만 그린다.
 import { trpc } from "@/lib/trpc";
 import { APP_NAME, CHARACTER_NAME, josa } from "@/lib/brand";
 import { won } from "@/lib/format";
 import { useAuth } from "@/_core/hooks/useAuth";
 import Hwasubun from "@/components/Hwasubun";
-import QuickRecord from "@/components/QuickRecord";
 import { useDrafts, type Draft } from "@/lib/drafts";
-import { Camera, ChevronRight } from "lucide-react";
+import type { CaptureJob } from "@/lib/capture";
+import { Camera, ChevronRight, Check } from "lucide-react";
 
 const WEEKLY_GOAL = 50000; // 자르르가 가득 차는 한 주 목표 (추후 조정)
 
@@ -23,7 +22,15 @@ function recentWeekProfit(entries: Entry[]): number {
     .reduce((s, e) => s + (e.profit || 0), 0);
 }
 
-export default function HomeTab({ onRecord }: { onRecord: () => void }) {
+type Props = {
+  onRecord: () => void;
+  onCapture: () => void;
+  job: CaptureJob | null;
+  onOpenConfirm: () => void;
+  onCompleteDraft: (d: Draft) => void;
+};
+
+export default function HomeTab({ onRecord, onCapture, job, onOpenConfirm, onCompleteDraft }: Props) {
   const { isAuthenticated } = useAuth();
   const { data: entries = [] } = trpc.savings.list.useQuery(undefined, {
     enabled: isAuthenticated,
@@ -34,67 +41,87 @@ export default function HomeTab({ onRecord }: { onRecord: () => void }) {
 
   const drafts = useDrafts();
   const topDraft = drafts[0];
-  const cameraRef = useRef<HTMLInputElement>(null);
-  const [captured, setCaptured] = useState<File | null>(null);
-  const [activeDraft, setActiveDraft] = useState<Draft | null>(null);
-  const [sheetOpen, setSheetOpen] = useState(false);
 
-  function onPick(e: ChangeEvent<HTMLInputElement>) {
-    const f = e.target.files?.[0] ?? null;
-    e.target.value = "";
-    if (f) {
-      setActiveDraft(null);
-      setCaptured(f);
-      setSheetOpen(true);
-    }
-  }
-  function openDraft(d: Draft) {
-    setCaptured(null);
-    setActiveDraft(d);
-    setSheetOpen(true);
-  }
-  function closeSheet() {
-    setSheetOpen(false);
-    setCaptured(null);
-    setActiveDraft(null);
-  }
+  const analyzingJob = job && job.status === "analyzing" ? job : null;
+  const readyJob = job && job.status === "ready" ? job : null;
+  const errorJob = job && job.status === "error" ? job : null;
+  const readyProfit = readyJob
+    ? (readyJob.data.originalAmount ?? 0) - (readyJob.data.actualAmount ?? 0)
+    : 0;
 
   return (
-    <>
     <div className="min-h-screen max-w-lg mx-auto px-4 pb-24">
       <header className="pt-12 pb-1 text-center">
         <p className="text-[11px] font-mono text-gray-400 tracking-widest uppercase">{APP_NAME}</p>
       </header>
 
-      {/* 자르르 + 최근 7일 수익 (진짜 데이터) */}
+      {/* 자르르 + 최근 7일 수익 */}
       <div className="flex flex-col items-center text-center">
-        <Hwasubun level={level} size={132} />
-        <p className="mt-3 text-sm text-gray-500">최근 7일, {josa(CHARACTER_NAME, "이", "가")} 이만큼 찼어요</p>
-        <p className="font-mono text-4xl font-bold text-emerald-500 tabular-nums leading-tight">
-          +{won(weekProfit)}
-        </p>
+        <Hwasubun level={level} size={132} analyzing={!!analyzingJob} />
+        {analyzingJob ? (
+          <p className="mt-3 text-sm text-gray-500">{josa(CHARACTER_NAME, "이", "가")} 사진을 살펴보는 중…</p>
+        ) : (
+          <p className="mt-3 text-sm text-gray-500">
+            최근 7일, {josa(CHARACTER_NAME, "이", "가")} 이만큼 찼어요
+          </p>
+        )}
+        {!analyzingJob && (
+          <p className="font-mono text-4xl font-bold text-emerald-500 tabular-nums leading-tight">
+            +{won(weekProfit)}
+          </p>
+        )}
       </div>
 
-      {/* 핵심 행동 — 카메라 바로 (1탭 기록) */}
-      <input
-        ref={cameraRef}
-        type="file"
-        accept="image/*"
-        capture="environment"
-        className="hidden"
-        onChange={onPick}
-      />
-      <button
-        onClick={() => cameraRef.current?.click()}
-        className="mt-6 w-full bg-emerald-500 text-white font-medium py-3.5 rounded-2xl flex items-center justify-center gap-2 active:scale-[0.99] transition-transform"
-      >
-        <Camera size={18} /> 사진으로 한 끼 기록하기
-      </button>
+      {/* 행동 영역 — 상태별 */}
+      {analyzingJob ? (
+        <div className="mt-6 flex items-center gap-3 bg-emerald-50 border border-emerald-100 rounded-2xl p-3.5">
+          <img src={analyzingJob.preview} alt="" className="w-12 h-12 rounded-xl object-cover shrink-0" />
+          <div className="text-left">
+            <p className="text-[13px] font-medium text-emerald-700">자르르가 분석하고 있어요</p>
+            <p className="text-[11px] text-emerald-600">기다리는 동안 기록이나 업적을 구경해도 돼요</p>
+          </div>
+        </div>
+      ) : readyJob ? (
+        <button
+          onClick={onOpenConfirm}
+          className="mt-6 w-full flex items-center gap-3 border border-emerald-200 bg-emerald-50 rounded-2xl p-3 text-left active:bg-emerald-100 transition-colors"
+        >
+          <img src={readyJob.preview} alt="" className="w-12 h-12 rounded-xl object-cover shrink-0" />
+          <div className="flex-1 min-w-0">
+            <p className="text-[13px] font-medium text-gray-800 truncate">
+              {readyJob.data.title || "분석 완료"} · <span className="text-emerald-600">+{won(readyProfit)}</span>
+            </p>
+            <p className="text-[11px] text-emerald-600 flex items-center gap-0.5">
+              <Check size={12} /> 분석 완료 · 확인하고 저장
+            </p>
+          </div>
+          <ChevronRight size={16} className="text-emerald-400 shrink-0" />
+        </button>
+      ) : errorJob ? (
+        <button
+          onClick={onOpenConfirm}
+          className="mt-6 w-full flex items-center gap-3 border border-gray-200 bg-gray-50 rounded-2xl p-3 text-left active:bg-gray-100 transition-colors"
+        >
+          <img src={errorJob.preview} alt="" className="w-12 h-12 rounded-xl object-cover shrink-0" />
+          <div className="flex-1 min-w-0">
+            <p className="text-[13px] font-medium text-gray-700">분석을 못 했어요</p>
+            <p className="text-[11px] text-gray-400">탭해서 직접 입력하기</p>
+          </div>
+          <ChevronRight size={16} className="text-gray-300 shrink-0" />
+        </button>
+      ) : (
+        <button
+          onClick={onCapture}
+          className="mt-6 w-full bg-emerald-500 text-white font-medium py-3.5 rounded-2xl flex items-center justify-center gap-2 active:scale-[0.99] transition-transform"
+        >
+          <Camera size={18} /> 사진으로 한 끼 기록하기
+        </button>
+      )}
 
       {/* 미완성(나중에 채우기) 배지 */}
       {topDraft && (
         <button
-          onClick={() => openDraft(topDraft)}
+          onClick={() => onCompleteDraft(topDraft)}
           className="mt-2.5 w-full flex items-center gap-3 border border-amber-200 bg-amber-50 rounded-2xl px-3.5 py-3 text-left active:bg-amber-100 transition-colors"
         >
           <img src={topDraft.imageUrl} alt="" className="w-10 h-10 rounded-lg object-cover shrink-0" />
@@ -151,7 +178,5 @@ export default function HomeTab({ onRecord }: { onRecord: () => void }) {
         </p>
       </div>
     </div>
-      {sheetOpen && <QuickRecord file={captured} draft={activeDraft} onClose={closeSheet} />}
-    </>
   );
 }

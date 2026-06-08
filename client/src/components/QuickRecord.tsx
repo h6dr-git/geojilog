@@ -1,14 +1,15 @@
-// 1탭 기록 시트 — 사진 한 장으로 끝.
-// 신규 촬영: 사진 → AI가 항목·금액 자동 채움 → '저장' 한 번. 또는 '나중에'(미완성 보관).
-// 미완성 완성: draft를 받아 금액만 확인 후 저장.
-import { useEffect, useMemo, useState } from "react";
+// 확인 전용 시트 — 분석은 이미 끝난 상태에서 '확인/수정 → 저장'만 한다. (스피너로 가두지 않음)
+// data를 미리 채워서 받는다. draftId가 있으면 '미완성 완성', 없으면 '갓 분석된 결과 확인'.
+import { useState } from "react";
 import { trpc } from "@/lib/trpc";
-import { addDraft, removeDraft, type Draft } from "@/lib/drafts";
+import { addDraft, removeDraft } from "@/lib/drafts";
 import { won } from "@/lib/format";
 import { toast } from "sonner";
 import { X, Loader2, Trash2 } from "lucide-react";
+import type { Prefill } from "@/lib/capture";
 
 const DEFAULT_CATEGORIES = ["식비", "카페", "교통", "쇼핑", "문화/여가", "기타"];
+const onlyDigits = (s: string) => s.replace(/[^0-9]/g, "");
 
 function todayStr(): string {
   const d = new Date();
@@ -16,102 +17,31 @@ function todayStr(): string {
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
 }
 
-function fileToBase64(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const r = new FileReader();
-    r.onload = () => resolve(String(r.result).split(",")[1] ?? "");
-    r.onerror = () => reject(new Error("파일을 읽지 못했습니다"));
-    r.readAsDataURL(file);
-  });
-}
-
-const onlyDigits = (s: string) => s.replace(/[^0-9]/g, "");
-
 type Props = {
-  file?: File | null;
-  draft?: Draft | null;
+  data: Prefill;
   onClose: () => void;
   onSaved?: () => void;
 };
 
-export default function QuickRecord({ file, draft, onClose, onSaved }: Props) {
-  const isCompleting = !!draft;
+export default function QuickRecord({ data, onClose, onSaved }: Props) {
+  const isCompleting = !!data.draftId;
 
-  const [phase, setPhase] = useState<"analyzing" | "ready" | "error">(
-    isCompleting ? "ready" : "analyzing",
-  );
-  const [previewUrl, setPreviewUrl] = useState("");
-  const [imageUrl, setImageUrl] = useState(draft?.imageUrl ?? "");
-  const [title, setTitle] = useState(draft?.title ?? "");
-  const [category, setCategory] = useState(draft?.category ?? "식비");
-  const [original, setOriginal] = useState(draft?.originalAmount != null ? String(draft.originalAmount) : "");
-  const [actual, setActual] = useState(draft?.actualAmount != null ? String(draft.actualAmount) : "");
-  const [aiReason, setAiReason] = useState(draft?.aiReason ?? "");
+  const [title, setTitle] = useState(data.title ?? "");
+  const [category, setCategory] = useState(data.category || "식비");
+  const [original, setOriginal] = useState(data.originalAmount != null ? String(data.originalAmount) : "");
+  const [actual, setActual] = useState(data.actualAmount != null ? String(data.actualAmount) : "");
   const [saving, setSaving] = useState(false);
-  const date = draft?.date ?? todayStr();
+  const aiReason = data.aiReason ?? "";
+  const date = data.date ?? todayStr();
 
   const { data: cats } = trpc.categories.list.useQuery(undefined);
-  const categoryNames = useMemo(
-    () => (cats && cats.length ? cats.map((c: { name: string }) => c.name) : DEFAULT_CATEGORIES),
-    [cats],
-  );
+  const categoryNames =
+    cats && cats.length ? cats.map((c: { name: string }) => c.name) : DEFAULT_CATEGORIES;
 
   const utils = trpc.useUtils();
-  const analyzeImage = trpc.ai.analyzeImage.useMutation();
-  const uploadImage = trpc.ai.uploadImage.useMutation();
   const createEntry = trpc.savings.create.useMutation({
     onSuccess: () => utils.savings.list.invalidate(),
   });
-
-  // body 스크롤 잠금
-  useEffect(() => {
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.body.style.overflow = "";
-    };
-  }, []);
-
-  // 신규 촬영 → 미리보기 + AI 분석
-  useEffect(() => {
-    if (!file) return;
-    const obj = URL.createObjectURL(file);
-    setPreviewUrl(obj);
-    let cancelled = false;
-    (async () => {
-      let base64 = "";
-      try {
-        base64 = await fileToBase64(file);
-      } catch {
-        if (!cancelled) setPhase("error");
-        return;
-      }
-      try {
-        const r = await analyzeImage.mutateAsync({ imageBase64: base64, mimeType: file.type || "image/jpeg" });
-        if (cancelled) return;
-        setImageUrl(r.imageUrl);
-        setTitle(r.title);
-        setCategory(r.category);
-        setOriginal(String(r.estimatedOriginalAmount));
-        setActual(String(r.estimatedActualAmount));
-        setAiReason(r.reason);
-        setPhase("ready");
-      } catch {
-        // 분석 실패해도 사진은 저장해서 직접 입력/나중에가 가능하게
-        try {
-          const u = await uploadImage.mutateAsync({ imageBase64: base64, mimeType: file.type || "image/jpeg" });
-          if (!cancelled) setImageUrl(u.imageUrl);
-        } catch {
-          /* 사진 저장도 실패 — imageUrl 없이 진행 */
-        }
-        if (!cancelled) setPhase("error");
-      }
-    })();
-    return () => {
-      cancelled = true;
-      URL.revokeObjectURL(obj);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [file]);
 
   const o = parseInt(original || "0", 10) || 0;
   const a = parseInt(actual || "0", 10) || 0;
@@ -131,9 +61,9 @@ export default function QuickRecord({ file, draft, onClose, onSaved }: Props) {
         actualAmount: a,
         aiEstimated: isCompleting ? "no" : "yes",
         aiReason: aiReason || undefined,
-        imageUrl: imageUrl || undefined,
+        imageUrl: data.imageUrl || undefined,
       });
-      if (draft) removeDraft(draft.id);
+      if (data.draftId) removeDraft(data.draftId);
       toast.success("기록됐어요");
       onSaved?.();
       onClose();
@@ -145,9 +75,9 @@ export default function QuickRecord({ file, draft, onClose, onSaved }: Props) {
   }
 
   function handleDefer() {
-    if (!imageUrl) return toast.error("사진을 아직 저장하지 못했어요. 잠시 후 다시 시도해주세요");
+    if (!data.imageUrl) return toast.error("사진이 없어 보관할 수 없어요");
     addDraft({
-      imageUrl,
+      imageUrl: data.imageUrl,
       title: title.trim() || "제목 미정",
       category,
       originalAmount: original ? o : null,
@@ -156,11 +86,9 @@ export default function QuickRecord({ file, draft, onClose, onSaved }: Props) {
       date,
     });
     toast.success("사진 저장됨 — 나중에 금액만 채우면 돼요");
+    onSaved?.();
     onClose();
   }
-
-  const analyzing = phase === "analyzing";
-  const shownImage = previewUrl || imageUrl;
 
   return (
     <div
@@ -174,11 +102,10 @@ export default function QuickRecord({ file, draft, onClose, onSaved }: Props) {
         style={{ animation: "qrUp .28s cubic-bezier(.2,.8,.2,1)" }}
         onClick={(e) => e.stopPropagation()}
       >
-        {/* 그랩바 + 헤더 */}
         <div className="flex items-center justify-between mb-3">
           <div className="w-8" />
           <span className="text-sm font-medium text-gray-700">
-            {isCompleting ? "금액 채우기" : "한 끼 기록"}
+            {isCompleting ? "금액 채우기" : "한 끼 기록 확인"}
           </span>
           <button onClick={onClose} aria-label="닫기" className="w-8 h-8 flex items-center justify-center text-gray-400">
             <X size={20} />
@@ -186,28 +113,18 @@ export default function QuickRecord({ file, draft, onClose, onSaved }: Props) {
         </div>
 
         {/* 사진 */}
-        <div className="relative w-full aspect-[4/3] rounded-2xl overflow-hidden bg-gray-100 mb-4">
-          {shownImage ? (
-            <img src={shownImage} alt="기록 사진" className="w-full h-full object-cover" />
+        <div className="w-full aspect-[4/3] rounded-2xl overflow-hidden bg-gray-100 mb-4">
+          {data.imageUrl ? (
+            <img src={data.imageUrl} alt="기록 사진" className="w-full h-full object-cover" />
           ) : (
             <div className="w-full h-full flex items-center justify-center text-gray-300 text-sm">사진 없음</div>
           )}
-          {analyzing && (
-            <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-white/70 backdrop-blur-sm">
-              <Loader2 className="w-6 h-6 animate-spin text-emerald-500" />
-              <p className="text-xs text-gray-500">자르르가 가격을 살펴보는 중…</p>
-            </div>
-          )}
         </div>
 
-        {/* 절약 수익 강조 */}
+        {/* 절약 수익 */}
         <div className="text-center mb-4">
           <p className="text-[11px] text-gray-400 mb-0.5">이번 한 끼로 아낀 돈</p>
-          <p
-            className={`font-mono text-3xl font-bold tabular-nums ${
-              profit >= 0 ? "text-emerald-500" : "text-red-400"
-            }`}
-          >
+          <p className={`font-mono text-3xl font-bold tabular-nums ${profit >= 0 ? "text-emerald-500" : "text-red-400"}`}>
             {profit >= 0 ? "+" : "−"}
             {won(Math.abs(profit))}
           </p>
@@ -218,11 +135,11 @@ export default function QuickRecord({ file, draft, onClose, onSaved }: Props) {
         <input
           value={title}
           onChange={(e) => setTitle(e.target.value)}
-          placeholder={analyzing ? "분석 중…" : "무엇을 먹었나요?"}
+          placeholder="무엇을 먹었나요?"
           className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm mb-3 focus:outline-none focus:border-emerald-400"
         />
 
-        {/* 카테고리 칩 */}
+        {/* 카테고리 */}
         <label className="text-[11px] text-gray-400 block mb-1">카테고리</label>
         <div className="flex flex-wrap gap-1.5 mb-3">
           {categoryNames.map((c) => (
@@ -230,9 +147,7 @@ export default function QuickRecord({ file, draft, onClose, onSaved }: Props) {
               key={c}
               onClick={() => setCategory(c)}
               className={`px-3 py-1.5 rounded-full text-xs transition-colors ${
-                category === c
-                  ? "bg-emerald-500 text-white"
-                  : "bg-gray-100 text-gray-500 active:bg-gray-200"
+                category === c ? "bg-emerald-500 text-white" : "bg-gray-100 text-gray-500 active:bg-gray-200"
               }`}
             >
               {c}
@@ -271,7 +186,7 @@ export default function QuickRecord({ file, draft, onClose, onSaved }: Props) {
         </div>
 
         {/* AI 근거 */}
-        {aiReason && !analyzing && (
+        {aiReason && (
           <p className="text-[11px] text-gray-400 leading-relaxed mb-3 bg-gray-50 rounded-xl px-3 py-2">
             <span className="text-emerald-500">자르르</span> {aiReason}
           </p>
@@ -280,7 +195,7 @@ export default function QuickRecord({ file, draft, onClose, onSaved }: Props) {
         {/* 저장 */}
         <button
           onClick={handleSave}
-          disabled={saving || analyzing}
+          disabled={saving}
           className="mt-2 w-full bg-emerald-500 text-white font-medium py-3.5 rounded-2xl flex items-center justify-center gap-2 active:scale-[0.99] transition-transform disabled:opacity-50"
         >
           {saving ? <Loader2 className="w-5 h-5 animate-spin" /> : "저장"}
@@ -290,8 +205,8 @@ export default function QuickRecord({ file, draft, onClose, onSaved }: Props) {
         {isCompleting ? (
           <button
             onClick={() => {
-              if (draft && confirm("이 미완성 기록을 삭제할까요?")) {
-                removeDraft(draft.id);
+              if (data.draftId && confirm("이 미완성 기록을 삭제할까요?")) {
+                removeDraft(data.draftId);
                 toast.success("삭제됐어요");
                 onClose();
               }
@@ -301,11 +216,7 @@ export default function QuickRecord({ file, draft, onClose, onSaved }: Props) {
             <Trash2 size={13} /> 이 미완성 삭제
           </button>
         ) : (
-          <button
-            onClick={handleDefer}
-            disabled={analyzing && !imageUrl}
-            className="mt-3 w-full text-sm text-gray-500 py-2 disabled:opacity-40"
-          >
+          <button onClick={handleDefer} className="mt-3 w-full text-sm text-gray-500 py-2">
             나중에 금액 채우기
           </button>
         )}

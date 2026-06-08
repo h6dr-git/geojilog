@@ -1,6 +1,7 @@
 // 거지로그 메인 캐릭터 '자르르' — 아낄수록 차오르는 단지.
 // level(0~1)에 따라 금빛이 차오르고, 표정이 밝아진다.
 // 상시 애니메이션(숨쉬기/눈깜빡/살랑/반짝임) + 절약액이 늘거나 탭하면 폴짝+금화+반짝 리액션.
+// analyzing=true면 돋보기로 사진을 들여다보는 '분석 중' 모션, 끝나면 폭 튀는 비트.
 // 라이브러리 없이 SVG + CSS만 사용. (프로토타입 — 추후 정식 디자인 교체)
 import { type CSSProperties, useEffect, useId, useRef, useState } from "react";
 import { CHARACTER_NAME } from "@/lib/brand";
@@ -10,6 +11,8 @@ type Props = {
   level?: number;
   /** px 크기 */
   size?: number;
+  /** 사진 분석 중이면 true — 돋보기로 들여다보는 모션 */
+  analyzing?: boolean;
 };
 
 const JAR = "M27,27 C9,36 9,72 22,88 C31,98 69,98 78,88 C91,72 91,36 73,27 Z";
@@ -29,6 +32,7 @@ const STYLE = `
 .zr-b3{animation:zr-burst3 .66s ease-out forwards}
 .zr-b4{animation:zr-burst4 .66s ease-out forwards}
 .zr-b5{animation:zr-burst5 .66s ease-out forwards}
+.zr-mag{transform-box:fill-box;transform-origin:center;animation:zr-mag 1.5s ease-in-out infinite}
 @keyframes zr-sway{0%,100%{transform:rotate(-2.4deg)}50%{transform:rotate(2.4deg)}}
 @keyframes zr-breathe{0%,100%{transform:scale(1,1)}50%{transform:scale(1.035,1.02)}}
 @keyframes zr-blink{0%,92%,100%{transform:scaleY(1)}96%{transform:scaleY(.08)}}
@@ -40,10 +44,11 @@ const STYLE = `
 @keyframes zr-burst3{0%{opacity:1;transform:translate(50px,56px) scale(.2)}70%{opacity:1}100%{opacity:0;transform:translate(80px,58px) scale(1.05)}}
 @keyframes zr-burst4{0%{opacity:1;transform:translate(50px,56px) scale(.2)}70%{opacity:1}100%{opacity:0;transform:translate(37px,26px) scale(1.05)}}
 @keyframes zr-burst5{0%{opacity:1;transform:translate(50px,56px) scale(.2)}70%{opacity:1}100%{opacity:0;transform:translate(63px,26px) scale(1.05)}}
-@media (prefers-reduced-motion:reduce){.zr-swayG,.zr-breatheG,.zr-eyes,.zr-spark{animation:none}}
+@keyframes zr-mag{0%,100%{transform:translate(72px,42px) rotate(-10deg)}50%{transform:translate(63px,56px) rotate(10deg)}}
+@media (prefers-reduced-motion:reduce){.zr-swayG,.zr-breatheG,.zr-eyes,.zr-spark,.zr-mag{animation:none}}
 `;
 
-export default function Hwasubun({ level = 0.4, size = 116 }: Props) {
+export default function Hwasubun({ level = 0.4, size = 116, analyzing = false }: Props) {
   const lv = Math.max(0, Math.min(1, level));
   const top = 34;
   const bottom = 94;
@@ -63,9 +68,8 @@ export default function Hwasubun({ level = 0.4, size = 116 }: Props) {
   const [fxKey, setFxKey] = useState(0);
   const fxTimer = useRef<number | undefined>(undefined);
 
-  function fire() {
-    setFxKey((k) => k + 1);
-    setShowFx(true);
+  // 폴짝(스케일)만 — 분석 완료 비트나 저장 축하에 공통으로 쓰임
+  function pop() {
     charRef.current?.animate(
       [
         { transform: "scale(1,1)" },
@@ -74,8 +78,15 @@ export default function Hwasubun({ level = 0.4, size = 116 }: Props) {
         { transform: "scale(1.03,0.98)", offset: 0.7 },
         { transform: "scale(1,1)" },
       ],
-      { duration: 550, easing: "ease-out" },
+      { duration: 520, easing: "ease-out" },
     );
+  }
+
+  // 폴짝 + 금화 + 반짝 (저장 축하)
+  function fire() {
+    setFxKey((k) => k + 1);
+    setShowFx(true);
+    pop();
     window.clearTimeout(fxTimer.current);
     fxTimer.current = window.setTimeout(() => setShowFx(false), 720);
   }
@@ -97,6 +108,14 @@ export default function Hwasubun({ level = 0.4, size = 116 }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lv]);
 
+  // 분석이 끝나는 순간(true→false) 가볍게 폭
+  const prevAnalyzing = useRef(analyzing);
+  useEffect(() => {
+    if (prevAnalyzing.current && !analyzing) pop();
+    prevAnalyzing.current = analyzing;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [analyzing]);
+
   return (
     <svg
       width={size}
@@ -105,7 +124,7 @@ export default function Hwasubun({ level = 0.4, size = 116 }: Props) {
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
       role="img"
-      aria-label={CHARACTER_NAME}
+      aria-label={analyzing ? `${CHARACTER_NAME} (분석 중)` : CHARACTER_NAME}
       onClick={fire}
       style={{ cursor: "pointer" }}
     >
@@ -176,6 +195,14 @@ export default function Hwasubun({ level = 0.4, size = 116 }: Props) {
           <path className="zr-spark" style={{ animationDelay: "1.6s" }} d={STAR} fill="#ffd75e" />
         </g>
       </g>
+
+      {/* 분석 중 — 돋보기 스캔 */}
+      {analyzing && (
+        <g className="zr-mag" aria-hidden="true">
+          <circle cx="0" cy="0" r="6.5" fill="#ffffff" opacity="0.32" stroke="#7a5536" strokeWidth="2" />
+          <line x1="4.8" y1="4.8" x2="9.5" y2="9.5" stroke="#7a5536" strokeWidth="2.6" strokeLinecap="round" />
+        </g>
+      )}
 
       {/* 리액션 (금화 + 반짝 터짐) */}
       {showFx && (
