@@ -62,7 +62,7 @@ export default function Profile({ onGoRecords }: { onGoRecords: () => void }) {
       </button>
 
       <p className="text-center text-[11px] text-gray-300 mt-10 font-mono tracking-wider">
-        거지록 · 화수분 자르르와 함께
+        거지로그 · 화수분 자르르와 함께
       </p>
     </div>
   );

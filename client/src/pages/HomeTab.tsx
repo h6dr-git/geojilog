@@ -31,7 +31,7 @@ export default function HomeTab({ onRecord }: { onRecord: () => void }) {
   return (
     <div className="min-h-screen max-w-lg mx-auto px-4 pb-24">
       <header className="pt-12 pb-1 text-center">
-        <p className="text-[11px] font-mono text-gray-400 tracking-widest uppercase">거지록</p>
+        <p className="text-[11px] font-mono text-gray-400 tracking-widest uppercase">거지로그</p>
       </header>
 
       {/* 자르르 + 최근 7일 수익 (진짜 데이터) */}

@@ -785,7 +785,7 @@ export default function Home() {
     const a = document.createElement("a");
     a.href = url;
     const label = { all: "전체", month: "이번달", week: "이번주", custom: "기간" }[exportRange];
-    a.download = `거지록_${label}_${todayStr()}.csv`;
+    a.download = `거지로그_${label}_${todayStr()}.csv`;
     a.click();
     URL.revokeObjectURL(url);
     toast.success("CSV 파일이 다운로드됩니다");
@@ -804,7 +804,7 @@ export default function Home() {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-white gap-8 px-6">
         <div className="text-center">
-          <h1 className="text-3xl font-bold tracking-tight text-gray-900">거지록</h1>
+          <h1 className="text-3xl font-bold tracking-tight text-gray-900">거지로그</h1>
           <p className="mt-2 text-sm text-gray-400">절약한 만큼 번다</p>
         </div>
         <a
@@ -823,7 +823,7 @@ export default function Home() {
 
       {/* ── 헤더 ── */}
       <header className="pt-12 pb-6 text-center">
-        <p className="text-[11px] font-mono text-gray-400 tracking-widest uppercase mb-2">거지록</p>
+        <p className="text-[11px] font-mono text-gray-400 tracking-widest uppercase mb-2">거지로그</p>
         <div className="text-5xl font-bold text-emerald-500 tabular-nums">
           {isLoading ? <span className="text-gray-200">₩ ···</span> : <>₩{fmt(totalProfit)}</>}
         </div>

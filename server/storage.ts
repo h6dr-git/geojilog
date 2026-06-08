@@ -1,9 +1,8 @@
-// 개인/로컬용 스토리지: 업로드한 사진을 프로젝트 폴더의 uploads/ 에 저장합니다.
-// (나중에 배포할 때는 이 파일만 S3/R2 등으로 바꾸면 됩니다.)
+// 사진 저장: 기본은 프로젝트 폴더 uploads/, 배포 시 UPLOAD_DIR 환경변수로 영구 디스크 경로 지정.
 import fs from "node:fs";
 import path from "node:path";
 
-const UPLOAD_DIR = path.resolve(process.cwd(), "uploads");
+const UPLOAD_DIR = process.env.UPLOAD_DIR || path.resolve(process.cwd(), "uploads");
 
 function ensureDir(dir: string) {
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });

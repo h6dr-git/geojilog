@@ -1,9 +1,9 @@
-// 개인/로컬용: uploads/ 에 저장된 사진을 /manus-storage/* 경로로 서빙합니다.
+// 저장된 사진을 /manus-storage/* 경로로 서빙. 기본 uploads/, 배포 시 UPLOAD_DIR.
 import type { Express } from "express";
 import fs from "node:fs";
 import path from "node:path";
 
-const UPLOAD_DIR = path.resolve(process.cwd(), "uploads");
+const UPLOAD_DIR = process.env.UPLOAD_DIR || path.resolve(process.cwd(), "uploads");
 
 function mimeFromPath(p: string): string {
   const ext = path.extname(p).toLowerCase();
@@ -21,7 +21,6 @@ export function registerStorageProxy(app: Express) {
       return;
     }
 
-    // 경로 탈출(../) 방지
     const filePath = path.resolve(UPLOAD_DIR, key);
     if (!filePath.startsWith(UPLOAD_DIR + path.sep)) {
       res.status(403).send("Forbidden");

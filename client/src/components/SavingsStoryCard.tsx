@@ -157,7 +157,7 @@ export default function SavingsStoryCard({ entry, onClose }: Props) {
     if (!imageUrl) return;
     const a = document.createElement("a");
     a.href = imageUrl;
-    a.download = `거지록_${entry.date}_${editTitle}.png`;
+    a.download = `거지로그_${entry.date}_${editTitle}.png`;
     a.click();
   };
 
@@ -165,9 +165,9 @@ export default function SavingsStoryCard({ entry, onClose }: Props) {
     if (!imageUrl) return;
     try {
       const blob = await (await fetch(imageUrl)).blob();
-      const file = new File([blob], `거지록_${entry.date}.png`, { type: "image/png" });
+      const file = new File([blob], `거지로그_${entry.date}.png`, { type: "image/png" });
       if (navigator.share && navigator.canShare({ files: [file] })) {
-        await navigator.share({ files: [file], title: "거지록 절약 인증" });
+        await navigator.share({ files: [file], title: "거지로그 절약 인증" });
       } else {
         handleDownload();
       }
@@ -264,7 +264,7 @@ export default function SavingsStoryCard({ entry, onClose }: Props) {
             }}>
               <div style={{ position: "absolute", top: "-8px", left: "50%", transform: "translateX(-50%)", width: "14px", height: "14px", backgroundColor: t.bg, borderRadius: "50%" }} />
               <div style={{ textAlign: "center", marginBottom: "14px" }}>
-                <div style={{ fontSize: "9px", letterSpacing: "4px", color: t.subText, textTransform: "uppercase", marginBottom: "3px" }}>거지록</div>
+                <div style={{ fontSize: "9px", letterSpacing: "4px", color: t.subText, textTransform: "uppercase", marginBottom: "3px" }}>거지로그</div>
                 <div style={{ fontSize: "12px", fontWeight: "bold", color: t.cardText, letterSpacing: "3px" }}>SAVINGS RECEIPT</div>
               </div>
               <div style={{ borderTop: `1px dashed ${t.border}`, marginBottom: "12px" }} />
@@ -305,7 +305,7 @@ export default function SavingsStoryCard({ entry, onClose }: Props) {
             <div style={{ marginBottom: "24px" }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
                 <div>
-                  <div style={{ fontSize: "8px", letterSpacing: "3px", color: "#4b5563", textTransform: "uppercase", marginBottom: "4px" }}>거지록</div>
+                  <div style={{ fontSize: "8px", letterSpacing: "3px", color: "#4b5563", textTransform: "uppercase", marginBottom: "4px" }}>거지로그</div>
                   <div style={{ fontSize: "13px", fontWeight: "700", color: t.cardText, letterSpacing: "1px" }}>손익계산서</div>
                   <div style={{ fontSize: "8px", color: "#4b5563", marginTop: "2px" }}>PROFIT & LOSS STATEMENT</div>
                 </div>

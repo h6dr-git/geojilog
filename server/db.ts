@@ -5,13 +5,12 @@ import { InsertUser, users, savingsEntries, InsertSavingsEntry, userCategories, 
 import { ENV } from './_core/env';
 
 // ──────────────────────────────────────────────────────────────
-// 개인/로컬용 DB: 계정·서버 없이 프로젝트 폴더의 파일 하나(local.db)에 저장합니다.
-// 환경변수 DATABASE_URL을 지정하면 그쪽을 사용합니다
-// (예: 나중에 배포할 때 Turso 같은 호스팅 SQLite의 주소).
+// DB: libsql. 로컬은 파일(local.db), 배포는 DATABASE_URL(Turso 등).
+// 배포 시 DATABASE_URL=libsql://... + TURSO_AUTH_TOKEN 을 환경변수로 준다.
 // ──────────────────────────────────────────────────────────────
 const DB_URL = process.env.DATABASE_URL || "file:local.db";
+const DB_AUTH = process.env.TURSO_AUTH_TOKEN || process.env.DATABASE_AUTH_TOKEN;
 
-// 첫 연결 시 테이블이 없으면 만들어 둡니다(이미 있으면 그대로 둠).
 const CREATE_TABLES_SQL = `
 CREATE TABLE IF NOT EXISTS users (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -54,18 +53,37 @@ CREATE TABLE IF NOT EXISTS user_categories (
 let _db: ReturnType<typeof drizzle> | null = null;
 let _initPromise: Promise<ReturnType<typeof drizzle>> | null = null;
 
-// Lazily create the drizzle instance and ensure tables exist.
 export async function getDb() {
   if (_db) return _db;
   if (!_initPromise) {
     _initPromise = (async () => {
-      const client = createClient({ url: DB_URL });
+      const client = createClient(DB_AUTH ? { url: DB_URL, authToken: DB_AUTH } : { url: DB_URL });
       await client.executeMultiple(CREATE_TABLES_SQL);
       _db = drizzle(client);
       return _db;
     })();
   }
   return _initPromise;
+}
+
+// ── Users ──────────────────────────────────────────
+
+export async function getUserById(id: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.select().from(users).where(eq(users.id, id)).limit(1);
+  return result.length > 0 ? result[0] : undefined;
+}
+
+/** 익명 자동 계정 등 새 사용자 생성, 새 id 반환 */
+export async function createUser(data: { openId: string; name?: string | null }): Promise<number> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const [row] = await db
+    .insert(users)
+    .values({ openId: data.openId, name: data.name ?? null })
+    .returning({ id: users.id });
+  return row.id;
 }
 
 export async function upsertUser(user: InsertUser): Promise<void> {
@@ -184,7 +202,6 @@ export async function updateSavingsEntry(
   if (data.originalAmount !== undefined) updateData.originalAmount = data.originalAmount;
   if (data.actualAmount !== undefined) updateData.actualAmount = data.actualAmount;
   if (data.memo !== undefined) updateData.memo = data.memo;
-  // profit 재계산
   if (data.originalAmount !== undefined || data.actualAmount !== undefined) {
     const existing = await db.select().from(savingsEntries).where(eq(savingsEntries.id, id)).limit(1);
     if (existing[0]) {
@@ -255,7 +272,6 @@ export async function getUserCategories(userId: number) {
     .where(eq(userCategories.userId, userId))
     .orderBy(userCategories.createdAt);
 
-  // 커스텀 카테고리가 없으면 기본값 시드
   if (rows.length === 0) {
     await db.insert(userCategories).values(
       DEFAULT_CATEGORIES.map(name => ({
