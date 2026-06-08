@@ -1,5 +1,7 @@
-// 거지로그 메인 캐릭터 '화수분' — 아낄수록 차오르는 단지.
+// 거지로그 메인 캐릭터 '자르르' — 아낄수록 차오르는 단지.
 // level(0~1)에 따라 금빛이 단지 안에 차오릅니다. (프로토타입 — 추후 정식 디자인 교체)
+import { CHARACTER_NAME } from "@/lib/brand";
+
 type Props = {
   /** 0(텅) ~ 1(가득). 누적 수익에 비례. */
   level?: number;
@@ -21,7 +23,7 @@ export default function Hwasubun({ level = 0.4, size = 116 }: Props) {
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
       role="img"
-      aria-label="화수분"
+      aria-label={CHARACTER_NAME}
     >
       <defs>
         <clipPath id="hsb-jar">

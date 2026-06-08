@@ -1,5 +1,6 @@
 // 프로필 탭 — 누적·건수·최고(진짜) + 계정(카카오 로그인) + 자랑/내보내기.
 import { trpc } from "@/lib/trpc";
+import { APP_NAME, CHARACTER_NAME, josa } from "@/lib/brand";
 import { useAuth } from "@/_core/hooks/useAuth";
 import Hwasubun from "@/components/Hwasubun";
 import { Share2, Download, ChevronRight, LogOut } from "lucide-react";
@@ -37,7 +38,7 @@ export default function Profile({ onGoRecords }: { onGoRecords: () => void }) {
         </div>
         <p className="text-base font-semibold text-gray-800">{displayName}</p>
         <p className="text-xs text-gray-400 mt-0.5">
-          {isKakao ? "카카오 로그인됨" : "자르르와 함께 절약 중"}
+          {isKakao ? "카카오 로그인됨" : `${josa(CHARACTER_NAME, "과", "와")} 함께 절약 중`}
         </p>
       </header>
 
@@ -93,7 +94,7 @@ export default function Profile({ onGoRecords }: { onGoRecords: () => void }) {
       </button>
 
       <p className="text-center text-[11px] text-gray-300 mt-10 font-mono tracking-wider">
-        거지로그 · 화수분 자르르와 함께
+        {APP_NAME} · {josa(CHARACTER_NAME, "과", "와")} 함께
       </p>
     </div>
   );

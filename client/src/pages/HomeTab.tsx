@@ -1,6 +1,7 @@
-// 새 홈 탭 — 자르르(화수분) + 최근 7일 수익(진짜) + 사진기록 버튼(진짜).
+// 새 홈 탭 — 자르르 + 최근 7일 수익(진짜) + 사진기록 버튼(진짜).
 // 김집사 브리핑·절약 이야기 카드는 아직 '틀'(고정 텍스트) — 다음 단계에서 실제 계산으로 채움.
 import { trpc } from "@/lib/trpc";
+import { APP_NAME, CHARACTER_NAME, josa } from "@/lib/brand";
 import { useAuth } from "@/_core/hooks/useAuth";
 import Hwasubun from "@/components/Hwasubun";
 import { Camera } from "lucide-react";
@@ -31,13 +32,13 @@ export default function HomeTab({ onRecord }: { onRecord: () => void }) {
   return (
     <div className="min-h-screen max-w-lg mx-auto px-4 pb-24">
       <header className="pt-12 pb-1 text-center">
-        <p className="text-[11px] font-mono text-gray-400 tracking-widest uppercase">거지로그</p>
+        <p className="text-[11px] font-mono text-gray-400 tracking-widest uppercase">{APP_NAME}</p>
       </header>
 
       {/* 자르르 + 최근 7일 수익 (진짜 데이터) */}
       <div className="flex flex-col items-center text-center">
         <Hwasubun level={level} size={132} />
-        <p className="mt-3 text-sm text-gray-500">최근 7일, 화수분이 이만큼 찼어요</p>
+        <p className="mt-3 text-sm text-gray-500">최근 7일, {josa(CHARACTER_NAME, "이", "가")} 이만큼 찼어요</p>
         <p className="font-mono text-4xl font-bold text-emerald-500 tabular-nums leading-tight">
           +{won(weekProfit)}
         </p>
