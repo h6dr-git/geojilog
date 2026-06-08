@@ -51,11 +51,22 @@ export async function createContext(
 
   // 2) 없으면 새 익명 계정 생성 + 쿠키 심기
   if (!user) {
-    const newId = await db.createUser({
-      openId: "anon_" + randomUUID(),
-      name: "회장님",
-    });
-    user = (await db.getUserById(newId)) ?? null;
+    const openId = "anon_" + randomUUID();
+    const newId = await db.createUser({ openId, name: "회장님" });
+
+    // 방금 만든 계정 재조회. 드물게 read-after-write 지연이 있으면 잠깐 재시도.
+    for (let i = 0; i < 3 && !user; i++) {
+      user = (await db.getUserById(newId)) ?? null;
+      if (!user) await new Promise(r => setTimeout(r, 50));
+    }
+    // 그래도 못 읽으면 방금 만든 값으로 최소 user 객체를 구성해 로그인 화면을 막는다.
+    if (!user) {
+      const now = new Date();
+      user = {
+        id: newId, openId, name: "회장님", email: null, loginMethod: null,
+        role: "user", createdAt: now, updatedAt: now, lastSignedIn: now,
+      } as User;
+    }
     try {
       const token = await signUid(newId);
       opts.res.cookie(COOKIE_NAME, token, {

@@ -4,13 +4,12 @@
 import { useState, useRef, useCallback, useMemo } from "react";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
-import { getLoginUrl } from "@/const";
 import { toast } from "sonner";
 import { getExifDate } from "@/lib/exif";
 import { smartCropToSquare } from "@/lib/smartCrop";
 import {
   Upload, Camera, ImageIcon, PenLine, Loader2, Download,
-  Copy, Trash2, ChevronDown, ChevronUp, LogIn, Check,
+  Copy, Trash2, ChevronDown, ChevronUp, Check,
   Pencil, X, ChevronLeft, ChevronRight, BarChart2, Share2,
 } from "lucide-react";
 import SavingsStoryCard from "@/components/SavingsStoryCard";
@@ -802,18 +801,22 @@ export default function Home() {
 
   if (!isAuthenticated) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-white gap-8 px-6">
+      <div className="min-h-screen flex flex-col items-center justify-center bg-white gap-6 px-6">
         <div className="text-center">
           <h1 className="text-3xl font-bold tracking-tight text-gray-900">거지로그</h1>
           <p className="mt-2 text-sm text-gray-400">절약한 만큼 번다</p>
         </div>
-        <a
-          href={getLoginUrl()}
+        <p className="text-sm text-gray-500 text-center leading-relaxed">
+          연결이 잠시 불안정해 데이터를 불러오지 못했어요.<br />
+          잠깐 후 다시 시도해 주세요.
+        </p>
+        <button
+          onClick={() => window.location.reload()}
           className="flex items-center gap-2 px-6 py-3 bg-emerald-500 text-white text-sm font-medium rounded-lg hover:bg-emerald-600 transition-colors"
         >
-          <LogIn size={16} />
-          로그인
-        </a>
+          <Loader2 size={16} />
+          다시 시도
+        </button>
       </div>
     );
   }

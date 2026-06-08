@@ -57,10 +57,18 @@ export async function getDb() {
   if (_db) return _db;
   if (!_initPromise) {
     _initPromise = (async () => {
-      const client = createClient(DB_AUTH ? { url: DB_URL, authToken: DB_AUTH } : { url: DB_URL });
-      await client.executeMultiple(CREATE_TABLES_SQL);
-      _db = drizzle(client);
-      return _db;
+      try {
+        const client = createClient(DB_AUTH ? { url: DB_URL, authToken: DB_AUTH } : { url: DB_URL });
+        await client.executeMultiple(CREATE_TABLES_SQL);
+        _db = drizzle(client);
+        return _db;
+      } catch (e) {
+        // 콜드스타트/일시적 Turso 연결 실패가 _initPromise를 영구 reject 상태로
+        // 박제해 서버 재시작 전까지 앱이 죽는 것을 막는다. 리셋 -> 다음 요청이 재시도.
+        _initPromise = null;
+        console.error("[db] 초기화 실패 (다음 요청에서 재시도):", e);
+        throw e;
+      }
     })();
   }
   return _initPromise;
