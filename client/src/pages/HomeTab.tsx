@@ -1,13 +1,16 @@
 // 새 홈 탭 — 자르르 + 최근 7일 수익(진짜) + 사진기록 버튼(진짜).
 // 김집사 브리핑·절약 이야기 카드는 아직 '틀'(고정 텍스트) — 다음 단계에서 실제 계산으로 채움.
+import { type ChangeEvent, useRef, useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { APP_NAME, CHARACTER_NAME, josa } from "@/lib/brand";
+import { won } from "@/lib/format";
 import { useAuth } from "@/_core/hooks/useAuth";
 import Hwasubun from "@/components/Hwasubun";
-import { Camera } from "lucide-react";
+import QuickRecord from "@/components/QuickRecord";
+import { useDrafts, type Draft } from "@/lib/drafts";
+import { Camera, ChevronRight } from "lucide-react";
 
 const WEEKLY_GOAL = 50000; // 자르르가 가득 차는 한 주 목표 (추후 조정)
-const won = (n: number) => "₩" + Math.round(n).toLocaleString("ko-KR");
 
 type Entry = { date: string; profit: number };
 
@@ -29,7 +32,35 @@ export default function HomeTab({ onRecord }: { onRecord: () => void }) {
   const weekProfit = recentWeekProfit(entries as Entry[]);
   const level = Math.min(1, weekProfit / WEEKLY_GOAL);
 
+  const drafts = useDrafts();
+  const topDraft = drafts[0];
+  const cameraRef = useRef<HTMLInputElement>(null);
+  const [captured, setCaptured] = useState<File | null>(null);
+  const [activeDraft, setActiveDraft] = useState<Draft | null>(null);
+  const [sheetOpen, setSheetOpen] = useState(false);
+
+  function onPick(e: ChangeEvent<HTMLInputElement>) {
+    const f = e.target.files?.[0] ?? null;
+    e.target.value = "";
+    if (f) {
+      setActiveDraft(null);
+      setCaptured(f);
+      setSheetOpen(true);
+    }
+  }
+  function openDraft(d: Draft) {
+    setCaptured(null);
+    setActiveDraft(d);
+    setSheetOpen(true);
+  }
+  function closeSheet() {
+    setSheetOpen(false);
+    setCaptured(null);
+    setActiveDraft(null);
+  }
+
   return (
+    <>
     <div className="min-h-screen max-w-lg mx-auto px-4 pb-24">
       <header className="pt-12 pb-1 text-center">
         <p className="text-[11px] font-mono text-gray-400 tracking-widest uppercase">{APP_NAME}</p>
@@ -44,12 +75,43 @@ export default function HomeTab({ onRecord }: { onRecord: () => void }) {
         </p>
       </div>
 
-      {/* 핵심 행동 — 사진 기록 (기록 탭으로) */}
+      {/* 핵심 행동 — 카메라 바로 (1탭 기록) */}
+      <input
+        ref={cameraRef}
+        type="file"
+        accept="image/*"
+        capture="environment"
+        className="hidden"
+        onChange={onPick}
+      />
       <button
-        onClick={onRecord}
+        onClick={() => cameraRef.current?.click()}
         className="mt-6 w-full bg-emerald-500 text-white font-medium py-3.5 rounded-2xl flex items-center justify-center gap-2 active:scale-[0.99] transition-transform"
       >
         <Camera size={18} /> 사진으로 한 끼 기록하기
+      </button>
+
+      {/* 미완성(나중에 채우기) 배지 */}
+      {topDraft && (
+        <button
+          onClick={() => openDraft(topDraft)}
+          className="mt-2.5 w-full flex items-center gap-3 border border-amber-200 bg-amber-50 rounded-2xl px-3.5 py-3 text-left active:bg-amber-100 transition-colors"
+        >
+          <img src={topDraft.imageUrl} alt="" className="w-10 h-10 rounded-lg object-cover shrink-0" />
+          <div className="flex-1 min-w-0">
+            <p className="text-[13px] font-medium text-amber-800">금액 안 채운 기록 {drafts.length}개</p>
+            <p className="text-[11px] text-amber-600 truncate">탭해서 마저 채우기</p>
+          </div>
+          <ChevronRight size={16} className="text-amber-400 shrink-0" />
+        </button>
+      )}
+
+      {/* 전체 기록 보기 */}
+      <button
+        onClick={onRecord}
+        className="mt-2 w-full flex items-center justify-center gap-1 text-xs text-gray-400 py-2"
+      >
+        전체 기록 보기 <ChevronRight size={13} />
       </button>
 
       {/* 김집사 주간 브리핑 (틀) */}
@@ -89,5 +151,7 @@ export default function HomeTab({ onRecord }: { onRecord: () => void }) {
         </p>
       </div>
     </div>
+      {sheetOpen && <QuickRecord file={captured} draft={activeDraft} onClose={closeSheet} />}
+    </>
   );
 }
