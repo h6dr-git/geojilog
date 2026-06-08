@@ -8,6 +8,7 @@ import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
 import { getUserById } from "../db";
+import { registerKakaoAuth } from "./kakao";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -65,6 +66,8 @@ async function startServer() {
       createContext,
     })
   );
+  // 카카오 소셜 로그인 (선택) — 게스트 계정을 카카오로 연결
+  registerKakaoAuth(app);
   // development mode uses Vite, production mode uses static files
   if (process.env.NODE_ENV === "development") {
     await setupVite(app, server);

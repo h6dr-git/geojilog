@@ -84,14 +84,27 @@ export async function getUserById(id: number) {
 }
 
 /** 익명 자동 계정 등 새 사용자 생성, 새 id 반환 */
-export async function createUser(data: { openId: string; name?: string | null }): Promise<number> {
+export async function createUser(data: { openId: string; name?: string | null; loginMethod?: string | null }): Promise<number> {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   const [row] = await db
     .insert(users)
-    .values({ openId: data.openId, name: data.name ?? null })
+    .values({ openId: data.openId, name: data.name ?? null, loginMethod: data.loginMethod ?? null })
     .returning({ id: users.id });
   return row.id;
+}
+
+/** 기존(익명) 계정을 소셜 신원으로 연결하거나 프로필 갱신 */
+export async function updateUserIdentity(
+  id: number,
+  data: { openId: string; name?: string | null; loginMethod?: string | null }
+): Promise<void> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const set: Record<string, unknown> = { openId: data.openId };
+  if (data.name !== undefined) set.name = data.name;
+  if (data.loginMethod !== undefined) set.loginMethod = data.loginMethod;
+  await db.update(users).set(set).where(eq(users.id, id));
 }
 
 export async function upsertUser(user: InsertUser): Promise<void> {

@@ -3,6 +3,7 @@
 //       다음부터는 그 쿠키로 같은 사람을 알아본다. → 친구도 0 마찰로 자기 데이터.
 // (정식 로그인은 추후 추가 — 그때 기존 익명 계정을 '내 계정으로' 연결)
 import type { CreateExpressContextOptions } from "@trpc/server/adapters/express";
+import type { Response } from "express";
 import type { User } from "../../drizzle/schema";
 import { SignJWT, jwtVerify } from "jose";
 import { parse as parseCookie } from "cookie";
@@ -15,13 +16,13 @@ export type TrpcContext = {
   user: User | null;
 };
 
-const COOKIE_NAME = "gjr_session";
+export const COOKIE_NAME = "gjr_session";
 const ONE_YEAR_MS = 365 * 24 * 60 * 60 * 1000;
 const SECRET = new TextEncoder().encode(
   process.env.JWT_SECRET || "geojirok-dev-secret-please-set-JWT_SECRET"
 );
 
-async function readUid(cookieHeader: string | undefined): Promise<number | null> {
+export async function readUid(cookieHeader: string | undefined): Promise<number | null> {
   if (!cookieHeader) return null;
   const token = parseCookie(cookieHeader)[COOKIE_NAME];
   if (!token) return null;
@@ -40,6 +41,18 @@ async function signUid(uid: number): Promise<string> {
     .setIssuedAt()
     .setExpirationTime("365d")
     .sign(SECRET);
+}
+
+/** 세션 쿠키(JWT) 발급 — 익명/카카오 로그인 공통 사용 */
+export async function setSessionCookie(res: Response, uid: number): Promise<void> {
+  const token = await signUid(uid);
+  res.cookie(COOKIE_NAME, token, {
+    httpOnly: true,
+    sameSite: "lax",
+    secure: process.env.NODE_ENV === "production",
+    maxAge: ONE_YEAR_MS,
+    path: "/",
+  });
 }
 
 export async function createContext(
