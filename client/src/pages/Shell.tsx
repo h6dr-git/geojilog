@@ -4,12 +4,14 @@ import Home from "@/pages/Home";
 import HomeTab from "@/pages/HomeTab";
 import Profile from "@/pages/Profile";
 import BottomNav, { type MainNavTab } from "@/components/BottomNav";
+import LoginFailNotice from "@/components/LoginFailNotice";
 
 export default function Shell() {
   const [tab, setTab] = useState<MainNavTab>("home");
 
   return (
     <>
+      <LoginFailNotice />
       {tab === "home" && <HomeTab onRecord={() => setTab("records")} />}
       {tab === "records" && <Home />}
       {tab === "profile" && <Profile onGoRecords={() => setTab("records")} />}

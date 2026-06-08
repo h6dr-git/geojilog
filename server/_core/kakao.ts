@@ -76,7 +76,15 @@ export function registerKakaoAuth(app: Express): void {
       let uid: number;
       const existing = await db.getUserByOpenId(openId);
       if (existing) {
-        uid = existing.id; // 이미 이 카카오로 만든 계정 → 그걸로 전환
+        // 이미 이 카카오 계정이 있음 → 지금 게스트로 쓰던 기록이 날아가지 않게 그 계정으로 합친다.
+        const currentUid = await readUid(req.headers.cookie);
+        if (currentUid && currentUid !== existing.id) {
+          const guest = await db.getUserById(currentUid);
+          if (guest && guest.openId.startsWith("anon_")) {
+            await db.mergeUserData(guest.id, existing.id);
+          }
+        }
+        uid = existing.id;
       } else {
         const currentUid = await readUid(req.headers.cookie);
         const currentUser = currentUid

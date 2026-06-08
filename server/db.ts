@@ -107,6 +107,20 @@ export async function updateUserIdentity(
   await db.update(users).set(set).where(eq(users.id, id));
 }
 
+/** 게스트 계정의 데이터(절약기록·커스텀 카테고리)를 다른 계정으로 합친다(로그인 시 데이터 보존). */
+export async function mergeUserData(fromUserId: number, toUserId: number): Promise<void> {
+  if (fromUserId === toUserId) return;
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const { and } = await import("drizzle-orm");
+  await db.update(savingsEntries).set({ userId: toUserId }).where(eq(savingsEntries.userId, fromUserId));
+  // 기본 카테고리는 양쪽에 다 있어 중복되니 직접 만든(커스텀) 카테고리만 이동
+  await db
+    .update(userCategories)
+    .set({ userId: toUserId })
+    .where(and(eq(userCategories.userId, fromUserId), eq(userCategories.isDefault, "no")));
+}
+
 export async function upsertUser(user: InsertUser): Promise<void> {
   if (!user.openId) {
     throw new Error("User openId is required for upsert");
