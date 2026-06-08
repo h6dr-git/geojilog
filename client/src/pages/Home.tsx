@@ -824,9 +824,6 @@ export default function Home() {
       {/* ── 헤더 ── */}
       <header className="pt-12 pb-6 text-center">
         <p className="text-[11px] font-mono text-gray-400 tracking-widest uppercase mb-2">거지록</p>
-        <div className="flex justify-center mb-1">
-          <Hwasubun level={Math.min(1, totalProfit / 50000)} size={116} />
-        </div>
         <div className="text-5xl font-bold text-emerald-500 tabular-nums">
           {isLoading ? <span className="text-gray-200">₩ ···</span> : <>₩{fmt(totalProfit)}</>}
         </div>
