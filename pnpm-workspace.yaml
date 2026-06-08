@@ -1,5 +1,0 @@
-# 네이티브 빌드 스크립트 허용 — Railway 등 새 환경에서 빌드되도록.
-# (예전엔 package.json의 pnpm 필드에 있었지만, 최신 pnpm은 여기서 읽음)
-onlyBuiltDependencies:
-  - '@tailwindcss/oxide'
-  - esbuild
