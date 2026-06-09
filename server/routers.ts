@@ -16,7 +16,9 @@ function generateTicker(category: string, count: number): string {
 }
 
 // AI 분석(사진·문자)은 유저당 하루 호출 상한 — 비용 폭탄·봇 방어.
+// AI는 '입력 마찰 제거'용일 뿐(해자 아님) → 한도에 닿아도 수동 입력으로 똑같이 기록되게 안내한다.
 const AI_DAILY_LIMIT = 30;
+const AI_LIMIT_MESSAGE = `오늘 AI 분석 한도(${AI_DAILY_LIMIT}회)를 다 쓰셨어요, 회장님. 남은 기록은 직접 입력으로 올리시면 똑같이 +수익으로 잡힙니다.`;
 
 export const appRouter = router({
   auth: router({
@@ -50,6 +52,9 @@ export const appRouter = router({
         category: z.string(),
         originalAmount: z.number().int().positive(),
         actualAmount: z.number().int().min(0),
+        // AI가 처음 추정했던 기준가(있으면). 최종 확정값과 다르면 보정 데이터로 기록 → '실가격 데이터 해자'.
+        aiOriginalAmount: z.number().int().positive().optional(),
+        aiActualAmount: z.number().int().min(0).optional(),
         aiEstimated: z.enum(["yes", "no"]).default("no"),
         aiReason: z.string().optional(),
         imageUrl: z.string().optional(),
@@ -75,6 +80,18 @@ export const appRouter = router({
           memo: input.memo,
         });
         await logUsageEvent(ctx.user.id, "entry_create");
+        // 데이터 해자: AI 추정 기준가 → 사용자 확정 실가격의 '보정'을 쌓는다(클라가 AI 추정 원본값을 보낼 때만 작동).
+        const correctedOrig = input.aiOriginalAmount !== undefined && input.aiOriginalAmount !== input.originalAmount;
+        const correctedActual = input.aiActualAmount !== undefined && input.aiActualAmount !== input.actualAmount;
+        if (input.aiEstimated === "yes" && (correctedOrig || correctedActual)) {
+          await logUsageEvent(ctx.user.id, "price_correction", JSON.stringify({
+            category: input.category,
+            aiOriginal: input.aiOriginalAmount ?? null,
+            finalOriginal: input.originalAmount,
+            aiActual: input.aiActualAmount ?? null,
+            finalActual: input.actualAmount,
+          }));
+        }
         return created;
       }),
 
@@ -152,7 +169,7 @@ export const appRouter = router({
         if (used >= AI_DAILY_LIMIT) {
           throw new TRPCError({
             code: "TOO_MANY_REQUESTS",
-            message: `오늘 AI 분석 한도(${AI_DAILY_LIMIT}회)를 다 썼어요. 내일 다시 이용해주세요.`,
+            message: AI_LIMIT_MESSAGE,
           });
         }
         const buffer = Buffer.from(input.imageBase64, "base64");
@@ -284,7 +301,7 @@ cropBox 추정 원칙:
         if (used >= AI_DAILY_LIMIT) {
           throw new TRPCError({
             code: "TOO_MANY_REQUESTS",
-            message: `오늘 AI 분석 한도(${AI_DAILY_LIMIT}회)를 다 썼어요. 내일 다시 이용해주세요.`,
+            message: AI_LIMIT_MESSAGE,
           });
         }
         const result = await invokeLLM({
