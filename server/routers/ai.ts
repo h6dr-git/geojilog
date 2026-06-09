@@ -1,164 +1,16 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-import { COOKIE_NAME } from "@shared/const";
-import { getSessionCookieOptions } from "./_core/cookies";
-import { publicProcedure, protectedProcedure, adminProcedure, router } from "./_core/trpc";
-import { getSavingsEntries, createSavingsEntry, deleteSavingsEntry, deleteMultipleSavingsEntries, deleteAllSavingsEntries, countSavingsEntriesByCategory, updateSavingsEntry, getUserCategories, createUserCategory, deleteUserCategory, renameUserCategory, updateUserName, logUsageEvent, countAiCallsToday, getUsageStats } from "./db";
-import { invokeLLM } from "./_core/llm";
-import { storagePut, storageGetSignedUrl } from "./storage";
-
-function generateTicker(category: string, count: number): string {
-  const prefixMap: Record<string, string> = {
-    식비: "FOOD", 카페: "CAFE", 교통: "TRNSP", 쇼핑: "SHOP", "문화/여가": "LSRE", 기타: "ETC",
-  };
-  const prefix = prefixMap[category] ?? "SAVE";
-  return `${prefix}-${String(count + 1).padStart(3, "0")}`;
-}
+import { protectedProcedure, router } from "../trpc";
+import { countAiCallsToday, logUsageEvent } from "../db";
+import { invokeLLM } from "../llm";
+import { storagePut, storageGetSignedUrl } from "../storage";
 
 // AI 분석(사진·문자)은 유저당 하루 호출 상한 — 비용 폭탄·봇 방어.
 // AI는 '입력 마찰 제거'용일 뿐(해자 아님) → 한도에 닿아도 수동 입력으로 똑같이 기록되게 안내한다.
 const AI_DAILY_LIMIT = 30;
 const AI_LIMIT_MESSAGE = `오늘 AI 분석 한도(${AI_DAILY_LIMIT}회)를 다 쓰셨어요, 회장님. 남은 기록은 직접 입력으로 올리시면 똑같이 +수익으로 잡힙니다.`;
 
-export const appRouter = router({
-  auth: router({
-    me: publicProcedure.query(opts => opts.ctx.user),
-    logout: publicProcedure.mutation(({ ctx }) => {
-      const cookieOptions = getSessionCookieOptions(ctx.req);
-      ctx.res.clearCookie(COOKIE_NAME, { ...cookieOptions, maxAge: -1 });
-      return { success: true } as const;
-    }),
-  }),
-
-  user: router({
-    updateName: protectedProcedure
-      .input(z.object({ name: z.string().trim().min(1).max(20) }))
-      .mutation(async ({ ctx, input }) => {
-        await updateUserName(ctx.user.id, input.name);
-        return { success: true };
-      }),
-  }),
-
-  savings: router({
-    list: protectedProcedure.query(async ({ ctx }) => {
-      return getSavingsEntries(ctx.user.id);
-    }),
-
-    create: protectedProcedure
-      .input(z.object({
-        date: z.string(),
-        title: z.string().min(1),
-        description: z.string().optional(),
-        category: z.string(),
-        originalAmount: z.number().int().positive(),
-        actualAmount: z.number().int().min(0),
-        // AI가 처음 추정했던 기준가(있으면). 최종 확정값과 다르면 보정 데이터로 기록 → '실가격 데이터 해자'.
-        aiOriginalAmount: z.number().int().positive().optional(),
-        aiActualAmount: z.number().int().min(0).optional(),
-        aiEstimated: z.enum(["yes", "no"]).default("no"),
-        aiReason: z.string().optional(),
-        imageUrl: z.string().optional(),
-        memo: z.string().optional(),
-      }))
-      .mutation(async ({ ctx, input }) => {
-        const count = await countSavingsEntriesByCategory(ctx.user.id, input.category);
-        const ticker = generateTicker(input.category, count);
-        const profit = input.originalAmount - input.actualAmount;
-        const created = await createSavingsEntry({
-          userId: ctx.user.id,
-          date: input.date,
-          title: input.title,
-          description: input.description,
-          category: input.category,
-          ticker,
-          originalAmount: input.originalAmount,
-          actualAmount: input.actualAmount,
-          profit,
-          aiEstimated: input.aiEstimated,
-          aiReason: input.aiReason,
-          imageUrl: input.imageUrl,
-          memo: input.memo,
-        });
-        await logUsageEvent(ctx.user.id, "entry_create");
-        // 데이터 해자: AI 추정 기준가 → 사용자 확정 실가격의 '보정'을 쌓는다(클라가 AI 추정 원본값을 보낼 때만 작동).
-        const correctedOrig = input.aiOriginalAmount !== undefined && input.aiOriginalAmount !== input.originalAmount;
-        const correctedActual = input.aiActualAmount !== undefined && input.aiActualAmount !== input.actualAmount;
-        if (input.aiEstimated === "yes" && (correctedOrig || correctedActual)) {
-          await logUsageEvent(ctx.user.id, "price_correction", JSON.stringify({
-            category: input.category,
-            aiOriginal: input.aiOriginalAmount ?? null,
-            finalOriginal: input.originalAmount,
-            aiActual: input.aiActualAmount ?? null,
-            finalActual: input.actualAmount,
-          }));
-        }
-        return created;
-      }),
-
-    update: protectedProcedure
-      .input(z.object({
-        id: z.number().int(),
-        date: z.string().optional(),
-        title: z.string().min(1).optional(),
-        description: z.string().optional(),
-        category: z.string().optional(),
-        originalAmount: z.number().int().positive().optional(),
-        actualAmount: z.number().int().min(0).optional(),
-        memo: z.string().nullable().optional(),
-      }))
-      .mutation(async ({ ctx, input }) => {
-        await updateSavingsEntry(input.id, ctx.user.id, input);
-        return { success: true };
-      }),
-
-    delete: protectedProcedure
-      .input(z.object({ id: z.number().int() }))
-      .mutation(async ({ ctx, input }) => {
-        await deleteSavingsEntry(input.id, ctx.user.id);
-        return { success: true };
-      }),
-
-    deleteBulk: protectedProcedure
-      .input(z.object({ ids: z.array(z.number().int()).min(1) }))
-      .mutation(async ({ ctx, input }) => {
-        await deleteMultipleSavingsEntries(input.ids, ctx.user.id);
-        return { success: true };
-      }),
-
-    deleteAll: protectedProcedure
-      .mutation(async ({ ctx }) => {
-        await deleteAllSavingsEntries(ctx.user.id);
-        return { success: true };
-      }),
-  }),
-
-  categories: router({
-    list: protectedProcedure.query(async ({ ctx }) => {
-      return getUserCategories(ctx.user.id);
-    }),
-
-    create: protectedProcedure
-      .input(z.object({ name: z.string().min(1).max(50), color: z.string().default("gray") }))
-      .mutation(async ({ ctx, input }) => {
-        return createUserCategory({ userId: ctx.user.id, name: input.name, color: input.color, isDefault: "no" });
-      }),
-
-    rename: protectedProcedure
-      .input(z.object({ id: z.number().int(), name: z.string().min(1).max(50) }))
-      .mutation(async ({ ctx, input }) => {
-        await renameUserCategory(input.id, ctx.user.id, input.name);
-        return { success: true };
-      }),
-
-    delete: protectedProcedure
-      .input(z.object({ id: z.number().int() }))
-      .mutation(async ({ ctx, input }) => {
-        await deleteUserCategory(input.id, ctx.user.id);
-        return { success: true };
-      }),
-  }),
-
-  ai: router({
+export const aiRouter = router({
     analyzeImage: protectedProcedure
       .input(z.object({
         imageBase64: z.string(),
@@ -363,14 +215,4 @@ cropBox 추정 원칙:
           | { parsed: true; amount: number; merchant: string; date: string; category: string }
           | { parsed: false; reason: string };
       }),
-  }),
-
-  admin: router({
-    // 운영 지표 조회(소유자/관리자 전용). 화면(대시보드)에서 호출해 쓸 수 있다.
-    usageStats: adminProcedure.query(async () => {
-      return getUsageStats();
-    }),
-  }),
 });
-
-export type AppRouter = typeof appRouter;

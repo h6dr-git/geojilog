@@ -2,7 +2,7 @@
 // 게스트(익명) 계정을 카카오 계정에 '연결'한다 → 다른 기기에서도 같은 데이터.
 // 이미 그 카카오로 만든 계정이 있으면 그 계정으로 전환한다.
 import type { Express, Request } from "express";
-import * as db from "../db";
+import * as db from "./db";
 import { readUid, setSessionCookie } from "./context";
 
 const KAKAO_REST_API_KEY = process.env.KAKAO_REST_API_KEY || "";

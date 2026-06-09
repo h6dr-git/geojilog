@@ -4,11 +4,11 @@
 // (정식 로그인은 추후 추가 — 그때 기존 익명 계정을 '내 계정으로' 연결)
 import type { CreateExpressContextOptions } from "@trpc/server/adapters/express";
 import type { Response } from "express";
-import type { User } from "../../drizzle/schema";
+import type { User } from "../drizzle/schema";
 import { SignJWT, jwtVerify } from "jose";
 import { parse as parseCookie } from "cookie";
 import { randomUUID } from "node:crypto";
-import * as db from "../db";
+import * as db from "./db";
 
 export type TrpcContext = {
   req: CreateExpressContextOptions["req"];

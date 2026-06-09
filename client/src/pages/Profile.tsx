@@ -3,8 +3,8 @@ import { useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { APP_NAME, CHARACTER_NAME, josa } from "@/lib/brand";
 import { won } from "@/lib/format";
-import { useAuth } from "@/_core/hooks/useAuth";
-import Hwasubun from "@/components/Hwasubun";
+import { useAuth } from "@/hooks/useAuth";
+import Jarureu from "@/components/Jarureu";
 import { Download, ChevronRight, LogOut, Pencil, Check, X } from "lucide-react";
 
 type Entry = { date: string; profit: number };
@@ -70,7 +70,7 @@ export default function Profile({ onGoRecords }: { onGoRecords: () => void }) {
       {/* 회장님 헤더 — 자르르 + 닉네임(✎) + 로그인 상태 */}
       <header className="text-center mb-7">
         <div className="flex justify-center mb-3">
-          <Hwasubun level={Math.min(1, total / 50000)} size={92} />
+          <Jarureu level={Math.min(1, total / 50000)} size={92} />
         </div>
 
         {editing ? (

@@ -1,7 +1,7 @@
 // 온보딩 — 깔자마자 만나는 '다크 포털'. 세계관(도사의 첫 가르침)으로 후킹하고,
 // 가입 없이 바로 첫 기록(첫 수익)으로 0마찰 입장시킨다. (바이블 6장 / 1번 목업)
 // 기기당 1회만 표시(Shell이 localStorage로 판정). 버튼을 누르면 바로 사진 캡처로 간다.
-import Hwasubun from "@/components/Hwasubun";
+import Jarureu from "@/components/Jarureu";
 import { APP_NAME } from "@/lib/brand";
 import { Camera } from "lucide-react";
 
@@ -13,7 +13,7 @@ export default function Onboarding({ onStart }: { onStart: () => void }) {
 
       {/* 자르르 (골드 글로우) */}
       <div className="mb-9" style={{ filter: "drop-shadow(0 10px 28px rgba(240,200,80,0.22))" }}>
-        <Hwasubun level={0.72} size={140} />
+        <Jarureu level={0.72} size={140} />
       </div>
 
       {/* 도사의 첫 가르침 — 세계관의 진지한 한 줄 */}

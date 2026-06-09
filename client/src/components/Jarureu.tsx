@@ -48,7 +48,7 @@ const STYLE = `
 @media (prefers-reduced-motion:reduce){.zr-swayG,.zr-breatheG,.zr-eyes,.zr-spark,.zr-mag{animation:none}}
 `;
 
-export default function Hwasubun({ level = 0.4, size = 116, analyzing = false }: Props) {
+export default function Jarureu({ level = 0.4, size = 116, analyzing = false }: Props) {
   const lv = Math.max(0, Math.min(1, level));
   const top = 34;
   const bottom = 94;

@@ -2,8 +2,8 @@
 // 안전 로비: 수익·통계·결산·내 기록(숫자) 절대 노출 금지.
 import { trpc } from "@/lib/trpc";
 import { APP_NAME, CHARACTER_NAME, josa } from "@/lib/brand";
-import { useAuth } from "@/_core/hooks/useAuth";
-import Hwasubun from "@/components/Hwasubun";
+import { useAuth } from "@/hooks/useAuth";
+import Jarureu from "@/components/Jarureu";
 import LoginChip from "@/components/LoginChip";
 import { useDrafts, type Draft } from "@/lib/drafts";
 import type { CaptureJob } from "@/lib/capture";
@@ -74,7 +74,7 @@ export default function HomeTab({ onCapture, onOpenProfile, job, onOpenConfirm, 
       {/* 자르르 주인공 + 김집사 말풍선 인사 */}
       <div className="flex flex-col items-center mt-10">
         <div className="relative">
-          <Hwasubun level={level} size={156} analyzing={!!analyzingJob} />
+          <Jarureu level={level} size={156} analyzing={!!analyzingJob} />
           <div className="absolute left-1/2 -translate-x-1/2 -bottom-0.5 w-24 h-3.5 rounded-[50%] bg-black/10 blur-md" aria-hidden="true" />
         </div>
 

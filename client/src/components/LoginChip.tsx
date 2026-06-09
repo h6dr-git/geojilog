@@ -1,7 +1,7 @@
 // 로그인 가시성 칩 — '박회장님' 상태를 숫자 없이 안전하게 보여준다.
 // 집무실(홈) 헤더처럼 남이 봐도 안전한 자리에 둔다. 탭하면 회장님 탭으로(선택).
 // 카카오 로그인=골드 왕관+에메랄드 점 / 게스트=회색 점. 수익·통계는 절대 표시하지 않음.
-import { useAuth } from "@/_core/hooks/useAuth";
+import { useAuth } from "@/hooks/useAuth";
 import { Crown } from "lucide-react";
 
 export default function LoginChip({ onClick }: { onClick?: () => void }) {
