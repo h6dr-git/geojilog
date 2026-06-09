@@ -8,7 +8,7 @@ import { toast } from "sonner";
 import { getExifDate } from "@/lib/exif";
 import { smartCropToSquare } from "@/lib/smartCrop";
 import {
-  Upload, Camera, ImageIcon, PenLine, Loader2, Download,
+  Upload, Camera, PenLine, Loader2, Download,
   Copy, Trash2, ChevronDown, ChevronUp, Check,
   Pencil, X, Share2, RotateCw,
 } from "lucide-react";
@@ -17,12 +17,17 @@ import MiniCalendar from "@/components/MiniCalendar";
 import Jarureu from "@/components/Jarureu";
 import { SavingsEntry, ExportRange, fmt, todayStr, makeDefaultTitle, filterByRange, toMarkdownTable, toCsv } from "@/lib/ledger";
 
+// 파일 시그니처(이름|크기|수정시각) — 같은 사진 중복 업로드 감지용
+const fileSig = (f: File) => `${f.name}|${f.size}|${f.lastModified}`;
+
 // 업로드 큐 아이템 — submitting 필드 추가 (버그 #1 수정)
 interface QueueItem {
   id: string;
   file: File; // [작업1-a] 원본 File 보관 → 분석 실패 시 재시도(재분석) 가능
   previewUrl: string;
   fileName: string;
+  sig: string;           // 파일 시그니처 — 중복 감지용
+  dup?: boolean;         // 같은 배치/큐 내 중복 의심 (향후 저장기록 지문 대조로 확장)
   status: "analyzing" | "ready" | "error";
   submitting: boolean; // 개별 등록 로딩 상태
   title: string;
@@ -148,6 +153,9 @@ export default function Ledger() {
     } : it));
   }, [analyzeImage, uploadCroppedImage]);
 
+  // 카메라 진입점 — 지금은 기기 카메라. 향후 앱 톤에 맞춘 자체 카메라로 교체할 단일 훅.
+  const openCamera = useCallback(() => cameraRef.current?.click(), []);
+
   const handleFiles = useCallback((files: FileList | null) => {
     if (!files || files.length === 0) return;
     const arr = Array.from(files).filter(f => f.type.startsWith("image/"));
@@ -158,6 +166,7 @@ export default function Ledger() {
       file, // [작업1-a] 원본 File 보관 → 재시도 가능
       previewUrl: URL.createObjectURL(file),
       fileName: file.name,
+      sig: fileSig(file),
       status: "analyzing" as const,
       submitting: false,
       title: "", category: categoryNames[0] ?? "식비",
@@ -165,7 +174,16 @@ export default function Ledger() {
       aiReason: "", date: todayStr(), memo: "",
     }));
 
-    setQueue(prev => [...prev, ...newItems]);
+    // 중복 표시: 이미 큐에 있거나 같은 배치 내 동일 파일이면 dup 마크(등록은 막지 않음)
+    // 향후: 저장된 기록의 이미지 지문과 대조해 '예전에 올린 사진'까지 확장
+    setQueue(prev => {
+      const seen = new Set(prev.map(it => it.sig));
+      return [...prev, ...newItems.map(it => {
+        const isDup = seen.has(it.sig);
+        seen.add(it.sig);
+        return isDup ? { ...it, dup: true } : it;
+      })];
+    });
 
     newItems.forEach((item) => {
       processFile(item.file, item.id).catch(() => {
@@ -421,23 +439,16 @@ export default function Ledger() {
               onDrop={(e) => { e.preventDefault(); handleFiles(e.dataTransfer.files); }}
             >
               <Upload className="w-7 h-7 text-emerald-400 mx-auto mb-2" />
-              <p className="text-body font-medium text-ink">사진만 올리면 자르르가 절약액을 계산해요</p>
-              <p className="text-caption text-ink-soft mt-1">여러 장 동시 선택 · 드래그앤드롭</p>
+              <p className="text-body font-medium text-ink">사진을 올리면 자르르가 절약액을 계산해요</p>
+              <p className="text-caption text-ink-soft mt-1">한 번에 여러 장 · 드래그앤드롭 또는 탭해서 선택</p>
             </div>
-            <div className="flex gap-2 mt-2">
-              <button
-                onClick={() => cameraRef.current?.click()}
-                className="flex-1 flex items-center justify-center gap-1.5 py-2 text-caption text-ink-soft border border-line rounded-lg hover:border-emerald-300 hover:text-emerald-600 transition-colors"
-              >
-                <Camera size={14} /> 카메라
-              </button>
-              <button
-                onClick={() => galleryRef.current?.click()}
-                className="flex-1 flex items-center justify-center gap-1.5 py-2 text-caption text-ink-soft border border-line rounded-lg hover:border-emerald-300 hover:text-emerald-600 transition-colors"
-              >
-                <ImageIcon size={14} /> 앨범
-              </button>
-            </div>
+            {/* 카메라 — 향후 앱 톤에 맞춘 자체 카메라로 교체할 단일 진입점(openCamera) */}
+            <button
+              onClick={openCamera}
+              className="mt-2 w-full flex items-center justify-center gap-1.5 py-2 text-caption text-ink-soft border border-line rounded-lg hover:border-emerald-300 hover:text-emerald-600 transition-colors"
+            >
+              <Camera size={14} /> 카메라로 촬영
+            </button>
           </section>
 
           {/* 업로드 큐 */}
@@ -446,6 +457,12 @@ export default function Ledger() {
               <p className="text-caption font-mono text-ink-soft tracking-widest uppercase">분석 대기열 ({queue.length})</p>
               {queue.map(item => (
                 <div key={item.id} className="border border-line rounded-card overflow-hidden">
+                  {/* 중복 의심 배지 — 같은 사진을 또 올렸을 때 (등록은 가능) */}
+                  {item.dup && (
+                    <div className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-50 border-b border-amber-100 text-micro text-amber-700">
+                      <Copy size={12} /> 이미 추가한 사진과 같아 보여요
+                    </div>
+                  )}
                   {/* 분석 중 스켈레톤 */}
                   {item.status === "analyzing" && (
                     <div className="flex items-center gap-3 p-3">
