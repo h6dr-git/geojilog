@@ -159,6 +159,7 @@ export const appRouter = router({
         const { key } = await storagePut(
           `ai-analysis/${Date.now()}.jpg`,
           buffer,
+          ctx.user.id,
           input.mimeType
         );
         const signedUrl = await storageGetSignedUrl(key);
@@ -265,11 +266,12 @@ cropBox 추정 원칙:
         imageBase64: z.string(),
         mimeType: z.string().default("image/jpeg"),
       }))
-      .mutation(async ({ input }) => {
+      .mutation(async ({ ctx, input }) => {
         const buffer = Buffer.from(input.imageBase64, "base64");
         const { key } = await storagePut(
           `ai-cropped/${Date.now()}.jpg`,
           buffer,
+          ctx.user.id,
           input.mimeType
         );
         return { imageUrl: `/manus-storage/${key}` };

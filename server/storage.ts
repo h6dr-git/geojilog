@@ -1,6 +1,7 @@
 // 사진 저장: 기본은 프로젝트 폴더 uploads/, 배포 시 UPLOAD_DIR 환경변수로 영구 디스크 경로 지정.
 import fs from "node:fs";
 import path from "node:path";
+import { randomUUID } from "node:crypto";
 
 const UPLOAD_DIR = process.env.UPLOAD_DIR || path.resolve(process.cwd(), "uploads");
 
@@ -13,7 +14,7 @@ function normalizeKey(relKey: string): string {
 }
 
 function appendHashSuffix(relKey: string): string {
-  const hash = crypto.randomUUID().replace(/-/g, "").slice(0, 8);
+  const hash = randomUUID().replace(/-/g, "").slice(0, 8);
   const lastDot = relKey.lastIndexOf(".");
   if (lastDot === -1) return `${relKey}_${hash}`;
   return `${relKey.slice(0, lastDot)}_${hash}${relKey.slice(lastDot)}`;
@@ -31,9 +32,11 @@ function mimeFromKey(key: string): string {
 export async function storagePut(
   relKey: string,
   data: Buffer | Uint8Array | string,
+  ownerId: number,
   _contentType = "application/octet-stream",
 ): Promise<{ key: string; url: string }> {
-  const key = appendHashSuffix(normalizeKey(relKey));
+  // 소유자 스코프: 키 앞에 u{ownerId}/ 를 붙여 프록시에서 본인만 접근하게 한다.
+  const key = `u${ownerId}/` + appendHashSuffix(normalizeKey(relKey));
   const filePath = path.join(UPLOAD_DIR, key);
   ensureDir(path.dirname(filePath));
 
