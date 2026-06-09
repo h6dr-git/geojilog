@@ -1,10 +1,10 @@
-// 앱 셸 — 하단 탭(집무실/장부/회장님) + 가운데 사진 캡처를 앱 상단에서 관리.
-// 분석은 백그라운드(비차단). 사용자는 탭을 옮겨다녀도 분석이 끊기지 않고,
-// 끝나면 막지 않고 '확인하기'로만 알린다. 확인 시트는 누를 때만(로딩 없이) 뜬다.
+// 앱 셸 — 온보딩(첫 방문) + 하단 탭(집무실/장부/회장님) + 가운데 사진 캡처를 앱 상단에서 관리.
+// 분석은 백그라운드(비차단). 탭을 옮겨다녀도 분석이 끊기지 않고, 끝나면 막지 않고 '확인하기'로만 알린다.
 import { useRef, useState, type ChangeEvent } from "react";
 import Home from "@/pages/Home";
 import HomeTab from "@/pages/HomeTab";
 import Profile from "@/pages/Profile";
+import Onboarding from "@/components/Onboarding";
 import BottomNav, { type MainNavTab } from "@/components/BottomNav";
 import LoginFailNotice from "@/components/LoginFailNotice";
 import QuickRecord from "@/components/QuickRecord";
@@ -12,6 +12,8 @@ import { trpc } from "@/lib/trpc";
 import type { CaptureJob, Prefill } from "@/lib/capture";
 import type { Draft } from "@/lib/drafts";
 import { Loader2, Check } from "lucide-react";
+
+const ONBOARDED_KEY = "geojilog:onboarded";
 
 function fileToBase64(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -32,11 +34,30 @@ export default function Shell() {
   const [confirmData, setConfirmData] = useState<Prefill | null>(null);
   const cameraRef = useRef<HTMLInputElement>(null);
 
+  // 첫 방문(기기당 1회)에만 온보딩 포털을 보여준다.
+  const [showOnboarding, setShowOnboarding] = useState<boolean>(() => {
+    try {
+      return !localStorage.getItem(ONBOARDED_KEY);
+    } catch {
+      return false; // localStorage 비활성 환경에선 온보딩 생략
+    }
+  });
+
   const analyzeImage = trpc.ai.analyzeImage.useMutation();
   const uploadImage = trpc.ai.uploadImage.useMutation();
 
   function triggerCapture() {
     cameraRef.current?.click();
+  }
+
+  function finishOnboarding() {
+    try {
+      localStorage.setItem(ONBOARDED_KEY, "1");
+    } catch {
+      /* 무시 */
+    }
+    setShowOnboarding(false);
+    triggerCapture(); // 가입 없이 바로 첫 기록으로
   }
 
   async function onPick(e: ChangeEvent<HTMLInputElement>) {
@@ -106,7 +127,7 @@ export default function Shell() {
 
   return (
     <>
-      <LoginFailNotice />
+      {/* 캡처 입력 — 항상 마운트(온보딩 버튼에서도 바로 호출) */}
       <input
         ref={cameraRef}
         type="file"
@@ -116,41 +137,49 @@ export default function Shell() {
         onChange={onPick}
       />
 
-      {tab === "home" && (
-        <HomeTab
-          onCapture={triggerCapture}
-          onOpenProfile={() => setTab("profile")}
-          job={job}
-          onOpenConfirm={openConfirmFromJob}
-          onCompleteDraft={completeDraft}
-        />
-      )}
-      {tab === "records" && <Home />}
-      {tab === "profile" && <Profile onGoRecords={() => setTab("records")} />}
+      {showOnboarding ? (
+        <Onboarding onStart={finishOnboarding} />
+      ) : (
+        <>
+          <LoginFailNotice />
 
-      {/* 다른 탭에 있을 때 비차단 알림 칩 — 가운데 기록 버튼을 가리지 않게 위로 띄운다 */}
-      {job && tab !== "home" && (
-        <button
-          onClick={() => (job.status === "analyzing" ? setTab("home") : openConfirmFromJob())}
-          className="fixed left-1/2 -translate-x-1/2 bottom-[88px] z-40 flex items-center gap-2 px-4 py-2.5 rounded-full shadow-lg text-sm font-medium bg-white border border-gray-200 active:scale-[0.98] transition-transform"
-        >
-          {job.status === "analyzing" ? (
-            <>
-              <Loader2 size={15} className="animate-spin text-emerald-500" />
-              <span className="text-gray-600">자르르가 분석 중…</span>
-            </>
-          ) : (
-            <>
-              <Check size={15} className="text-emerald-500" />
-              <span className="text-gray-700">한 끼 분석 완료 · 확인하기</span>
-            </>
+          {tab === "home" && (
+            <HomeTab
+              onCapture={triggerCapture}
+              onOpenProfile={() => setTab("profile")}
+              job={job}
+              onOpenConfirm={openConfirmFromJob}
+              onCompleteDraft={completeDraft}
+            />
           )}
-        </button>
+          {tab === "records" && <Home />}
+          {tab === "profile" && <Profile onGoRecords={() => setTab("records")} />}
+
+          {/* 다른 탭에 있을 때 비차단 알림 칩 — 가운데 기록 버튼을 가리지 않게 위로 띄운다 */}
+          {job && tab !== "home" && (
+            <button
+              onClick={() => (job.status === "analyzing" ? setTab("home") : openConfirmFromJob())}
+              className="fixed left-1/2 -translate-x-1/2 bottom-[88px] z-40 flex items-center gap-2 px-4 py-2.5 rounded-full shadow-lg text-sm font-medium bg-white border border-gray-200 active:scale-[0.98] transition-transform"
+            >
+              {job.status === "analyzing" ? (
+                <>
+                  <Loader2 size={15} className="animate-spin text-emerald-500" />
+                  <span className="text-gray-600">자르르가 분석 중…</span>
+                </>
+              ) : (
+                <>
+                  <Check size={15} className="text-emerald-500" />
+                  <span className="text-gray-700">한 끼 분석 완료 · 확인하기</span>
+                </>
+              )}
+            </button>
+          )}
+
+          <BottomNav tab={tab} onChange={setTab} onCapture={triggerCapture} />
+
+          {confirmData && <QuickRecord data={confirmData} onClose={closeSheet} onSaved={onResolved} />}
+        </>
       )}
-
-      <BottomNav tab={tab} onChange={setTab} onCapture={triggerCapture} />
-
-      {confirmData && <QuickRecord data={confirmData} onClose={closeSheet} onSaved={onResolved} />}
     </>
   );
 }
