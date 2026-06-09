@@ -33,14 +33,15 @@ export type InvokeResult = {
 
 // ── 설정 ──────────────────────────────────────────────
 // 감도/정확도를 바꾸고 싶으면 routers.ts 의 프롬프트(가격 추정 규칙)를 고치세요.
-// 더 똑똑하게(느리지만) 하려면 MODEL 을 "gemini-2.5-pro" 로 바꿀 수 있습니다.
-const MODEL = "gemini-2.5-flash";
+// 모델 폴백: 1차(정확) → 일시적 과부하(503 등)면 가벼운 모델로 자동 대체 → 첫 분석 실패 최소화.
+// 2026-06 기준 2.0 계열은 종료 → 2.5 flash(정확) ↔ 2.5 flash-lite(가볍고 덜 붐빔)로 이중화.
+const MODELS = ["gemini-2.5-flash", "gemini-2.5-flash-lite"] as const;
 const ENDPOINT =
   "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions";
 
-// 일시적 오류(과부하/혼잡/속도제한)일 때 자동 재시도
+// 일시적 오류(과부하/혼잡/속도제한)일 때 모델당 자동 재시도. 폴백이 있으니 짧게.
 const RETRYABLE_STATUS = new Set([429, 500, 502, 503, 504]);
-const RETRY_DELAYS_MS = [700, 1500, 3000]; // 최대 3회 재시도
+const RETRY_DELAYS_MS = [700, 1500];
 
 function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -81,77 +82,77 @@ export async function invokeLLM(params: InvokeParams): Promise<InvokeResult> {
     (typeof params.max_tokens === "number" && params.max_tokens) ||
     8192;
 
-  const payload = {
-    model: MODEL,
-    messages,
-    max_tokens: maxTokens,
-  };
-
   let lastErrorText = "";
   let lastStatus = 0;
 
-  // 첫 시도 + 재시도(RETRY_DELAYS_MS 횟수만큼)
-  for (let attempt = 0; attempt <= RETRY_DELAYS_MS.length; attempt++) {
-    let response: Response;
-    try {
-      response = await fetch(ENDPOINT, {
-        method: "POST",
-        headers: {
-          "content-type": "application/json",
-          authorization: `Bearer ${ENV.geminiApiKey}`,
-        },
-        body: JSON.stringify(payload),
-      });
-    } catch (networkErr) {
-      // 네트워크 자체 실패도 재시도
-      lastErrorText = String(networkErr);
-      lastStatus = 0;
-      if (attempt < RETRY_DELAYS_MS.length) {
-        console.warn(`[Gemini] 네트워크 오류, ${RETRY_DELAYS_MS[attempt]}ms 후 재시도 (${attempt + 1})`);
-        await sleep(RETRY_DELAYS_MS[attempt]);
-        continue;
-      }
-      throw new Error(`Gemini 호출 실패(네트워크): ${lastErrorText}`);
-    }
+  // 1차 모델부터 시도 → 일시적 과부하(503 등)로 재시도까지 소진되면 다음(가벼운) 모델로 폴백.
+  for (let m = 0; m < MODELS.length; m++) {
+    const model = MODELS[m];
+    const payload = { model, messages, max_tokens: maxTokens };
 
-    if (response.ok) {
-      const data = (await response.json()) as {
-        choices?: Array<{
-          message?: { content?: string | Array<{ text?: string }> };
-          finish_reason?: string | null;
-        }>;
-      };
-      const choices = (data.choices ?? []).map((c) => {
-        let content: unknown = c?.message?.content;
-        if (Array.isArray(content)) {
-          content = content.map((p) => p?.text ?? "").join("");
-        }
-        if (typeof content !== "string") content = "";
-        return {
-          message: {
-            role: "assistant" as Role,
-            content: stripJsonFences(content as string),
+    for (let attempt = 0; attempt <= RETRY_DELAYS_MS.length; attempt++) {
+      let response: Response;
+      try {
+        response = await fetch(ENDPOINT, {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+            authorization: `Bearer ${ENV.geminiApiKey}`,
           },
-          finish_reason: c?.finish_reason ?? null,
+          body: JSON.stringify(payload),
+        });
+      } catch (networkErr) {
+        lastErrorText = String(networkErr);
+        lastStatus = 0;
+        if (attempt < RETRY_DELAYS_MS.length) {
+          await sleep(RETRY_DELAYS_MS[attempt]);
+          continue;
+        }
+        break; // 이 모델 네트워크 실패 소진 → 다음 모델로
+      }
+
+      if (response.ok) {
+        const data = (await response.json()) as {
+          choices?: Array<{
+            message?: { content?: string | Array<{ text?: string }> };
+            finish_reason?: string | null;
+          }>;
         };
-      });
-      return { choices };
+        const choices = (data.choices ?? []).map((c) => {
+          let content: unknown = c?.message?.content;
+          if (Array.isArray(content)) {
+            content = content.map((p) => p?.text ?? "").join("");
+          }
+          if (typeof content !== "string") content = "";
+          return {
+            message: {
+              role: "assistant" as Role,
+              content: stripJsonFences(content as string),
+            },
+            finish_reason: c?.finish_reason ?? null,
+          };
+        });
+        return { choices };
+      }
+
+      lastStatus = response.status;
+      lastErrorText = await response.text().catch(() => "");
+      if (RETRYABLE_STATUS.has(response.status)) {
+        if (attempt < RETRY_DELAYS_MS.length) {
+          await sleep(RETRY_DELAYS_MS[attempt]);
+          continue;
+        }
+        break; // 일시적 오류로 이 모델 재시도 소진 → 다음 모델로 폴백
+      }
+      // 재시도 불가 오류(400 등)는 모델을 바꿔도 동일 → 즉시 중단
+      throw new Error(`Gemini 호출 실패: ${lastStatus} – ${lastErrorText}`);
     }
 
-    // 실패 — 재시도 가능한 상태면 잠깐 기다렸다 다시
-    lastStatus = response.status;
-    lastErrorText = await response.text().catch(() => "");
-    if (RETRYABLE_STATUS.has(response.status) && attempt < RETRY_DELAYS_MS.length) {
-      console.warn(
-        `[Gemini] ${response.status}(일시적), ${RETRY_DELAYS_MS[attempt]}ms 후 재시도 (${attempt + 1}/${RETRY_DELAYS_MS.length})`
-      );
-      await sleep(RETRY_DELAYS_MS[attempt]);
-      continue;
+    if (m < MODELS.length - 1) {
+      console.warn(`[Gemini] ${model} 과부하/실패(${lastStatus || "network"}) → ${MODELS[m + 1]}로 대체`);
     }
-    break; // 재시도 불가 또는 횟수 소진
   }
 
-  throw new Error(
-    `Gemini 호출 실패: ${lastStatus} – ${lastErrorText}`
-  );
+  console.error(`[Gemini] 모든 모델 호출 실패: ${lastStatus} – ${lastErrorText}`);
+  throw new Error(`Gemini 호출 실패: ${lastStatus} – ${lastErrorText}`);
 }
