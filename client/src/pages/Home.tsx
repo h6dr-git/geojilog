@@ -595,7 +595,7 @@ export default function Home() {
   const totalProfit = useMemo(() => (entries as SavingsEntry[]).reduce((s, e) => s + e.profit, 0), [entries]);
 
   // ── 탭 ──
-  const [mainTab, setMainTab] = useState<MainTab>("input");
+  const [mainTab, setMainTab] = useState<MainTab>("calendar");
 
   // ── 업로드 큐 ──
   const [queue, setQueue] = useState<QueueItem[]>([]);
@@ -918,15 +918,12 @@ export default function Home() {
   }
 
   return (
-    <div className="min-h-screen bg-white max-w-lg mx-auto px-4 pb-16">
+    <div className="min-h-screen bg-cream max-w-lg mx-auto px-5 pb-24">
 
       {/* ── 헤더 ── */}
-      <header className="pt-12 pb-6 text-center">
-        <p className="text-[11px] font-mono text-gray-400 tracking-widest uppercase mb-2">거지로그</p>
-        <div className="text-5xl font-bold text-emerald-500 tabular-nums">
-          {isLoading ? <span className="text-gray-200">₩ ···</span> : <>₩{fmt(totalProfit)}</>}
-        </div>
-        <p className="mt-2 text-xs text-gray-400">총 누적 수익 · {(entries as SavingsEntry[]).length}건</p>
+      <header className="pt-12 pb-5 flex items-end justify-between">
+        <p className="text-title font-semibold text-ink">장부</p>
+        <p className="text-caption font-mono text-ink-soft tracking-wider">{(entries as SavingsEntry[]).length}끼 기록</p>
       </header>
 
       {/* ── 탭 ── */}
@@ -941,7 +938,7 @@ export default function Home() {
                 : "text-gray-400 hover:text-gray-600"
             }`}
           >
-            {{ input: "입력", calendar: "캘린더" }[t]}
+            {{ input: "기록 추가", calendar: "앨범" }[t]}
           </button>
         ))}
       </div>

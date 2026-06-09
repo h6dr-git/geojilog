@@ -1,4 +1,5 @@
-// 집무실(홈) — 남이 봐도 안전한 '로비'. (비주얼 업그레이드: 그라데이션 배경·떠있는 자르르·임팩트 버튼·장식 도사 카드)
+// 집무실(홈) = "자르르의 방" — 자르르가 화면 주인공. 김집사가 말풍선으로 인사, 단일 기록 액션, 도사 한 줄.
+// 안전 로비: 수익·통계·결산·내 기록(숫자) 절대 노출 금지.
 import { trpc } from "@/lib/trpc";
 import { APP_NAME, CHARACTER_NAME, josa } from "@/lib/brand";
 import { useAuth } from "@/_core/hooks/useAuth";
@@ -65,26 +66,32 @@ export default function HomeTab({ onCapture, onOpenProfile, job, onOpenConfirm, 
       className="min-h-screen max-w-lg mx-auto px-5 pb-28 flex flex-col"
       style={{ background: "radial-gradient(130% 52% at 50% 0%, rgba(224,169,46,0.10) 0%, rgba(16,185,129,0.05) 26%, rgba(250,248,243,0) 58%), #FAF8F3" }}
     >
-      {/* 헤더 */}
       <header className="pt-12 pb-2 flex items-center justify-between">
         <p className="text-caption font-mono text-ink-soft tracking-wider">{APP_NAME}</p>
         <LoginChip onClick={onOpenProfile} />
       </header>
 
-      {/* 자르르 — 바닥 그림자로 떠있는 느낌 */}
-      <div className="flex flex-col items-center text-center mt-8">
+      {/* 자르르 주인공 + 김집사 말풍선 인사 */}
+      <div className="flex flex-col items-center mt-10">
         <div className="relative">
-          <Hwasubun level={level} size={148} analyzing={!!analyzingJob} />
-          <div className="absolute left-1/2 -translate-x-1/2 -bottom-0.5 w-20 h-3 rounded-[50%] bg-black/10 blur-md" aria-hidden="true" />
+          <Hwasubun level={level} size={156} analyzing={!!analyzingJob} />
+          <div className="absolute left-1/2 -translate-x-1/2 -bottom-0.5 w-24 h-3.5 rounded-[50%] bg-black/10 blur-md" aria-hidden="true" />
         </div>
-        <p className="mt-7 text-title font-medium text-ink leading-relaxed px-4">
-          {analyzingJob ? `${josa(CHARACTER_NAME, "이", "가")} 사진을 살펴보는 중이에요…` : butlerGreeting()}
-        </p>
+
+        <div className="relative mt-7 w-full max-w-[19.5rem]">
+          <div className="absolute -top-1.5 left-1/2 -translate-x-1/2 w-3 h-3 bg-white border-l border-t border-line rotate-45" aria-hidden="true" />
+          <div className="relative bg-white border border-line rounded-card px-4 py-3 shadow-sm flex items-start gap-2.5">
+            <span className="w-6 h-6 rounded-lg flex items-center justify-center text-micro font-medium shrink-0" style={{ background: "#eadfc6", color: "#a9863f" }}>집</span>
+            <p className="text-body text-ink/85 leading-relaxed text-left">
+              {analyzingJob ? `${josa(CHARACTER_NAME, "이", "가")} 사진을 살펴보는 중이에요…` : butlerGreeting()}
+            </p>
+          </div>
+        </div>
       </div>
 
-      {/* 행동 영역 */}
+      {/* 단일 액션 — 큰 기록 버튼 / 진행 상태칩 */}
       {analyzingJob ? (
-        <div className="mt-8 flex items-center gap-3 bg-emerald-50 border border-emerald-100 rounded-card p-3.5 shadow-sm">
+        <div className="mt-7 flex items-center gap-3 bg-emerald-50 border border-emerald-100 rounded-card p-3.5 shadow-sm">
           <img src={analyzingJob.preview} alt="" className="w-12 h-12 rounded-xl object-cover shrink-0" />
           <div className="text-left">
             <p className="text-body font-medium text-emerald-700">{CHARACTER_NAME}가 분석하고 있어요</p>
@@ -92,7 +99,7 @@ export default function HomeTab({ onCapture, onOpenProfile, job, onOpenConfirm, 
           </div>
         </div>
       ) : readyJob ? (
-        <button onClick={onOpenConfirm} className="mt-8 w-full flex items-center gap-3 border border-emerald-200 bg-emerald-50 rounded-card p-3 text-left shadow-sm active:bg-emerald-100 transition-colors">
+        <button onClick={onOpenConfirm} className="mt-7 w-full flex items-center gap-3 border border-emerald-200 bg-emerald-50 rounded-card p-3 text-left shadow-sm active:bg-emerald-100 transition-colors">
           <img src={readyJob.preview} alt="" className="w-12 h-12 rounded-xl object-cover shrink-0" />
           <div className="flex-1 min-w-0">
             <p className="text-body font-medium text-ink truncate">{readyJob.data.title || "분석 완료"}</p>
@@ -101,7 +108,7 @@ export default function HomeTab({ onCapture, onOpenProfile, job, onOpenConfirm, 
           <ChevronRight size={16} className="text-emerald-400 shrink-0" />
         </button>
       ) : errorJob ? (
-        <button onClick={onOpenConfirm} className="mt-8 w-full flex items-center gap-3 border border-line bg-white rounded-card p-3 text-left shadow-sm active:bg-cream transition-colors">
+        <button onClick={onOpenConfirm} className="mt-7 w-full flex items-center gap-3 border border-line bg-white rounded-card p-3 text-left shadow-sm active:bg-cream transition-colors">
           <img src={errorJob.preview} alt="" className="w-12 h-12 rounded-xl object-cover shrink-0" />
           <div className="flex-1 min-w-0">
             <p className="text-body font-medium text-ink">분석을 못 했어요</p>
@@ -112,14 +119,13 @@ export default function HomeTab({ onCapture, onOpenProfile, job, onOpenConfirm, 
       ) : (
         <button
           onClick={onCapture}
-          className="mt-8 w-full text-white font-semibold py-4 rounded-card flex items-center justify-center gap-2 active:scale-[0.98] transition-transform"
+          className="mt-7 w-full text-white font-semibold py-4 rounded-card flex items-center justify-center gap-2 active:scale-[0.98] transition-transform"
           style={{ background: "linear-gradient(180deg, #34d399 0%, #10b981 100%)", boxShadow: "0 10px 22px -8px rgba(16,185,129,0.55)" }}
         >
           <Camera size={19} /> 사진으로 한 끼 기록하기
         </button>
       )}
 
-      {/* 미완성 배지 */}
       {topDraft && (
         <button onClick={() => onCompleteDraft(topDraft)} className="mt-2.5 w-full flex items-center gap-3 border border-amber-200 bg-amber-50 rounded-card px-3.5 py-3 text-left active:bg-amber-100 transition-colors">
           <img src={topDraft.imageUrl} alt="" className="w-10 h-10 rounded-lg object-cover shrink-0" />
@@ -131,7 +137,7 @@ export default function HomeTab({ onCapture, onOpenProfile, job, onOpenConfirm, 
         </button>
       )}
 
-      {/* 도사 카드 — 하단 앵커 + 큰 따옴표 장식 */}
+      {/* 도사 한 마디 — 하단 앵커 */}
       <div className="mt-auto pt-8">
         <div className="relative bg-butler border border-butler-line rounded-card px-5 py-5 overflow-hidden">
           <span className="absolute -top-3 right-3 text-[68px] leading-none font-serif text-gold/20 select-none" aria-hidden="true">”</span>
