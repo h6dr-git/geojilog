@@ -1,4 +1,4 @@
-// 앱 셸 — 하단 탭(홈/기록/프로필) + 사진 캡처/분석을 앱 상단에서 관리.
+// 앱 셸 — 하단 탭(집무실/장부/회장님) + 가운데 사진 캡처를 앱 상단에서 관리.
 // 분석은 백그라운드(비차단). 사용자는 탭을 옮겨다녀도 분석이 끊기지 않고,
 // 끝나면 막지 않고 '확인하기'로만 알린다. 확인 시트는 누를 때만(로딩 없이) 뜬다.
 import { useRef, useState, type ChangeEvent } from "react";
@@ -46,7 +46,7 @@ export default function Shell() {
 
     const preview = URL.createObjectURL(file);
     setJob({ status: "analyzing", preview });
-    setTab("home"); // 촬영 직후 자르르의 집(홈)으로 — 분석 구경
+    setTab("home"); // 촬영 직후 집무실(홈)으로 — 자르르가 분석하는 동안 안전한 로비에서 대기
 
     let base64 = "";
     try {
@@ -118,8 +118,8 @@ export default function Shell() {
 
       {tab === "home" && (
         <HomeTab
-          onRecord={() => setTab("records")}
           onCapture={triggerCapture}
+          onOpenProfile={() => setTab("profile")}
           job={job}
           onOpenConfirm={openConfirmFromJob}
           onCompleteDraft={completeDraft}
@@ -128,11 +128,11 @@ export default function Shell() {
       {tab === "records" && <Home />}
       {tab === "profile" && <Profile onGoRecords={() => setTab("records")} />}
 
-      {/* 다른 탭에 있을 때 비차단 알림 칩 */}
+      {/* 다른 탭에 있을 때 비차단 알림 칩 — 가운데 기록 버튼을 가리지 않게 위로 띄운다 */}
       {job && tab !== "home" && (
         <button
           onClick={() => (job.status === "analyzing" ? setTab("home") : openConfirmFromJob())}
-          className="fixed left-1/2 -translate-x-1/2 bottom-[64px] z-40 flex items-center gap-2 px-4 py-2.5 rounded-full shadow-lg text-sm font-medium bg-white border border-gray-200 active:scale-[0.98] transition-transform"
+          className="fixed left-1/2 -translate-x-1/2 bottom-[88px] z-40 flex items-center gap-2 px-4 py-2.5 rounded-full shadow-lg text-sm font-medium bg-white border border-gray-200 active:scale-[0.98] transition-transform"
         >
           {job.status === "analyzing" ? (
             <>
@@ -148,7 +148,7 @@ export default function Shell() {
         </button>
       )}
 
-      <BottomNav tab={tab} onChange={setTab} />
+      <BottomNav tab={tab} onChange={setTab} onCapture={triggerCapture} />
 
       {confirmData && <QuickRecord data={confirmData} onClose={closeSheet} onSaved={onResolved} />}
     </>

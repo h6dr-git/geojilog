@@ -1,18 +1,21 @@
-// 홈 — 자르르의 집. 최근 7일 수익 + 사진 기록 진입 + 분석 구경/확인.
-// 촬영/분석은 Shell이 관리(비차단). 여기선 자르르 상태와 분석중/확인 UI만 그린다.
+// 집무실(홈) — 남이 봐도 안전한 '로비'.
+// 원칙: 수익·통계·결산·내 기록(숫자) 절대 노출 금지. 어깨너머·스샷·데모에 보여도 안전해야 한다.
+// 구성: 자르르(캐릭터) + 김집사 인사(숫자 없는 한 줄) + 도사 오늘의 한 마디 + 큰 '한 끼 기록하기' 버튼.
+// 촬영/분석은 Shell이 비차단으로 관리. 여기선 진행 상태칩만 그리되 금액(+₩)은 표시하지 않는다.
 import { trpc } from "@/lib/trpc";
 import { APP_NAME, CHARACTER_NAME, josa } from "@/lib/brand";
-import { won } from "@/lib/format";
 import { useAuth } from "@/_core/hooks/useAuth";
 import Hwasubun from "@/components/Hwasubun";
+import LoginChip from "@/components/LoginChip";
 import { useDrafts, type Draft } from "@/lib/drafts";
 import type { CaptureJob } from "@/lib/capture";
 import { Camera, ChevronRight, Check } from "lucide-react";
 
-const WEEKLY_GOAL = 50000; // 자르르가 가득 차는 한 주 목표 (추후 조정)
+const WEEKLY_GOAL = 50000; // 자르르가 가득 차오르는 한 주 목표 (캐릭터 연출용, 숫자는 노출 안 함)
 
 type Entry = { date: string; profit: number };
 
+// 자르르의 표정/차오름에만 쓰는 값. 화면에 숫자로는 절대 보여주지 않는다.
 function recentWeekProfit(entries: Entry[]): number {
   const cutoff = new Date();
   cutoff.setHours(0, 0, 0, 0);
@@ -22,22 +25,50 @@ function recentWeekProfit(entries: Entry[]): number {
     .reduce((s, e) => s + (e.profit || 0), 0);
 }
 
+// 김집사 인사 — 시간대별 한 줄. 숫자·수익은 절대 넣지 않는다.
+function butlerGreeting(): string {
+  const h = new Date().getHours();
+  if (h < 6) return "회장님, 깊은 밤까지 고생이 많으십니다.";
+  if (h < 11) return "회장님, 좋은 아침입니다. 오늘 첫 끼도 알뜰히 챙기시지요.";
+  if (h < 14) return "회장님, 점심은 드셨는지요. 한 끼 남겨두시겠습니까.";
+  if (h < 18) return "회장님, 나른한 오후입니다. 한 끼만 기록해 두시지요.";
+  if (h < 22) return "회장님, 오늘 하루도 무탈히 지켜내셨습니다.";
+  return "회장님, 늦은 시각입니다. 오늘의 한 끼만 정리하고 쉬시지요.";
+}
+
+// 도사 오늘의 한 마디 — 날마다 바뀌는 철학 한 줄. (집무실의 유일한 '진지함')
+const DOSA_LINES = [
+  "남에게 보이려 쓰는 돈이, 너를 가난하게 한다.",
+  "아낀 한 끼는 사라지지 않는다. 너의 내일로 갈 뿐.",
+  "가벼운 지갑이 부끄러운 게 아니라, 빈 마음이 부끄러운 것이다.",
+  "오늘 참은 작은 것이, 내일의 큰 자유가 된다.",
+  "쓰지 않은 돈은, 가장 조용한 효도다.",
+  "검소함은 궁상이 아니라, 제 삶의 주인이 되는 길이다.",
+  "필요와 욕심을 가릴 줄 아는 자가, 진짜 부자다.",
+];
+function dosaLineOfDay(): string {
+  const now = new Date();
+  const start = new Date(now.getFullYear(), 0, 0);
+  const day = Math.floor((now.getTime() - start.getTime()) / 86400000);
+  return DOSA_LINES[day % DOSA_LINES.length];
+}
+
 type Props = {
-  onRecord: () => void;
   onCapture: () => void;
+  onOpenProfile: () => void;
   job: CaptureJob | null;
   onOpenConfirm: () => void;
   onCompleteDraft: (d: Draft) => void;
 };
 
-export default function HomeTab({ onRecord, onCapture, job, onOpenConfirm, onCompleteDraft }: Props) {
+export default function HomeTab({ onCapture, onOpenProfile, job, onOpenConfirm, onCompleteDraft }: Props) {
   const { isAuthenticated } = useAuth();
   const { data: entries = [] } = trpc.savings.list.useQuery(undefined, {
     enabled: isAuthenticated,
   });
 
-  const weekProfit = recentWeekProfit(entries as Entry[]);
-  const level = Math.min(1, weekProfit / WEEKLY_GOAL);
+  // 자르르 차오름에만 사용 (숫자 미노출)
+  const level = Math.min(1, recentWeekProfit(entries as Entry[]) / WEEKLY_GOAL);
 
   const drafts = useDrafts();
   const topDraft = drafts[0];
@@ -45,40 +76,32 @@ export default function HomeTab({ onRecord, onCapture, job, onOpenConfirm, onCom
   const analyzingJob = job && job.status === "analyzing" ? job : null;
   const readyJob = job && job.status === "ready" ? job : null;
   const errorJob = job && job.status === "error" ? job : null;
-  const readyProfit = readyJob
-    ? (readyJob.data.originalAmount ?? 0) - (readyJob.data.actualAmount ?? 0)
-    : 0;
 
   return (
-    <div className="min-h-screen max-w-lg mx-auto px-4 pb-24">
-      <header className="pt-12 pb-1 text-center">
-        <p className="text-[11px] font-mono text-gray-400 tracking-widest uppercase">{APP_NAME}</p>
+    <div className="min-h-screen max-w-lg mx-auto px-4 pb-28 bg-[#FAF8F3]">
+      {/* 헤더 — 앱 이름 + 로그인 칩(박회장님). 숫자 없음. */}
+      <header className="pt-12 pb-2 flex items-center justify-between">
+        <p className="text-[12px] font-mono text-gray-400 tracking-wider">{APP_NAME}</p>
+        <LoginChip onClick={onOpenProfile} />
       </header>
 
-      {/* 자르르 + 최근 7일 수익 */}
-      <div className="flex flex-col items-center text-center">
+      {/* 자르르 + 김집사 인사 한 줄 (숫자 없음) */}
+      <div className="flex flex-col items-center text-center mt-4">
         <Hwasubun level={level} size={132} analyzing={!!analyzingJob} />
-        {analyzingJob ? (
-          <p className="mt-3 text-sm text-gray-500">{josa(CHARACTER_NAME, "이", "가")} 사진을 살펴보는 중…</p>
-        ) : (
-          <p className="mt-3 text-sm text-gray-500">
-            최근 7일, {josa(CHARACTER_NAME, "이", "가")} 이만큼 찼어요
-          </p>
-        )}
-        {!analyzingJob && (
-          <p className="font-mono text-4xl font-bold text-emerald-500 tabular-nums leading-tight">
-            +{won(weekProfit)}
-          </p>
-        )}
+        <p className="mt-4 text-[14px] text-[#5c5647] leading-relaxed px-4">
+          {analyzingJob
+            ? `${josa(CHARACTER_NAME, "이", "가")} 사진을 살펴보는 중이에요…`
+            : butlerGreeting()}
+        </p>
       </div>
 
-      {/* 행동 영역 — 상태별 */}
+      {/* 행동 영역 — 큰 기록 버튼이 기본. 진행 중일 땐 상태칩(금액 미노출). */}
       {analyzingJob ? (
         <div className="mt-6 flex items-center gap-3 bg-emerald-50 border border-emerald-100 rounded-2xl p-3.5">
           <img src={analyzingJob.preview} alt="" className="w-12 h-12 rounded-xl object-cover shrink-0" />
           <div className="text-left">
-            <p className="text-[13px] font-medium text-emerald-700">자르르가 분석하고 있어요</p>
-            <p className="text-[11px] text-emerald-600">기다리는 동안 기록이나 업적을 구경해도 돼요</p>
+            <p className="text-[13px] font-medium text-emerald-700">{CHARACTER_NAME}가 분석하고 있어요</p>
+            <p className="text-[11px] text-emerald-600">잠시 둘러보고 계셔도 됩니다</p>
           </div>
         </div>
       ) : readyJob ? (
@@ -89,7 +112,7 @@ export default function HomeTab({ onRecord, onCapture, job, onOpenConfirm, onCom
           <img src={readyJob.preview} alt="" className="w-12 h-12 rounded-xl object-cover shrink-0" />
           <div className="flex-1 min-w-0">
             <p className="text-[13px] font-medium text-gray-800 truncate">
-              {readyJob.data.title || "분석 완료"} · <span className="text-emerald-600">+{won(readyProfit)}</span>
+              {readyJob.data.title || "분석 완료"}
             </p>
             <p className="text-[11px] text-emerald-600 flex items-center gap-0.5">
               <Check size={12} /> 분석 완료 · 확인하고 저장
@@ -100,7 +123,7 @@ export default function HomeTab({ onRecord, onCapture, job, onOpenConfirm, onCom
       ) : errorJob ? (
         <button
           onClick={onOpenConfirm}
-          className="mt-6 w-full flex items-center gap-3 border border-gray-200 bg-gray-50 rounded-2xl p-3 text-left active:bg-gray-100 transition-colors"
+          className="mt-6 w-full flex items-center gap-3 border border-gray-200 bg-white rounded-2xl p-3 text-left active:bg-gray-50 transition-colors"
         >
           <img src={errorJob.preview} alt="" className="w-12 h-12 rounded-xl object-cover shrink-0" />
           <div className="flex-1 min-w-0">
@@ -112,13 +135,13 @@ export default function HomeTab({ onRecord, onCapture, job, onOpenConfirm, onCom
       ) : (
         <button
           onClick={onCapture}
-          className="mt-6 w-full bg-emerald-500 text-white font-medium py-3.5 rounded-2xl flex items-center justify-center gap-2 active:scale-[0.99] transition-transform"
+          className="mt-6 w-full bg-emerald-500 text-white font-medium py-4 rounded-2xl flex items-center justify-center gap-2 active:scale-[0.99] transition-transform shadow-sm"
         >
           <Camera size={18} /> 사진으로 한 끼 기록하기
         </button>
       )}
 
-      {/* 미완성(나중에 채우기) 배지 */}
+      {/* 미완성(나중에 채우기) — 건수만, 금액 없음 */}
       {topDraft && (
         <button
           onClick={() => onCompleteDraft(topDraft)}
@@ -126,55 +149,18 @@ export default function HomeTab({ onRecord, onCapture, job, onOpenConfirm, onCom
         >
           <img src={topDraft.imageUrl} alt="" className="w-10 h-10 rounded-lg object-cover shrink-0" />
           <div className="flex-1 min-w-0">
-            <p className="text-[13px] font-medium text-amber-800">금액 안 채운 기록 {drafts.length}개</p>
+            <p className="text-[13px] font-medium text-amber-800">아직 안 끝낸 기록 {drafts.length}개</p>
             <p className="text-[11px] text-amber-600 truncate">탭해서 마저 채우기</p>
           </div>
           <ChevronRight size={16} className="text-amber-400 shrink-0" />
         </button>
       )}
 
-      {/* 전체 기록 보기 */}
-      <button
-        onClick={onRecord}
-        className="mt-2 w-full flex items-center justify-center gap-1 text-xs text-gray-400 py-2"
-      >
-        전체 기록 보기 <ChevronRight size={13} />
-      </button>
-
-      {/* 김집사 주간 브리핑 (틀) */}
-      <div className="mt-5 flex gap-2.5 bg-[#faf7f0] border border-[#efe8d8] rounded-2xl p-3.5">
-        <div className="w-7 h-7 rounded-lg bg-[#eadfc6] flex items-center justify-center text-[#a9863f] shrink-0 text-[13px] font-medium">
-          집
-        </div>
-        <div className="text-left">
-          <p className="text-[11px] text-[#b09a63] mb-0.5">김집사의 주간 브리핑</p>
-          <p className="text-[13px] text-[#5c5647] leading-relaxed">
-            회장님, 이번 주도 알뜰히 운용 중이십니다. (주간 브리핑은 곧 자동으로 채워집니다.)
-          </p>
-        </div>
-      </div>
-
-      {/* 절약 이야기 카드 (틀) */}
-      <p className="mt-6 mb-2 text-[11px] text-gray-400">내 절약 이야기</p>
-      <div className="flex gap-2.5">
-        <div className="flex-1 border border-gray-100 rounded-2xl p-3 text-center">
-          <div className="text-xl" aria-hidden="true">🍗</div>
-          <p className="text-[11px] text-gray-500 mt-1 leading-snug">
-            이번 달 아낀 돈<br />치킨 환산 <span className="text-gray-300">(준비중)</span>
-          </p>
-        </div>
-        <div className="flex-1 border border-gray-100 rounded-2xl p-3 text-center">
-          <div className="text-xl" aria-hidden="true">🥇</div>
-          <p className="text-[11px] text-gray-500 mt-1 leading-snug">
-            절약 1위<br />카테고리 <span className="text-gray-300">(준비중)</span>
-          </p>
-        </div>
-      </div>
-
-      {/* 도사 한 마디 */}
-      <div className="mt-5 border border-gray-100 rounded-2xl px-4 py-3">
-        <p className="text-[12px] text-gray-500 italic leading-relaxed">
-          “남에게 보이려 쓰는 돈이, 너를 가난하게 한다.” <span className="not-italic text-gray-400">— 도사</span>
+      {/* 도사 오늘의 한 마디 — 집무실의 유일한 진지함 */}
+      <div className="mt-8 border border-[#ece4d4] bg-white rounded-2xl px-4 py-3.5">
+        <p className="text-[10px] text-gray-400 mb-1">도사의 오늘 한 마디</p>
+        <p className="text-[13px] text-[#5c5647] italic leading-relaxed">
+          “{dosaLineOfDay()}”
         </p>
       </div>
     </div>
