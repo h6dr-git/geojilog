@@ -50,6 +50,9 @@ interface QueueItem {
   date: string;
   memo: string;
   imageUrl?: string;
+  // 데이터 해자: AI 추정 원본값 보관(사용자가 폼에서 원가/실제를 고쳐도 유지 → create 시 함께 전송)
+  aiOriginalAmount?: number;
+  aiActualAmount?: number;
 }
 
 type ExportRange = "all" | "month" | "week" | "custom";
@@ -673,6 +676,9 @@ export default function Home() {
       aiReason: result.reason,
       date,
       imageUrl: finalImageUrl,
+      // 데이터 해자: 사용자 확정값과 비교할 AI 추정 원본 보관
+      aiOriginalAmount: result.estimatedOriginalAmount,
+      aiActualAmount: result.estimatedActualAmount,
     } : it));
   }, [analyzeImage, uploadCroppedImage]);
 
@@ -726,6 +732,9 @@ export default function Home() {
         originalAmount: Number(item.originalAmount),
         actualAmount: Number(item.actualAmount),
         aiEstimated: "yes",
+        // 데이터 해자: 보관해둔 AI 추정 원본 전달(서버가 사용자 확정값과 다르면 보정 기록)
+        aiOriginalAmount: item.aiOriginalAmount,
+        aiActualAmount: item.aiActualAmount,
         aiReason: item.aiReason,
         imageUrl: item.imageUrl,
         memo: item.memo || undefined,

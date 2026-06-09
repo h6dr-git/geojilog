@@ -37,6 +37,9 @@ export interface AddEntryData {
   aiEstimated: "yes" | "no";
   aiReason?: string;
   imageUrl?: string;
+  // 데이터 해자: AI가 처음 추정했던 원본값(사용자 수정과 무관하게 보관). AI 경로에서만 채워짐.
+  aiOriginalAmount?: number;
+  aiActualAmount?: number;
 }
 
 interface Props {
@@ -61,6 +64,9 @@ interface AnalyzedItem {
   description: string;
   selected: boolean;
   imageUrl?: string; // S3 저장 URL
+  // 데이터 해자: AI 추정 원본값 보관(폼에서 사용자가 originalAmount/actualAmount를 고쳐도 유지)
+  aiOriginalAmount?: number;
+  aiActualAmount?: number;
 }
 
 const today = new Date().toISOString().split("T")[0];
@@ -139,6 +145,9 @@ export default function AddEntryDialog({ onAdd, fullWidth = false, categoryNames
           aiReason: result.reason,
           confidence: result.confidence,
           imageUrl: finalImageUrl,
+          // 데이터 해자: 사용자 확정값과 비교할 AI 추정 원본 보관
+          aiOriginalAmount: result.estimatedOriginalAmount,
+          aiActualAmount: result.estimatedActualAmount,
         } : it));
       } catch {
         setItems(prev => prev.map(it => it.id === itemId ? { ...it, status: "error" } : it));
@@ -206,6 +215,9 @@ export default function AddEntryDialog({ onAdd, fullWidth = false, categoryNames
       category: it.category,
       aiEstimated: "yes", aiReason: it.aiReason,
       imageUrl: it.imageUrl,
+      // 데이터 해자: 보관해둔 AI 추정 원본을 함께 전달(서버가 사용자 확정값과 비교해 보정 기록)
+      aiOriginalAmount: it.aiOriginalAmount,
+      aiActualAmount: it.aiActualAmount,
     }));
     setConfirmedCount(selected.length);
     setTimeout(() => {

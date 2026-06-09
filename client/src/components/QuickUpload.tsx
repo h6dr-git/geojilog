@@ -78,6 +78,9 @@ export default function QuickUpload({ categoryNames, onDone, onStart, onManualEn
       originalAmount: result.estimatedOriginalAmount,
       actualAmount: result.estimatedActualAmount,
       aiEstimated: "yes",
+      // 데이터 해자: AI 추정 원본 전달(이 경로는 사용자 수정 전 즉시 등록 → 보통 확정값과 동일)
+      aiOriginalAmount: result.estimatedOriginalAmount,
+      aiActualAmount: result.estimatedActualAmount,
       aiReason: result.reason,
       imageUrl: finalImageUrl,
     });
