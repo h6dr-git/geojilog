@@ -1,7 +1,5 @@
-// 집무실(홈) — 남이 봐도 안전한 '로비'.
+// 집무실(홈) — 남이 봐도 안전한 '로비'. (P0 토큰 + P1 레이아웃: 도사 카드 골드틴트 격상·하단 앵커로 여백 리듬)
 // 원칙: 수익·통계·결산·내 기록(숫자) 절대 노출 금지. 어깨너머·스샷·데모에 보여도 안전해야 한다.
-// 구성: 자르르(캐릭터) + 김집사 인사(숫자 없는 한 줄) + 도사 오늘의 한 마디 + 큰 '한 끼 기록하기' 버튼.
-// 촬영/분석은 Shell이 비차단으로 관리. 여기선 진행 상태칩만 그리되 금액(+₩)은 표시하지 않는다.
 import { trpc } from "@/lib/trpc";
 import { APP_NAME, CHARACTER_NAME, josa } from "@/lib/brand";
 import { useAuth } from "@/_core/hooks/useAuth";
@@ -11,21 +9,19 @@ import { useDrafts, type Draft } from "@/lib/drafts";
 import type { CaptureJob } from "@/lib/capture";
 import { Camera, ChevronRight, Check } from "lucide-react";
 
-const WEEKLY_GOAL = 50000; // 자르르가 가득 차오르는 한 주 목표 (캐릭터 연출용, 숫자는 노출 안 함)
+const WEEKLY_GOAL = 50000; // 자르르가 차오르는 한 주 목표 (캐릭터 연출용, 숫자는 노출 안 함)
 
 type Entry = { date: string; profit: number };
 
-// 자르르의 표정/차오름에만 쓰는 값. 화면에 숫자로는 절대 보여주지 않는다.
 function recentWeekProfit(entries: Entry[]): number {
   const cutoff = new Date();
   cutoff.setHours(0, 0, 0, 0);
-  cutoff.setDate(cutoff.getDate() - 6); // 오늘 포함 최근 7일
+  cutoff.setDate(cutoff.getDate() - 6);
   return entries
     .filter((e) => new Date(e.date + "T00:00:00") >= cutoff)
     .reduce((s, e) => s + (e.profit || 0), 0);
 }
 
-// 김집사 인사 — 시간대별 한 줄. 숫자·수익은 절대 넣지 않는다.
 function butlerGreeting(): string {
   const h = new Date().getHours();
   if (h < 6) return "회장님, 깊은 밤까지 고생이 많으십니다.";
@@ -36,7 +32,6 @@ function butlerGreeting(): string {
   return "회장님, 늦은 시각입니다. 오늘의 한 끼만 정리하고 쉬시지요.";
 }
 
-// 도사 오늘의 한 마디 — 날마다 바뀌는 철학 한 줄. (집무실의 유일한 '진지함')
 const DOSA_LINES = [
   "남에게 보이려 쓰는 돈이, 너를 가난하게 한다.",
   "아낀 한 끼는 사라지지 않는다. 너의 내일로 갈 뿐.",
@@ -63,11 +58,8 @@ type Props = {
 
 export default function HomeTab({ onCapture, onOpenProfile, job, onOpenConfirm, onCompleteDraft }: Props) {
   const { isAuthenticated } = useAuth();
-  const { data: entries = [] } = trpc.savings.list.useQuery(undefined, {
-    enabled: isAuthenticated,
-  });
+  const { data: entries = [] } = trpc.savings.list.useQuery(undefined, { enabled: isAuthenticated });
 
-  // 자르르 차오름에만 사용 (숫자 미노출)
   const level = Math.min(1, recentWeekProfit(entries as Entry[]) / WEEKLY_GOAL);
 
   const drafts = useDrafts();
@@ -78,17 +70,17 @@ export default function HomeTab({ onCapture, onOpenProfile, job, onOpenConfirm, 
   const errorJob = job && job.status === "error" ? job : null;
 
   return (
-    <div className="min-h-screen max-w-lg mx-auto px-4 pb-28 bg-cream">
+    <div className="min-h-screen max-w-lg mx-auto px-5 pb-28 bg-cream flex flex-col">
       {/* 헤더 — 앱 이름 + 로그인 칩(박회장님). 숫자 없음. */}
-      <header className="pt-12 pb-2 flex items-center justify-between">
+      <header className="pt-12 pb-3 flex items-center justify-between">
         <p className="text-caption font-mono text-ink-soft tracking-wider">{APP_NAME}</p>
         <LoginChip onClick={onOpenProfile} />
       </header>
 
       {/* 자르르 + 김집사 인사 한 줄 (숫자 없음) */}
-      <div className="flex flex-col items-center text-center mt-4">
-        <Hwasubun level={level} size={132} analyzing={!!analyzingJob} />
-        <p className="mt-4 text-body text-[#5c5647] leading-relaxed px-4">
+      <div className="flex flex-col items-center text-center mt-6">
+        <Hwasubun level={level} size={136} analyzing={!!analyzingJob} />
+        <p className="mt-5 text-body text-ink/85 leading-relaxed px-4">
           {analyzingJob
             ? `${josa(CHARACTER_NAME, "이", "가")} 사진을 살펴보는 중이에요…`
             : butlerGreeting()}
@@ -97,7 +89,7 @@ export default function HomeTab({ onCapture, onOpenProfile, job, onOpenConfirm, 
 
       {/* 행동 영역 — 큰 기록 버튼이 기본. 진행 중일 땐 상태칩(금액 미노출). */}
       {analyzingJob ? (
-        <div className="mt-6 flex items-center gap-3 bg-emerald-50 border border-emerald-100 rounded-card p-3.5">
+        <div className="mt-7 flex items-center gap-3 bg-emerald-50 border border-emerald-100 rounded-card p-3.5">
           <img src={analyzingJob.preview} alt="" className="w-12 h-12 rounded-xl object-cover shrink-0" />
           <div className="text-left">
             <p className="text-body font-medium text-emerald-700">{CHARACTER_NAME}가 분석하고 있어요</p>
@@ -107,13 +99,11 @@ export default function HomeTab({ onCapture, onOpenProfile, job, onOpenConfirm, 
       ) : readyJob ? (
         <button
           onClick={onOpenConfirm}
-          className="mt-6 w-full flex items-center gap-3 border border-emerald-200 bg-emerald-50 rounded-card p-3 text-left active:bg-emerald-100 transition-colors"
+          className="mt-7 w-full flex items-center gap-3 border border-emerald-200 bg-emerald-50 rounded-card p-3 text-left active:bg-emerald-100 transition-colors"
         >
           <img src={readyJob.preview} alt="" className="w-12 h-12 rounded-xl object-cover shrink-0" />
           <div className="flex-1 min-w-0">
-            <p className="text-body font-medium text-ink truncate">
-              {readyJob.data.title || "분석 완료"}
-            </p>
+            <p className="text-body font-medium text-ink truncate">{readyJob.data.title || "분석 완료"}</p>
             <p className="text-micro text-emerald-600 flex items-center gap-0.5">
               <Check size={12} /> 분석 완료 · 확인하고 저장
             </p>
@@ -123,7 +113,7 @@ export default function HomeTab({ onCapture, onOpenProfile, job, onOpenConfirm, 
       ) : errorJob ? (
         <button
           onClick={onOpenConfirm}
-          className="mt-6 w-full flex items-center gap-3 border border-line bg-white rounded-card p-3 text-left active:bg-gray-50 transition-colors"
+          className="mt-7 w-full flex items-center gap-3 border border-line bg-white rounded-card p-3 text-left active:bg-cream transition-colors"
         >
           <img src={errorJob.preview} alt="" className="w-12 h-12 rounded-xl object-cover shrink-0" />
           <div className="flex-1 min-w-0">
@@ -135,7 +125,7 @@ export default function HomeTab({ onCapture, onOpenProfile, job, onOpenConfirm, 
       ) : (
         <button
           onClick={onCapture}
-          className="mt-6 w-full bg-emerald-500 text-white font-medium py-4 rounded-card flex items-center justify-center gap-2 active:scale-[0.99] transition-transform shadow-sm"
+          className="mt-7 w-full bg-emerald-500 text-white font-medium py-4 rounded-card flex items-center justify-center gap-2 active:scale-[0.99] transition-transform shadow-md shadow-emerald-500/20"
         >
           <Camera size={18} /> 사진으로 한 끼 기록하기
         </button>
@@ -156,12 +146,14 @@ export default function HomeTab({ onCapture, onOpenProfile, job, onOpenConfirm, 
         </button>
       )}
 
-      {/* 도사 오늘의 한 마디 — 집무실의 유일한 진지함 */}
-      <div className="mt-8 border border-line bg-white rounded-card px-4 py-3.5">
-        <p className="text-micro text-ink-soft mb-1">도사의 오늘 한 마디</p>
-        <p className="text-body text-[#5c5647] italic leading-relaxed">
-          “{dosaLineOfDay()}”
-        </p>
+      {/* 도사 오늘의 한 마디 — 하단 앵커 + 골드틴트로 격상(집무실의 유일한 진지함) */}
+      <div className="mt-auto pt-8">
+        <div className="bg-butler border border-butler-line rounded-card px-5 py-4">
+          <p className="text-micro text-gold mb-1.5 tracking-wide">도사의 오늘 한 마디</p>
+          <p className="text-body italic leading-relaxed" style={{ color: "#5c5647" }}>
+            “{dosaLineOfDay()}”
+          </p>
+        </div>
       </div>
     </div>
   );
