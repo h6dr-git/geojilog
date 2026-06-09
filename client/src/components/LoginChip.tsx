@@ -14,12 +14,12 @@ export default function LoginChip({ onClick }: { onClick?: () => void }) {
       type="button"
       onClick={onClick}
       aria-label={isKakao ? `${name} · 카카오 로그인됨` : `${name} · 게스트`}
-      className="flex items-center gap-1.5 rounded-full border border-[#ecdfc2] bg-white/80 pl-1 pr-2.5 py-1 active:scale-[0.97] transition-transform"
+      className="flex items-center gap-1.5 rounded-full border border-line bg-white/80 pl-1 pr-2.5 py-1 active:scale-[0.97] transition-transform"
     >
       <span className="w-5 h-5 rounded-full bg-[#f6edd6] flex items-center justify-center shrink-0">
-        <Crown size={12} className="text-[#E0A92E]" />
+        <Crown size={12} className="text-gold" />
       </span>
-      <span className="text-[12px] font-medium text-[#1A1A17] leading-none">{name}</span>
+      <span className="text-caption font-medium text-ink leading-none">{name}</span>
       <span
         aria-hidden="true"
         className={`w-1.5 h-1.5 rounded-full ${isKakao ? "bg-emerald-500" : "bg-gray-300"}`}

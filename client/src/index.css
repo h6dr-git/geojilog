@@ -136,3 +136,39 @@
     }
   }
 }
+
+/* ───────────────────────────────────────────────────────────
+   거지로그 디자인 토큰 (C 소유 · 앱 전체 단일 기준)
+   - 색은 리디자인 바이블, 타이포 5단계·카드 radius는 신규 정의.
+   - 기존 shadcn 토큰(--primary 등)·--radius-sm/md/lg/xl 는 건드리지 않음
+     (components/ui/** 보호). 에메랄드는 Tailwind 기본 emerald-500(#10b981) 사용.
+   사용: bg-cream / text-ink / text-ink-soft / text-gold / bg-forest
+         text-micro|caption|body|title|hero / rounded-card
+─────────────────────────────────────────────────────────── */
+@theme {
+  /* 브랜드 색 (표기 통일 — 하드코딩 hex 금지) */
+  --color-cream: #faf8f3;        /* 배경 */
+  --color-ink: #1a1a17;          /* 본문 차콜 */
+  --color-ink-soft: #8a857b;     /* 보조·캡션 (gray-400 대체) */
+  --color-ink-faint: #b8b2a6;    /* 흐림 (gray-300 대체) */
+  --color-line: #efe9dc;         /* 보더·구분선 */
+  --color-gold: #e0a92e;         /* 회장님·자르르·프리미엄 */
+  --color-forest: #16201a;       /* 저장카드·온보딩 다크그린 */
+  --color-butler: #fbf7ee;       /* 김집사 골드틴트 카드 배경 */
+  --color-butler-line: #efe4cd;  /* 김집사 카드 보더 */
+
+  /* 타이포 5단계 (9px 이하 폐기, 본문 14px 기준) */
+  --text-micro: 0.6875rem;       /* 11px — 라벨 최소 */
+  --text-micro--line-height: 1rem;
+  --text-caption: 0.75rem;       /* 12px — 캡션 */
+  --text-caption--line-height: 1.125rem;
+  --text-body: 0.875rem;         /* 14px — 본문 */
+  --text-body--line-height: 1.375rem;
+  --text-title: 1.0625rem;       /* 17px — 카드 제목·이름 */
+  --text-title--line-height: 1.5rem;
+  --text-hero: 1.75rem;          /* 28px — 큰 +수익 숫자 */
+  --text-hero--line-height: 2rem;
+
+  /* 카드 모서리 (칩·버튼은 rounded-full / rounded-card 사용) */
+  --radius-card: 1rem;           /* 16px */
+}

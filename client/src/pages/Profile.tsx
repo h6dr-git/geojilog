@@ -25,9 +25,9 @@ function butlerSettlement(weekCount: number): string {
 
 function Stat({ label, value }: { label: string; value: string }) {
   return (
-    <div className="bg-white border border-[#efe9dc] rounded-2xl py-3.5 text-center">
-      <p className="text-[10px] text-gray-400">{label}</p>
-      <p className="font-mono text-sm font-semibold text-[#1A1A17] mt-1 tabular-nums">{value}</p>
+    <div className="bg-white border border-line rounded-card py-3.5 text-center">
+      <p className="text-micro text-ink-soft">{label}</p>
+      <p className="font-mono text-body font-semibold text-ink mt-1 tabular-nums">{value}</p>
     </div>
   );
 }
@@ -76,7 +76,7 @@ export default function Profile({ onGoRecords }: { onGoRecords: () => void }) {
   }
 
   return (
-    <div className="min-h-screen max-w-lg mx-auto px-4 pt-12 pb-28 bg-[#FAF8F3]">
+    <div className="min-h-screen max-w-lg mx-auto px-4 pt-12 pb-28 bg-cream">
       {/* 회장님 헤더 — 자르르 + 닉네임(✎) + 로그인 상태 */}
       <header className="text-center mb-6">
         <div className="flex justify-center mb-3">
@@ -95,7 +95,7 @@ export default function Profile({ onGoRecords }: { onGoRecords: () => void }) {
               }}
               maxLength={20}
               placeholder="회장님"
-              className="w-40 text-center text-base font-semibold text-[#1A1A17] bg-white border border-[#E0A92E]/50 rounded-lg px-2 py-1 outline-none focus:border-[#E0A92E]"
+              className="w-40 text-center text-title font-semibold text-ink bg-white border border-gold/50 rounded-lg px-2 py-1 outline-none focus:border-gold"
             />
             <button
               onClick={saveName}
@@ -107,7 +107,7 @@ export default function Profile({ onGoRecords }: { onGoRecords: () => void }) {
             <button
               onClick={() => setEditing(false)}
               aria-label="취소"
-              className="w-8 h-8 rounded-lg bg-gray-100 text-gray-500 flex items-center justify-center active:scale-95 transition-transform"
+              className="w-8 h-8 rounded-lg bg-gray-100 text-ink-soft flex items-center justify-center active:scale-95 transition-transform"
             >
               <X size={16} />
             </button>
@@ -118,12 +118,12 @@ export default function Profile({ onGoRecords }: { onGoRecords: () => void }) {
             className="inline-flex items-center gap-1.5 group"
             aria-label="닉네임 수정"
           >
-            <span className="text-base font-semibold text-[#1A1A17]">{displayName}</span>
-            <Pencil size={14} className="text-[#E0A92E]" />
+            <span className="text-title font-semibold text-ink">{displayName}</span>
+            <Pencil size={14} className="text-gold" />
           </button>
         )}
 
-        <p className="text-xs text-gray-400 mt-1">
+        <p className="text-caption text-ink-soft mt-1">
           {isKakao ? "카카오 로그인됨" : `${josa(CHARACTER_NAME, "과", "와")} 함께 절약 중`}
         </p>
       </header>
@@ -131,20 +131,20 @@ export default function Profile({ onGoRecords }: { onGoRecords: () => void }) {
       {/* 김집사 주간 결산 — 이번 주 +수익 (사적 영역이라 숫자 노출 OK). 탭하면 장부로. */}
       <button
         onClick={onGoRecords}
-        className="w-full text-left bg-[#fbf7ee] border border-[#efe4cd] rounded-2xl p-4 mb-3 active:bg-[#f7f0e0] transition-colors"
+        className="w-full text-left bg-butler border border-butler-line rounded-card p-4 mb-3 active:bg-[#f7f0e0] transition-colors"
       >
         <div className="flex items-center gap-2 mb-2">
-          <span className="w-7 h-7 rounded-lg bg-[#eadfc6] flex items-center justify-center text-[#a9863f] text-[13px] font-medium shrink-0">
+          <span className="w-7 h-7 rounded-lg bg-[#eadfc6] flex items-center justify-center text-[#a9863f] text-body font-medium shrink-0">
             집
           </span>
-          <p className="text-[11px] text-[#b09a63]">김집사의 주간 결산</p>
+          <p className="text-micro text-[#b09a63]">김집사의 주간 결산</p>
         </div>
-        <p className="text-[11px] text-gray-400">이번 주 지켜낸 돈</p>
-        <p className="font-mono text-3xl font-bold text-emerald-500 tabular-nums leading-tight mt-0.5">
+        <p className="text-micro text-ink-soft">이번 주 지켜낸 돈</p>
+        <p className="font-mono text-hero font-bold text-emerald-500 tabular-nums leading-tight mt-0.5">
           +{won(weekProfit)}
         </p>
         <div className="flex items-center justify-between mt-2">
-          <p className="text-[12px] text-[#5c5647]">{butlerSettlement(weekCount)}</p>
+          <p className="text-caption text-[#5c5647]">{butlerSettlement(weekCount)}</p>
           <ChevronRight size={16} className="text-[#cbb98c] shrink-0" />
         </div>
       </button>
@@ -160,11 +160,11 @@ export default function Profile({ onGoRecords }: { onGoRecords: () => void }) {
       {!isKakao ? (
         <a
           href="/api/auth/kakao"
-          className="w-full flex items-center justify-between rounded-2xl px-4 py-3.5 mb-2.5 bg-[#FEE500] active:opacity-90 transition-opacity"
+          className="w-full flex items-center justify-between rounded-card px-4 py-3.5 mb-2.5 bg-[#FEE500] active:opacity-90 transition-opacity"
         >
           <span className="flex flex-col text-left">
-            <span className="text-sm font-semibold text-[#191600]">카카오로 로그인</span>
-            <span className="text-[11px] text-[#191600]/60">
+            <span className="text-body font-semibold text-[#191600]">카카오로 로그인</span>
+            <span className="text-micro text-[#191600]/60">
               다른 기기에서도 보고, 기록을 안전하게
             </span>
           </span>
@@ -173,27 +173,27 @@ export default function Profile({ onGoRecords }: { onGoRecords: () => void }) {
       ) : (
         <button
           onClick={() => logout()}
-          className="w-full flex items-center justify-between bg-white border border-[#efe9dc] rounded-2xl px-4 py-3.5 mb-2.5 active:bg-gray-50 transition-colors"
+          className="w-full flex items-center justify-between bg-white border border-line rounded-card px-4 py-3.5 mb-2.5 active:bg-gray-50 transition-colors"
         >
-          <span className="flex items-center gap-2.5 text-sm text-gray-700">
-            <LogOut size={17} className="text-gray-400" /> 로그아웃
+          <span className="flex items-center gap-2.5 text-body text-ink">
+            <LogOut size={17} className="text-ink-soft" /> 로그아웃
           </span>
-          <ChevronRight size={16} className="text-gray-300" />
+          <ChevronRight size={16} className="text-ink-faint" />
         </button>
       )}
 
       {/* 데이터 내보내기 */}
       <button
         onClick={onGoRecords}
-        className="w-full flex items-center justify-between bg-white border border-[#efe9dc] rounded-2xl px-4 py-3.5 active:bg-gray-50 transition-colors"
+        className="w-full flex items-center justify-between bg-white border border-line rounded-card px-4 py-3.5 active:bg-gray-50 transition-colors"
       >
-        <span className="flex items-center gap-2.5 text-sm text-gray-700">
+        <span className="flex items-center gap-2.5 text-body text-ink">
           <Download size={17} className="text-emerald-500" /> 데이터 내보내기
         </span>
-        <ChevronRight size={16} className="text-gray-300" />
+        <ChevronRight size={16} className="text-ink-faint" />
       </button>
 
-      <p className="text-center text-[11px] text-gray-300 mt-10 font-mono tracking-wider">
+      <p className="text-center text-micro text-ink-faint mt-10 font-mono tracking-wider">
         {APP_NAME} · {josa(CHARACTER_NAME, "과", "와")} 함께
       </p>
     </div>

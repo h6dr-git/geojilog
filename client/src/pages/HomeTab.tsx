@@ -78,17 +78,17 @@ export default function HomeTab({ onCapture, onOpenProfile, job, onOpenConfirm, 
   const errorJob = job && job.status === "error" ? job : null;
 
   return (
-    <div className="min-h-screen max-w-lg mx-auto px-4 pb-28 bg-[#FAF8F3]">
+    <div className="min-h-screen max-w-lg mx-auto px-4 pb-28 bg-cream">
       {/* 헤더 — 앱 이름 + 로그인 칩(박회장님). 숫자 없음. */}
       <header className="pt-12 pb-2 flex items-center justify-between">
-        <p className="text-[12px] font-mono text-gray-400 tracking-wider">{APP_NAME}</p>
+        <p className="text-caption font-mono text-ink-soft tracking-wider">{APP_NAME}</p>
         <LoginChip onClick={onOpenProfile} />
       </header>
 
       {/* 자르르 + 김집사 인사 한 줄 (숫자 없음) */}
       <div className="flex flex-col items-center text-center mt-4">
         <Hwasubun level={level} size={132} analyzing={!!analyzingJob} />
-        <p className="mt-4 text-[14px] text-[#5c5647] leading-relaxed px-4">
+        <p className="mt-4 text-body text-[#5c5647] leading-relaxed px-4">
           {analyzingJob
             ? `${josa(CHARACTER_NAME, "이", "가")} 사진을 살펴보는 중이에요…`
             : butlerGreeting()}
@@ -97,24 +97,24 @@ export default function HomeTab({ onCapture, onOpenProfile, job, onOpenConfirm, 
 
       {/* 행동 영역 — 큰 기록 버튼이 기본. 진행 중일 땐 상태칩(금액 미노출). */}
       {analyzingJob ? (
-        <div className="mt-6 flex items-center gap-3 bg-emerald-50 border border-emerald-100 rounded-2xl p-3.5">
+        <div className="mt-6 flex items-center gap-3 bg-emerald-50 border border-emerald-100 rounded-card p-3.5">
           <img src={analyzingJob.preview} alt="" className="w-12 h-12 rounded-xl object-cover shrink-0" />
           <div className="text-left">
-            <p className="text-[13px] font-medium text-emerald-700">{CHARACTER_NAME}가 분석하고 있어요</p>
-            <p className="text-[11px] text-emerald-600">잠시 둘러보고 계셔도 됩니다</p>
+            <p className="text-body font-medium text-emerald-700">{CHARACTER_NAME}가 분석하고 있어요</p>
+            <p className="text-micro text-emerald-600">잠시 둘러보고 계셔도 됩니다</p>
           </div>
         </div>
       ) : readyJob ? (
         <button
           onClick={onOpenConfirm}
-          className="mt-6 w-full flex items-center gap-3 border border-emerald-200 bg-emerald-50 rounded-2xl p-3 text-left active:bg-emerald-100 transition-colors"
+          className="mt-6 w-full flex items-center gap-3 border border-emerald-200 bg-emerald-50 rounded-card p-3 text-left active:bg-emerald-100 transition-colors"
         >
           <img src={readyJob.preview} alt="" className="w-12 h-12 rounded-xl object-cover shrink-0" />
           <div className="flex-1 min-w-0">
-            <p className="text-[13px] font-medium text-gray-800 truncate">
+            <p className="text-body font-medium text-ink truncate">
               {readyJob.data.title || "분석 완료"}
             </p>
-            <p className="text-[11px] text-emerald-600 flex items-center gap-0.5">
+            <p className="text-micro text-emerald-600 flex items-center gap-0.5">
               <Check size={12} /> 분석 완료 · 확인하고 저장
             </p>
           </div>
@@ -123,19 +123,19 @@ export default function HomeTab({ onCapture, onOpenProfile, job, onOpenConfirm, 
       ) : errorJob ? (
         <button
           onClick={onOpenConfirm}
-          className="mt-6 w-full flex items-center gap-3 border border-gray-200 bg-white rounded-2xl p-3 text-left active:bg-gray-50 transition-colors"
+          className="mt-6 w-full flex items-center gap-3 border border-line bg-white rounded-card p-3 text-left active:bg-gray-50 transition-colors"
         >
           <img src={errorJob.preview} alt="" className="w-12 h-12 rounded-xl object-cover shrink-0" />
           <div className="flex-1 min-w-0">
-            <p className="text-[13px] font-medium text-gray-700">분석을 못 했어요</p>
-            <p className="text-[11px] text-gray-400">탭해서 직접 입력하기</p>
+            <p className="text-body font-medium text-ink">분석을 못 했어요</p>
+            <p className="text-micro text-ink-soft">탭해서 직접 입력하기</p>
           </div>
-          <ChevronRight size={16} className="text-gray-300 shrink-0" />
+          <ChevronRight size={16} className="text-ink-faint shrink-0" />
         </button>
       ) : (
         <button
           onClick={onCapture}
-          className="mt-6 w-full bg-emerald-500 text-white font-medium py-4 rounded-2xl flex items-center justify-center gap-2 active:scale-[0.99] transition-transform shadow-sm"
+          className="mt-6 w-full bg-emerald-500 text-white font-medium py-4 rounded-card flex items-center justify-center gap-2 active:scale-[0.99] transition-transform shadow-sm"
         >
           <Camera size={18} /> 사진으로 한 끼 기록하기
         </button>
@@ -145,21 +145,21 @@ export default function HomeTab({ onCapture, onOpenProfile, job, onOpenConfirm, 
       {topDraft && (
         <button
           onClick={() => onCompleteDraft(topDraft)}
-          className="mt-2.5 w-full flex items-center gap-3 border border-amber-200 bg-amber-50 rounded-2xl px-3.5 py-3 text-left active:bg-amber-100 transition-colors"
+          className="mt-2.5 w-full flex items-center gap-3 border border-amber-200 bg-amber-50 rounded-card px-3.5 py-3 text-left active:bg-amber-100 transition-colors"
         >
           <img src={topDraft.imageUrl} alt="" className="w-10 h-10 rounded-lg object-cover shrink-0" />
           <div className="flex-1 min-w-0">
-            <p className="text-[13px] font-medium text-amber-800">아직 안 끝낸 기록 {drafts.length}개</p>
-            <p className="text-[11px] text-amber-600 truncate">탭해서 마저 채우기</p>
+            <p className="text-body font-medium text-amber-800">아직 안 끝낸 기록 {drafts.length}개</p>
+            <p className="text-micro text-amber-600 truncate">탭해서 마저 채우기</p>
           </div>
           <ChevronRight size={16} className="text-amber-400 shrink-0" />
         </button>
       )}
 
       {/* 도사 오늘의 한 마디 — 집무실의 유일한 진지함 */}
-      <div className="mt-8 border border-[#ece4d4] bg-white rounded-2xl px-4 py-3.5">
-        <p className="text-[10px] text-gray-400 mb-1">도사의 오늘 한 마디</p>
-        <p className="text-[13px] text-[#5c5647] italic leading-relaxed">
+      <div className="mt-8 border border-line bg-white rounded-card px-4 py-3.5">
+        <p className="text-micro text-ink-soft mb-1">도사의 오늘 한 마디</p>
+        <p className="text-body text-[#5c5647] italic leading-relaxed">
           “{dosaLineOfDay()}”
         </p>
       </div>

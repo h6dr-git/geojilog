@@ -159,17 +159,17 @@ export default function Shell() {
           {job && tab !== "home" && (
             <button
               onClick={() => (job.status === "analyzing" ? setTab("home") : openConfirmFromJob())}
-              className="fixed left-1/2 -translate-x-1/2 bottom-[88px] z-40 flex items-center gap-2 px-4 py-2.5 rounded-full shadow-lg text-sm font-medium bg-white border border-gray-200 active:scale-[0.98] transition-transform"
+              className="fixed left-1/2 -translate-x-1/2 bottom-[88px] z-40 flex items-center gap-2 px-4 py-2.5 rounded-full shadow-lg text-body font-medium bg-white border border-line active:scale-[0.98] transition-transform"
             >
               {job.status === "analyzing" ? (
                 <>
                   <Loader2 size={15} className="animate-spin text-emerald-500" />
-                  <span className="text-gray-600">자르르가 분석 중…</span>
+                  <span className="text-ink">자르르가 분석 중…</span>
                 </>
               ) : (
                 <>
                   <Check size={15} className="text-emerald-500" />
-                  <span className="text-gray-700">한 끼 분석 완료 · 확인하기</span>
+                  <span className="text-ink">한 끼 분석 완료 · 확인하기</span>
                 </>
               )}
             </button>

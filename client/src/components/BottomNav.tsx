@@ -27,8 +27,8 @@ export default function BottomNav({
       <button
         key={key}
         onClick={() => onChange(key)}
-        className={`flex-1 flex flex-col items-center gap-0.5 py-2.5 text-[11px] transition-colors ${
-          active ? "text-emerald-500" : "text-gray-400"
+        className={`flex-1 flex flex-col items-center gap-0.5 py-2.5 text-micro transition-colors ${
+          active ? "text-emerald-500" : "text-ink-soft"
         }`}
       >
         <Icon size={20} strokeWidth={active ? 2.4 : 2} />
@@ -38,14 +38,14 @@ export default function BottomNav({
   };
 
   return (
-    <nav className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-lg bg-white border-t border-gray-100 flex items-end z-40 pb-[env(safe-area-inset-bottom)]">
+    <nav className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-lg bg-white border-t border-line flex items-end z-40 pb-[env(safe-area-inset-bottom)]">
       {LEFT.map(renderTab)}
 
       {/* 가운데 기록 — 캡처 액션(탭 아님) */}
       <button
         onClick={onCapture}
         aria-label="사진으로 한 끼 기록하기"
-        className="flex-1 flex flex-col items-center gap-0.5 py-2.5 text-[11px] text-emerald-500"
+        className="flex-1 flex flex-col items-center gap-0.5 py-2.5 text-micro text-emerald-500"
       >
         <span className="-mt-6 mb-0.5 w-12 h-12 rounded-full bg-emerald-500 text-white flex items-center justify-center shadow-lg shadow-emerald-500/30 ring-4 ring-white active:scale-95 transition-transform">
           <Camera size={22} />
