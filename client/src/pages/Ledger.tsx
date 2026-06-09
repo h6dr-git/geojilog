@@ -10,10 +10,9 @@ import { smartCropToSquare } from "@/lib/smartCrop";
 import {
   Upload, Camera, ImageIcon, PenLine, Loader2, Download,
   Copy, Trash2, ChevronDown, ChevronUp, Check,
-  Pencil, X, ChevronLeft, ChevronRight, BarChart2, Share2, RotateCw,
+  Pencil, X, Share2, RotateCw,
 } from "lucide-react";
 import SavingsStoryCard from "@/components/SavingsStoryCard";
-import Jarureu from "@/components/Jarureu";
 import MiniCalendar from "@/components/MiniCalendar";
 import { SavingsEntry, ExportRange, fmt, todayStr, makeDefaultTitle, filterByRange, toMarkdownTable, toCsv } from "@/lib/ledger";
 
@@ -59,7 +58,6 @@ export default function Ledger() {
     [categories]
   );
 
-  const totalProfit = useMemo(() => (entries as SavingsEntry[]).reduce((s, e) => s + e.profit, 0), [entries]);
 
   // ── 탭 ──
   const [mainTab, setMainTab] = useState<MainTab>("calendar");

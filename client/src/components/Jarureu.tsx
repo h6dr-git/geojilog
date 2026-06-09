@@ -3,7 +3,7 @@
 // 상시 애니메이션(숨쉬기/눈깜빡/살랑/반짝임) + 절약액이 늘거나 탭하면 폴짝+금화+반짝 리액션.
 // analyzing=true면 돋보기로 사진을 들여다보는 '분석 중' 모션, 끝나면 폭 튀는 비트.
 // 라이브러리 없이 SVG + CSS만 사용. (프로토타입 — 추후 정식 디자인 교체)
-import { type CSSProperties, useEffect, useId, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { CHARACTER_NAME } from "@/lib/brand";
 
 type Props = {
