@@ -104,50 +104,50 @@ export default function QuickRecord({ data, onClose, onSaved }: Props) {
       >
         <div className="flex items-center justify-between mb-3">
           <div className="w-8" />
-          <span className="text-sm font-medium text-gray-700">
+          <span className="text-body font-medium text-ink">
             {isCompleting ? "금액 채우기" : "한 끼 기록 확인"}
           </span>
-          <button onClick={onClose} aria-label="닫기" className="w-8 h-8 flex items-center justify-center text-gray-400">
+          <button onClick={onClose} aria-label="닫기" className="w-8 h-8 flex items-center justify-center text-ink-soft">
             <X size={20} />
           </button>
         </div>
 
         {/* 사진 */}
-        <div className="w-full aspect-[4/3] rounded-2xl overflow-hidden bg-gray-100 mb-4">
+        <div className="w-full aspect-[4/3] rounded-2xl overflow-hidden bg-line mb-4">
           {data.imageUrl ? (
             <img src={data.imageUrl} alt="기록 사진" className="w-full h-full object-cover" />
           ) : (
-            <div className="w-full h-full flex items-center justify-center text-gray-300 text-sm">사진 없음</div>
+            <div className="w-full h-full flex items-center justify-center text-ink-faint text-body">사진 없음</div>
           )}
         </div>
 
         {/* 절약 수익 */}
         <div className="text-center mb-4">
-          <p className="text-[11px] text-gray-400 mb-0.5">이번 한 끼로 아낀 돈</p>
-          <p className={`font-mono text-3xl font-bold tabular-nums ${profit >= 0 ? "text-emerald-500" : "text-red-400"}`}>
+          <p className="text-micro text-ink-soft mb-0.5">이번 한 끼로 아낀 돈</p>
+          <p className={`font-mono text-hero font-bold tabular-nums ${profit >= 0 ? "text-emerald-500" : "text-red-400"}`}>
             {profit >= 0 ? "+" : "−"}
             {won(Math.abs(profit))}
           </p>
         </div>
 
         {/* 항목명 */}
-        <label className="text-[11px] text-gray-400 block mb-1">항목명</label>
+        <label className="text-micro text-ink-soft block mb-1">항목명</label>
         <input
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           placeholder="무엇을 먹었나요?"
-          className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm mb-3 focus:outline-none focus:border-emerald-400"
+          className="w-full border border-line rounded-card px-3 py-2.5 text-body mb-3 focus:outline-none focus:border-emerald-400"
         />
 
         {/* 카테고리 */}
-        <label className="text-[11px] text-gray-400 block mb-1">카테고리</label>
+        <label className="text-micro text-ink-soft block mb-1">카테고리</label>
         <div className="flex flex-wrap gap-1.5 mb-3">
           {categoryNames.map((c) => (
             <button
               key={c}
               onClick={() => setCategory(c)}
-              className={`px-3 py-1.5 rounded-full text-xs transition-colors ${
-                category === c ? "bg-emerald-500 text-white" : "bg-gray-100 text-gray-500 active:bg-gray-200"
+              className={`px-3 py-1.5 rounded-full text-caption transition-colors ${
+                category === c ? "bg-emerald-500 text-white" : "bg-cream text-ink-soft active:bg-line"
               }`}
             >
               {c}
@@ -158,28 +158,28 @@ export default function QuickRecord({ data, onClose, onSaved }: Props) {
         {/* 원가 / 실제 지출 */}
         <div className="flex gap-2.5 mb-2">
           <div className="flex-1">
-            <label className="text-[11px] text-gray-400 block mb-1">원가 (안 아꼈으면)</label>
-            <div className="flex items-center border border-gray-200 rounded-xl px-3">
-              <span className="text-gray-400 text-sm mr-1">₩</span>
+            <label className="text-micro text-ink-soft block mb-1">원가 (안 아꼈으면)</label>
+            <div className="flex items-center border border-line rounded-card px-3">
+              <span className="text-ink-soft text-body mr-1">₩</span>
               <input
                 value={original ? Number(original).toLocaleString("ko-KR") : ""}
                 onChange={(e) => setOriginal(onlyDigits(e.target.value))}
                 inputMode="numeric"
                 placeholder="0"
-                className="w-full py-2.5 text-sm focus:outline-none tabular-nums"
+                className="w-full py-2.5 text-body focus:outline-none tabular-nums"
               />
             </div>
           </div>
           <div className="flex-1">
-            <label className="text-[11px] text-gray-400 block mb-1">실제 지출</label>
-            <div className="flex items-center border border-gray-200 rounded-xl px-3">
-              <span className="text-gray-400 text-sm mr-1">₩</span>
+            <label className="text-micro text-ink-soft block mb-1">실제 지출</label>
+            <div className="flex items-center border border-line rounded-card px-3">
+              <span className="text-ink-soft text-body mr-1">₩</span>
               <input
                 value={actual ? Number(actual).toLocaleString("ko-KR") : ""}
                 onChange={(e) => setActual(onlyDigits(e.target.value))}
                 inputMode="numeric"
                 placeholder="0"
-                className="w-full py-2.5 text-sm focus:outline-none tabular-nums"
+                className="w-full py-2.5 text-body focus:outline-none tabular-nums"
               />
             </div>
           </div>
@@ -187,7 +187,7 @@ export default function QuickRecord({ data, onClose, onSaved }: Props) {
 
         {/* AI 근거 */}
         {aiReason && (
-          <p className="text-[11px] text-gray-400 leading-relaxed mb-3 bg-gray-50 rounded-xl px-3 py-2">
+          <p className="text-micro text-ink-soft leading-relaxed mb-3 bg-cream rounded-card px-3 py-2">
             <span className="text-emerald-500">자르르</span> {aiReason}
           </p>
         )}
@@ -211,12 +211,12 @@ export default function QuickRecord({ data, onClose, onSaved }: Props) {
                 onClose();
               }
             }}
-            className="mt-3 w-full text-xs text-gray-400 flex items-center justify-center gap-1 py-1.5"
+            className="mt-3 w-full text-caption text-ink-soft flex items-center justify-center gap-1 py-1.5"
           >
             <Trash2 size={13} /> 이 미완성 삭제
           </button>
         ) : (
-          <button onClick={handleDefer} className="mt-3 w-full text-sm text-gray-500 py-2">
+          <button onClick={handleDefer} className="mt-3 w-full text-body text-ink-soft py-2">
             나중에 금액 채우기
           </button>
         )}

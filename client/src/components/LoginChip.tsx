@@ -22,7 +22,7 @@ export default function LoginChip({ onClick }: { onClick?: () => void }) {
       <span className="text-caption font-medium text-ink leading-none">{name}</span>
       <span
         aria-hidden="true"
-        className={`w-1.5 h-1.5 rounded-full ${isKakao ? "bg-emerald-500" : "bg-gray-300"}`}
+        className={`w-1.5 h-1.5 rounded-full ${isKakao ? "bg-emerald-500" : "bg-ink-faint"}`}
       />
     </button>
   );

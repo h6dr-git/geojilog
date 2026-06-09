@@ -90,7 +90,7 @@ export default function Profile({ onGoRecords }: { onGoRecords: () => void }) {
             <button onClick={saveName} aria-label="저장" className="w-8 h-8 rounded-lg bg-emerald-500 text-white flex items-center justify-center active:scale-95 transition-transform">
               <Check size={16} />
             </button>
-            <button onClick={() => setEditing(false)} aria-label="취소" className="w-8 h-8 rounded-lg bg-gray-100 text-ink-soft flex items-center justify-center active:scale-95 transition-transform">
+            <button onClick={() => setEditing(false)} aria-label="취소" className="w-8 h-8 rounded-lg bg-line text-ink-soft flex items-center justify-center active:scale-95 transition-transform">
               <X size={16} />
             </button>
           </div>

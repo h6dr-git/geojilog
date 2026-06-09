@@ -149,7 +149,7 @@ export default function MiniCalendar({ entries }: { entries: SavingsEntry[] }) {
         {/* 이전 월 */}
         <button
           onClick={prevMonth}
-          className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg text-gray-400 hover:bg-gray-100 active:scale-95 transition-all"
+          className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg text-ink-soft hover:bg-cream active:scale-95 transition-all"
         >
           <ChevronLeft size={16} />
         </button>
@@ -158,16 +158,16 @@ export default function MiniCalendar({ entries }: { entries: SavingsEntry[] }) {
         <div className="flex items-center gap-1">
           <button
             onClick={() => monthInputRef.current?.showPicker?.() ?? monthInputRef.current?.click()}
-            className="text-sm font-medium text-gray-700 hover:text-emerald-600 transition-colors flex items-center gap-1"
+            className="text-body font-medium text-ink hover:text-emerald-600 transition-colors flex items-center gap-1"
           >
             {year}년 {month + 1}월
-            <ChevronDown size={12} className="text-gray-400" />
+            <ChevronDown size={12} className="text-ink-soft" />
           </button>
           {/* 월간 리포트 아이콘 — 역할 분리 */}
           <button
             onClick={() => setDetailMode(m => m === "month" ? "day" : "month")}
             className={`ml-1 p-1 rounded transition-colors ${
-              detailMode === "month" ? "text-emerald-500" : "text-gray-300 hover:text-gray-500"
+              detailMode === "month" ? "text-emerald-500" : "text-ink-faint hover:text-ink-soft"
             }`}
             title="월간 리포트"
           >
@@ -178,7 +178,7 @@ export default function MiniCalendar({ entries }: { entries: SavingsEntry[] }) {
         {/* 다음 월 */}
         <button
           onClick={nextMonth}
-          className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg text-gray-400 hover:bg-gray-100 active:scale-95 transition-all"
+          className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg text-ink-soft hover:bg-cream active:scale-95 transition-all"
         >
           <ChevronRight size={16} />
         </button>
@@ -197,8 +197,8 @@ export default function MiniCalendar({ entries }: { entries: SavingsEntry[] }) {
       {/* ── 요일 헤더 (8열: 일~토 + 빈 칸) ── */}
       <div className="grid grid-cols-8 mb-1">
         {KO_DAYS.map((d, i) => (
-          <div key={d} className={`text-center text-xs py-1 ${
-            i === 0 ? "text-red-400" : i === 6 ? "text-blue-400" : "text-gray-400"
+          <div key={d} className={`text-center text-caption py-1 ${
+            i === 0 ? "text-red-400" : i === 6 ? "text-blue-400" : "text-ink-soft"
           }`}>
             {d}
           </div>
@@ -222,22 +222,22 @@ export default function MiniCalendar({ entries }: { entries: SavingsEntry[] }) {
                 <button
                   key={dateStr}
                   onClick={() => handleDayClick(dateStr)}
-                  className="flex flex-col items-center py-1.5 min-h-[44px] w-full rounded-lg transition-colors hover:bg-gray-50 active:bg-gray-100"
+                  className="flex flex-col items-center py-1.5 min-h-[44px] w-full rounded-lg transition-colors hover:bg-cream active:bg-cream"
                 >
-                  <span className={`text-xs w-6 h-6 flex items-center justify-center rounded-full transition-all ${
+                  <span className={`text-caption w-6 h-6 flex items-center justify-center rounded-full transition-all ${
                     isSelected
                       ? "bg-emerald-500 text-white font-semibold"  // 케이스 A: 선택됨
                       : isToday
-                      ? "border border-gray-300 text-gray-700"      // 케이스 B: 오늘(미선택) — 회색 테두리만
+                      ? "border border-gold/60 text-ink font-medium"  // 케이스 B: 오늘(미선택) — 골드 테두리
                       : dow === 0 ? "text-red-400"
                       : dow === 6 ? "text-blue-400"
-                      : "text-gray-700"
+                      : "text-ink"
                   }`}>
                     {day}
                   </span>
                   {/* 일별 수익 항상 표시 */}
                   {profit !== undefined && (
-                    <span className="text-[9px] text-emerald-500 font-medium leading-tight mt-0.5 tabular-nums">
+                    <span className="text-micro text-emerald-500 font-medium leading-tight mt-0.5 tabular-nums">
                       +₩{fmt(profit)}
                     </span>
                   )}
@@ -259,7 +259,7 @@ export default function MiniCalendar({ entries }: { entries: SavingsEntry[] }) {
                   return d.toISOString().split("T")[0] === selectedWeekStart;
                 })()
                   ? "text-emerald-500"
-                  : "text-gray-300 hover:text-gray-500"
+                  : "text-ink-faint hover:text-ink-soft"
               }`}
               title="주간 결산"
             >
@@ -270,41 +270,41 @@ export default function MiniCalendar({ entries }: { entries: SavingsEntry[] }) {
       </div>
 
       {/* ── 하단 상세 영역 ── */}
-      <div className="mt-5 border-t border-gray-100 pt-4">
+      <div className="mt-5 border-t border-line pt-4">
 
         {/* 일별 뷰 */}
         {detailMode === "day" && (
           <>
-            <p className="text-xs font-mono text-gray-400 tracking-widest uppercase mb-3">
+            <p className="text-caption font-mono text-ink-soft tracking-widest uppercase mb-3">
               {selectedDate.replace(/-/g, ".")} 기록
             </p>
             {selectedEntries.length === 0 ? (
-              <p className="text-xs text-gray-300 text-center py-6">기록 없음</p>
+              <p className="text-caption text-ink-faint text-center py-6">기록 없음</p>
             ) : (
               <div className="space-y-2">
                 {selectedEntries.map(entry => (
-                  <div key={entry.id} className="flex items-center gap-3 py-2 border-b border-gray-100 last:border-0">
+                  <div key={entry.id} className="flex items-center gap-3 py-2 border-b border-line last:border-0">
                     {entry.imageUrl
                       ? <img src={entry.imageUrl} alt="" className="w-9 h-9 rounded-lg object-cover flex-shrink-0" />
-                      : <div className="w-9 h-9 rounded-lg bg-gray-100 flex-shrink-0" />
+                      : <div className="w-9 h-9 rounded-lg bg-line flex-shrink-0" />
                     }
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-gray-900 truncate">{entry.title}</p>
-                      {entry.memo && <p className="text-xs text-gray-400 truncate italic">{entry.memo}</p>}
+                      <p className="text-body font-medium text-ink truncate">{entry.title}</p>
+                      {entry.memo && <p className="text-caption text-ink-soft truncate italic">{entry.memo}</p>}
                     </div>
                     <div className="text-right flex-shrink-0">
-                      <p className="text-sm font-mono font-semibold text-emerald-500">+₩{fmt(entry.profit)}</p>
-                      <p className="text-xs text-gray-400 tabular-nums">
+                      <p className="text-body font-mono font-semibold text-emerald-500">+₩{fmt(entry.profit)}</p>
+                      <p className="text-caption text-ink-soft tabular-nums">
                         <span className="line-through">₩{fmt(entry.originalAmount)}</span>
-                        <span className="mx-1 text-gray-300">→</span>
+                        <span className="mx-1 text-ink-faint">→</span>
                         <span>₩{fmt(entry.actualAmount)}</span>
                       </p>
                     </div>
                   </div>
                 ))}
                 <div className="flex justify-between items-center pt-2">
-                  <span className="text-xs text-gray-400">{selectedEntries.length}건 합계</span>
-                  <span className="text-sm font-mono font-semibold text-emerald-500">
+                  <span className="text-caption text-ink-soft">{selectedEntries.length}건 합계</span>
+                  <span className="text-body font-mono font-semibold text-emerald-500">
                     +₩{fmt(selectedEntries.reduce((s, e) => s + e.profit, 0))}
                   </span>
                 </div>
@@ -324,15 +324,15 @@ export default function MiniCalendar({ entries }: { entries: SavingsEntry[] }) {
           return (
             <>
               <div className="flex items-center justify-between mb-3">
-                <p className="text-xs font-mono text-gray-400 tracking-widest uppercase">
+                <p className="text-caption font-mono text-ink-soft tracking-widest uppercase">
                   {selectedWeekStart.slice(5).replace("-", ".")} ~ {endDate.slice(5).replace("-", ".")} 주간
                 </p>
-                <button onClick={() => setDetailMode("day")} className="p-1 text-gray-300 hover:text-gray-500">
+                <button onClick={() => setDetailMode("day")} className="p-1 text-ink-faint hover:text-ink-soft">
                   <X size={14} />
                 </button>
               </div>
               {weekEntries.length === 0 ? (
-                <p className="text-xs text-gray-300 text-center py-6">기록 없음</p>
+                <p className="text-caption text-ink-faint text-center py-6">기록 없음</p>
               ) : (
                 <>
                   {/* 사진 그리드 */}
@@ -344,18 +344,18 @@ export default function MiniCalendar({ entries }: { entries: SavingsEntry[] }) {
                   {/* 주간 목록 */}
                   <div className="space-y-1">
                     {weekEntries.map(entry => (
-                      <div key={entry.id} className="flex items-center justify-between py-1.5 border-b border-gray-100 last:border-0">
+                      <div key={entry.id} className="flex items-center justify-between py-1.5 border-b border-line last:border-0">
                         <div className="flex-1 min-w-0">
-                          <p className="text-xs font-medium text-gray-800 truncate">{entry.title}</p>
-                          <p className="text-[10px] text-gray-400">{entry.date.slice(5).replace("-", ".")}</p>
+                          <p className="text-caption font-medium text-ink truncate">{entry.title}</p>
+                          <p className="text-micro text-ink-soft">{entry.date.slice(5).replace("-", ".")}</p>
                         </div>
-                        <p className="text-xs font-mono text-emerald-500 flex-shrink-0">+₩{fmt(entry.profit)}</p>
+                        <p className="text-caption font-mono text-emerald-500 flex-shrink-0">+₩{fmt(entry.profit)}</p>
                       </div>
                     ))}
                   </div>
-                  <div className="flex justify-between items-center pt-3 mt-1 border-t border-gray-100">
-                    <span className="text-xs text-gray-400">{weekEntries.length}건 합계</span>
-                    <span className="text-sm font-mono font-semibold text-emerald-500">+₩{fmt(weekProfit)}</span>
+                  <div className="flex justify-between items-center pt-3 mt-1 border-t border-line">
+                    <span className="text-caption text-ink-soft">{weekEntries.length}건 합계</span>
+                    <span className="text-body font-mono font-semibold text-emerald-500">+₩{fmt(weekProfit)}</span>
                   </div>
                 </>
               )}
@@ -367,21 +367,21 @@ export default function MiniCalendar({ entries }: { entries: SavingsEntry[] }) {
         {detailMode === "month" && (
           <>
             <div className="flex items-center justify-between mb-3">
-              <p className="text-xs font-mono text-gray-400 tracking-widest uppercase">
+              <p className="text-caption font-mono text-ink-soft tracking-widest uppercase">
                 {year}.{String(month + 1).padStart(2, "0")} 월간 리포트
               </p>
-              <button onClick={() => setDetailMode("day")} className="p-1 text-gray-300 hover:text-gray-500">
+              <button onClick={() => setDetailMode("day")} className="p-1 text-ink-faint hover:text-ink-soft">
                 <X size={14} />
               </button>
             </div>
             {monthEntries.length === 0 ? (
-              <p className="text-xs text-gray-300 text-center py-6">기록 없음</p>
+              <p className="text-caption text-ink-faint text-center py-6">기록 없음</p>
             ) : (
               <div className="space-y-3">
                 {/* 요약 */}
                 <div className="flex justify-between items-center">
-                  <span className="text-xs text-gray-400">{monthEntries.length}건</span>
-                  <span className="text-lg font-mono font-bold text-emerald-500">
+                  <span className="text-caption text-ink-soft">{monthEntries.length}건</span>
+                  <span className="text-title font-mono font-bold text-emerald-500">
                     +₩{fmt(monthTotal)}
                   </span>
                 </div>
@@ -389,11 +389,11 @@ export default function MiniCalendar({ entries }: { entries: SavingsEntry[] }) {
                 {/* [작업3] 월간 앨범 — 포토덤프 3-col + 월 합계 + 이미지로 저장 */}
                 <div>
                   <div className="flex items-center justify-between mb-2">
-                    <span className="text-xs font-mono text-gray-400 tracking-widest uppercase">앨범</span>
+                    <span className="text-caption font-mono text-ink-soft tracking-widest uppercase">앨범</span>
                     <button
                       onClick={handleSaveAlbum}
                       disabled={savingAlbum}
-                      className="flex items-center gap-1 text-xs text-emerald-600 hover:text-emerald-700 disabled:opacity-40 transition-colors"
+                      className="flex items-center gap-1 text-caption text-emerald-600 hover:text-emerald-700 disabled:opacity-40 transition-colors"
                     >
                       {savingAlbum ? <Loader2 size={12} className="animate-spin" /> : <Download size={12} />}
                       이미지로 저장
@@ -436,11 +436,11 @@ export default function MiniCalendar({ entries }: { entries: SavingsEntry[] }) {
                     const pct = total > 0 ? Math.round((profit / total) * 100) : 0;
                     return (
                       <div key={cat}>
-                        <div className="flex justify-between text-xs mb-0.5">
-                          <span className="text-gray-600">{cat}</span>
-                          <span className="text-gray-500 tabular-nums">+₩{fmt(profit)} ({pct}%)</span>
+                        <div className="flex justify-between text-caption mb-0.5">
+                          <span className="text-ink-soft">{cat}</span>
+                          <span className="text-ink-soft tabular-nums">+₩{fmt(profit)} ({pct}%)</span>
                         </div>
-                        <div className="h-1 bg-gray-100 rounded-full overflow-hidden">
+                        <div className="h-1 bg-line rounded-full overflow-hidden">
                           <div
                             className="h-full bg-emerald-400 rounded-full transition-all"
                             style={{ width: `${pct}%` }}

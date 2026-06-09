@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import SavingsStoryCard from "@/components/SavingsStoryCard";
 import MiniCalendar from "@/components/MiniCalendar";
+import Jarureu from "@/components/Jarureu";
 import { SavingsEntry, ExportRange, fmt, todayStr, makeDefaultTitle, filterByRange, toMarkdownTable, toCsv } from "@/lib/ledger";
 
 // 업로드 큐 아이템 — submitting 필드 추가 (버그 #1 수정)
@@ -364,16 +365,16 @@ export default function Ledger() {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-white gap-6 px-6">
         <div className="text-center">
-          <h1 className="text-3xl font-bold tracking-tight text-gray-900">거지로그</h1>
-          <p className="mt-2 text-sm text-gray-400">절약한 만큼 번다</p>
+          <h1 className="text-hero font-bold tracking-tight text-ink">거지로그</h1>
+          <p className="mt-2 text-body text-ink-soft">절약한 만큼 번다</p>
         </div>
-        <p className="text-sm text-gray-500 text-center leading-relaxed">
+        <p className="text-body text-ink-soft text-center leading-relaxed">
           연결이 잠시 불안정해 데이터를 불러오지 못했어요.<br />
           잠깐 후 다시 시도해 주세요.
         </p>
         <button
           onClick={() => window.location.reload()}
-          className="flex items-center gap-2 px-6 py-3 bg-emerald-500 text-white text-sm font-medium rounded-lg hover:bg-emerald-600 transition-colors"
+          className="flex items-center gap-2 px-6 py-3 bg-emerald-500 text-white text-body font-medium rounded-lg hover:bg-emerald-600 transition-colors"
         >
           <Loader2 size={16} />
           다시 시도
@@ -392,15 +393,15 @@ export default function Ledger() {
       </header>
 
       {/* ── 탭 ── */}
-      <div className="flex border-b border-gray-100 mb-6">
+      <div className="flex border-b border-line mb-6">
         {(["input", "calendar"] as MainTab[]).map(t => (
           <button
             key={t}
             onClick={() => setMainTab(t)}
-            className={`flex-1 py-2.5 text-xs font-medium transition-colors ${
+            className={`flex-1 py-2.5 text-body font-medium transition-colors ${
               mainTab === t
                 ? "text-emerald-600 border-b-2 border-emerald-500 -mb-px"
-                : "text-gray-400 hover:text-gray-600"
+                : "text-ink-soft hover:text-ink"
             }`}
           >
             {{ input: "기록 추가", calendar: "앨범" }[t]}
@@ -414,25 +415,25 @@ export default function Ledger() {
           {/* 사진 업로드 영역 */}
           <section className="mb-6">
             <div
-              className="border-2 border-dashed border-gray-200 rounded-xl p-6 text-center hover:border-emerald-300 cursor-pointer transition-colors"
+              className="border-2 border-dashed border-line rounded-card p-6 text-center hover:border-emerald-300 cursor-pointer transition-colors"
               onClick={() => galleryRef.current?.click()}
               onDragOver={(e) => e.preventDefault()}
               onDrop={(e) => { e.preventDefault(); handleFiles(e.dataTransfer.files); }}
             >
-              <Upload className="w-7 h-7 text-gray-300 mx-auto mb-2" />
-              <p className="text-sm font-medium text-gray-600">사진을 업로드하면 AI가 원가를 추정합니다</p>
-              <p className="text-xs text-gray-400 mt-1">여러 장 동시 선택 가능 · 드래그앤드롭</p>
+              <Upload className="w-7 h-7 text-emerald-400 mx-auto mb-2" />
+              <p className="text-body font-medium text-ink">사진만 올리면 자르르가 절약액을 계산해요</p>
+              <p className="text-caption text-ink-soft mt-1">여러 장 동시 선택 · 드래그앤드롭</p>
             </div>
             <div className="flex gap-2 mt-2">
               <button
                 onClick={() => cameraRef.current?.click()}
-                className="flex-1 flex items-center justify-center gap-1.5 py-2 text-xs text-gray-500 border border-gray-200 rounded-lg hover:border-emerald-300 hover:text-emerald-600 transition-colors"
+                className="flex-1 flex items-center justify-center gap-1.5 py-2 text-caption text-ink-soft border border-line rounded-lg hover:border-emerald-300 hover:text-emerald-600 transition-colors"
               >
                 <Camera size={14} /> 카메라
               </button>
               <button
                 onClick={() => galleryRef.current?.click()}
-                className="flex-1 flex items-center justify-center gap-1.5 py-2 text-xs text-gray-500 border border-gray-200 rounded-lg hover:border-emerald-300 hover:text-emerald-600 transition-colors"
+                className="flex-1 flex items-center justify-center gap-1.5 py-2 text-caption text-ink-soft border border-line rounded-lg hover:border-emerald-300 hover:text-emerald-600 transition-colors"
               >
                 <ImageIcon size={14} /> 앨범
               </button>
@@ -442,24 +443,24 @@ export default function Ledger() {
           {/* 업로드 큐 */}
           {queue.length > 0 && (
             <section className="mb-6 space-y-3">
-              <p className="text-xs font-mono text-gray-400 tracking-widest uppercase">분석 대기열 ({queue.length})</p>
+              <p className="text-caption font-mono text-ink-soft tracking-widest uppercase">분석 대기열 ({queue.length})</p>
               {queue.map(item => (
-                <div key={item.id} className="border border-gray-200 rounded-xl overflow-hidden">
+                <div key={item.id} className="border border-line rounded-card overflow-hidden">
                   {/* 분석 중 스켈레톤 */}
                   {item.status === "analyzing" && (
                     <div className="flex items-center gap-3 p-3">
-                      <div className="w-14 h-14 rounded-lg bg-gray-100 animate-pulse flex-shrink-0 overflow-hidden">
+                      <div className="w-14 h-14 rounded-lg bg-line animate-pulse flex-shrink-0 overflow-hidden">
                         <img src={item.previewUrl} alt="" className="w-full h-full object-cover opacity-50" />
                       </div>
                       <div className="flex-1 space-y-2">
-                        <div className="h-3 bg-gray-100 rounded animate-pulse w-3/4" />
-                        <div className="h-3 bg-gray-100 rounded animate-pulse w-1/2" />
-                        <div className="flex items-center gap-1.5 text-xs text-gray-400">
+                        <div className="h-3 bg-line rounded animate-pulse w-3/4" />
+                        <div className="h-3 bg-line rounded animate-pulse w-1/2" />
+                        <div className="flex items-center gap-1.5 text-caption text-ink-soft">
                           <Loader2 size={12} className="animate-spin text-emerald-500" />
                           AI 분석 중...
                         </div>
                       </div>
-                      <button onClick={() => removeQueueItem(item.id)} className="p-1 text-gray-300 hover:text-gray-500">
+                      <button onClick={() => removeQueueItem(item.id)} className="p-1 text-ink-faint hover:text-ink-soft">
                         <X size={14} />
                       </button>
                     </div>
@@ -472,16 +473,16 @@ export default function Ledger() {
                         <img src={item.previewUrl} alt="" className="w-full h-full object-cover opacity-40" />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="text-xs text-red-500">분석에 실패했어요</p>
-                        <p className="text-xs text-gray-400 truncate">다시 시도하거나 아래에서 직접 입력하세요</p>
+                        <p className="text-caption text-red-500">분석에 실패했어요</p>
+                        <p className="text-caption text-ink-soft truncate">다시 시도하거나 아래에서 직접 입력하세요</p>
                       </div>
                       <button
                         onClick={() => retryQueueItem(item)}
-                        className="flex items-center gap-1 px-2.5 py-1.5 text-xs text-emerald-600 border border-emerald-200 rounded-lg hover:bg-emerald-50 active:scale-95 transition-all flex-shrink-0"
+                        className="flex items-center gap-1 px-2.5 py-1.5 text-caption text-emerald-600 border border-emerald-200 rounded-lg hover:bg-emerald-50 active:scale-95 transition-all flex-shrink-0"
                       >
                         <RotateCw size={12} /> 다시 시도
                       </button>
-                      <button onClick={() => removeQueueItem(item.id)} className="p-1 text-gray-300 hover:text-gray-500 flex-shrink-0">
+                      <button onClick={() => removeQueueItem(item.id)} className="p-1 text-ink-faint hover:text-ink-soft flex-shrink-0">
                         <X size={14} />
                       </button>
                     </div>
@@ -499,7 +500,7 @@ export default function Ledger() {
                           <input
                             value={item.title}
                             onChange={e => updateQueueItem(item.id, { title: e.target.value })}
-                            className="w-full text-sm font-medium text-gray-900 border-0 border-b border-gray-200 pb-0.5 focus:outline-none focus:border-emerald-400 bg-transparent"
+                            className="w-full text-body font-medium text-ink border-0 border-b border-line pb-0.5 focus:outline-none focus:border-emerald-400 bg-transparent"
                             placeholder="항목명"
                           />
                           {/* 날짜 + 카테고리 */}
@@ -508,46 +509,46 @@ export default function Ledger() {
                               type="date"
                               value={item.date}
                               onChange={e => updateQueueItem(item.id, { date: e.target.value })}
-                              className="text-xs text-gray-500 border-0 border-b border-gray-100 focus:outline-none focus:border-emerald-300 bg-transparent w-28"
+                              className="text-caption text-ink-soft border-0 border-b border-line focus:outline-none focus:border-emerald-300 bg-transparent w-28"
                             />
                             <select
                               value={item.category}
                               onChange={e => updateQueueItem(item.id, { category: e.target.value })}
-                              className="text-xs text-gray-500 border-0 border-b border-gray-100 focus:outline-none focus:border-emerald-300 bg-transparent"
+                              className="text-caption text-ink-soft border-0 border-b border-line focus:outline-none focus:border-emerald-300 bg-transparent"
                             >
                               {categoryNames.map((c: string) => <option key={c} value={c}>{c}</option>)}
                             </select>
                           </div>
                         </div>
-                        <button onClick={() => removeQueueItem(item.id)} className="p-1 text-gray-300 hover:text-gray-500 flex-shrink-0">
+                        <button onClick={() => removeQueueItem(item.id)} className="p-1 text-ink-faint hover:text-ink-soft flex-shrink-0">
                           <X size={14} />
                         </button>
                       </div>
 
                       {/* [작업5] 리빌 히어로 — 도파민은 "지켜냄"(절약=수익 리프레임) */}
-                      <div className="flex items-baseline justify-between rounded-xl bg-emerald-50 px-3 py-2.5">
-                        <span className="text-[11px] font-medium text-emerald-700/70">이번에 지켜낸 돈</span>
+                      <div className="flex items-baseline justify-between rounded-card bg-emerald-50 px-3 py-2.5">
+                        <span className="text-micro font-medium text-emerald-700/70">이번에 지켜낸 돈</span>
                         <span className="font-mono text-xl font-extrabold tabular-nums text-emerald-600">
                           {item.originalAmount && item.actualAmount
                             ? `+₩${fmt(Math.max(0, Number(item.originalAmount) - Number(item.actualAmount)))}`
                             : "—"}
-                          <span className="ml-1 text-xs font-semibold text-emerald-600/80">지켜냄</span>
+                          <span className="ml-1 text-caption font-semibold text-emerald-600/80">지켜냄</span>
                         </span>
                       </div>
 
                       {/* [작업5] AI 원가추정은 작은 보조줄 — 바로 탭해서 수정 (원가 → 실제) */}
-                      <div className="flex items-center gap-2 px-1 text-[11px] text-gray-400">
-                        <span className="font-mono uppercase tracking-wider text-gray-300">AI 추정</span>
+                      <div className="flex items-center gap-2 px-1 text-micro text-ink-soft">
+                        <span className="font-mono uppercase tracking-wider text-ink-faint">AI 추정</span>
                         <span className="flex items-center gap-1">원가
                           <input type="number" value={item.originalAmount}
                             onChange={e => updateQueueItem(item.id, { originalAmount: e.target.value })}
-                            className="w-16 border-0 border-b border-gray-200 bg-transparent text-right tabular-nums text-gray-600 focus:border-emerald-400 focus:outline-none" />
+                            className="w-16 border-0 border-b border-line bg-transparent text-right tabular-nums text-ink-soft focus:border-emerald-400 focus:outline-none" />
                         </span>
-                        <span className="text-gray-300">→</span>
+                        <span className="text-ink-faint">→</span>
                         <span className="flex items-center gap-1">실제
                           <input type="number" value={item.actualAmount}
                             onChange={e => updateQueueItem(item.id, { actualAmount: e.target.value })}
-                            className="w-16 border-0 border-b border-gray-200 bg-transparent text-right tabular-nums text-gray-600 focus:border-emerald-400 focus:outline-none" />
+                            className="w-16 border-0 border-b border-line bg-transparent text-right tabular-nums text-ink-soft focus:border-emerald-400 focus:outline-none" />
                         </span>
                       </div>
 
@@ -556,19 +557,19 @@ export default function Ledger() {
                         value={item.memo}
                         onChange={e => updateQueueItem(item.id, { memo: e.target.value })}
                         placeholder="내 썰 한 줄 (선택)"
-                        className="w-full text-xs border border-gray-200 rounded px-2 py-1.5 focus:outline-none focus:border-emerald-400"
+                        className="w-full text-caption border border-line rounded px-2 py-1.5 focus:outline-none focus:border-emerald-400"
                       />
 
                       {/* AI 근거 — 더 작게 보조 표기 */}
                       {item.aiReason && (
-                        <p className="text-[10px] text-gray-300 leading-relaxed">{item.aiReason}</p>
+                        <p className="text-micro text-ink-faint leading-relaxed">{item.aiReason}</p>
                       )}
 
                       {/* 버그 #1: item.submitting 으로 개별 로딩 */}
                       <button
                         onClick={() => handleQueueConfirm(item)}
                         disabled={item.submitting}
-                        className="w-full py-2 bg-emerald-500 text-white text-sm font-medium rounded-lg hover:bg-emerald-600 disabled:opacity-50 transition-colors"
+                        className="w-full py-2 bg-emerald-500 text-white text-body font-medium rounded-lg hover:bg-emerald-600 disabled:opacity-50 transition-colors"
                       >
                         {item.submitting ? <Loader2 className="w-4 h-4 animate-spin mx-auto" /> : "등록"}
                       </button>
@@ -583,7 +584,7 @@ export default function Ledger() {
           <section className="mb-6">
             <button
               onClick={() => setShowManual(v => !v)}
-              className="w-full flex items-center justify-between py-3 text-sm text-gray-500 hover:text-gray-700 transition-colors"
+              className="w-full flex items-center justify-between py-3 text-body text-ink-soft hover:text-ink transition-colors"
             >
               <span className="flex items-center gap-1.5"><PenLine size={14} /> 직접 입력</span>
               {showManual ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
@@ -591,59 +592,59 @@ export default function Ledger() {
 
             {/* 버그 #3: form 태그 + type="submit" 으로 Enter 키 제출 지원 */}
             {showManual && (
-              <form onSubmit={handleManualSubmit} className="border border-gray-200 rounded-xl p-4 space-y-3">
+              <form onSubmit={handleManualSubmit} className="border border-line rounded-card p-4 space-y-3">
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="text-xs text-gray-400 mb-1 block">날짜</label>
+                    <label className="text-caption text-ink-soft mb-1 block">날짜</label>
                     <input type="date" value={manualForm.date}
                       onChange={e => handleManualDateChange(e.target.value)}
-                      className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:border-emerald-400" />
+                      className="w-full text-body border border-line rounded-lg px-3 py-2 focus:outline-none focus:border-emerald-400" />
                   </div>
                   <div>
-                    <label className="text-xs text-gray-400 mb-1 block">카테고리</label>
+                    <label className="text-caption text-ink-soft mb-1 block">카테고리</label>
                     <select value={manualForm.category}
                       onChange={e => handleManualCategoryChange(e.target.value)}
-                      className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:border-emerald-400 bg-white">
+                      className="w-full text-body border border-line rounded-lg px-3 py-2 focus:outline-none focus:border-emerald-400 bg-white">
                       {categoryNames.map((c: string) => <option key={c} value={c}>{c}</option>)}
                     </select>
                   </div>
                 </div>
                 <div>
-                  <label className="text-xs text-gray-400 mb-1 block">항목명</label>
+                  <label className="text-caption text-ink-soft mb-1 block">항목명</label>
                   <input type="text" value={manualForm.title}
                     onChange={e => {
                       setManualTitleEdited(true);
                       setManualForm(f => ({ ...f, title: e.target.value }));
                     }}
-                    className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:border-emerald-400" />
+                    className="w-full text-body border border-line rounded-lg px-3 py-2 focus:outline-none focus:border-emerald-400" />
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="text-xs text-gray-400 mb-1 block">원가 (원)</label>
+                    <label className="text-caption text-ink-soft mb-1 block">원가 (원)</label>
                     <input type="number" placeholder="9000" value={manualForm.originalAmount}
                       onChange={e => setManualForm(f => ({ ...f, originalAmount: e.target.value }))}
-                      className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:border-emerald-400" />
+                      className="w-full text-body border border-line rounded-lg px-3 py-2 focus:outline-none focus:border-emerald-400" />
                   </div>
                   <div>
-                    <label className="text-xs text-gray-400 mb-1 block">실제 지출 (원)</label>
+                    <label className="text-caption text-ink-soft mb-1 block">실제 지출 (원)</label>
                     <input type="number" placeholder="3000" value={manualForm.actualAmount}
                       onChange={e => setManualForm(f => ({ ...f, actualAmount: e.target.value }))}
-                      className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:border-emerald-400" />
+                      className="w-full text-body border border-line rounded-lg px-3 py-2 focus:outline-none focus:border-emerald-400" />
                   </div>
                 </div>
                 <div>
-                  <label className="text-xs text-gray-400 mb-1 block">메모 (선택)</label>
+                  <label className="text-caption text-ink-soft mb-1 block">메모 (선택)</label>
                   <input type="text" placeholder="메모를 남겨보세요" value={manualForm.memo}
                     onChange={e => setManualForm(f => ({ ...f, memo: e.target.value }))}
-                    className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:border-emerald-400" />
+                    className="w-full text-body border border-line rounded-lg px-3 py-2 focus:outline-none focus:border-emerald-400" />
                 </div>
                 {manualForm.originalAmount && manualForm.actualAmount && (
-                  <p className="text-xs text-emerald-600 font-medium">
+                  <p className="text-caption text-emerald-600 font-medium">
                     수익: +₩{fmt(Number(manualForm.originalAmount) - Number(manualForm.actualAmount))}
                   </p>
                 )}
                 <button type="submit" disabled={createEntry.isPending}
-                  className="w-full py-2.5 bg-emerald-500 text-white text-sm font-medium rounded-lg hover:bg-emerald-600 disabled:opacity-50 transition-colors">
+                  className="w-full py-2.5 bg-emerald-500 text-white text-body font-medium rounded-lg hover:bg-emerald-600 disabled:opacity-50 transition-colors">
                   {createEntry.isPending ? <Loader2 className="w-4 h-4 animate-spin mx-auto" /> : "등록"}
                 </button>
               </form>
@@ -653,60 +654,70 @@ export default function Ledger() {
           {/* 기록 목록 */}
           <section className="mb-6">
             <div className="flex items-center justify-between mb-3">
-              <h2 className="text-xs font-mono text-gray-400 tracking-widest uppercase">기록</h2>
-              <span className="text-xs text-gray-400">{(entries as SavingsEntry[]).length}건</span>
+              <h2 className="text-caption font-mono text-ink-soft tracking-widest uppercase">기록</h2>
+              <span className="text-caption text-ink-soft">{(entries as SavingsEntry[]).length}건</span>
             </div>
 
             {isLoading ? (
               <div className="space-y-2">
-                {[1, 2, 3].map(i => <div key={i} className="h-14 bg-gray-100 rounded-lg animate-pulse" />)}
+                {[1, 2, 3].map(i => <div key={i} className="h-14 bg-line rounded-lg animate-pulse" />)}
               </div>
             ) : (entries as SavingsEntry[]).length === 0 ? (
-              <p className="text-sm text-gray-400 text-center py-8">아직 기록이 없습니다</p>
+              <div className="flex flex-col items-center text-center py-10">
+                <Jarureu level={0.12} size={64} />
+                <p className="text-body font-medium text-ink mt-3">아직 장부가 비어 있어요</p>
+                <p className="text-caption text-ink-soft mt-1">사진 한 장이면 자르르가 첫 절약을 찾아드려요</p>
+                <button
+                  onClick={() => galleryRef.current?.click()}
+                  className="mt-4 inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-emerald-500 text-white text-caption font-medium active:scale-95 transition-transform"
+                >
+                  <Camera size={14} /> 첫 기록 남기기
+                </button>
+              </div>
             ) : (
               <div className="space-y-1">
                 {(entries as SavingsEntry[]).map(entry => (
                   <div key={entry.id}>
                     {/* 일반 행 */}
                     {editingId !== entry.id && (
-                      <div className="flex items-center gap-3 py-2.5 border-b border-gray-100 last:border-0">
+                      <div className="flex items-center gap-3 py-2.5 border-b border-line last:border-0">
                         {entry.imageUrl
                           ? <img src={entry.imageUrl} alt="" className="w-10 h-10 rounded-lg object-cover flex-shrink-0" />
-                          : <div className="w-10 h-10 rounded-lg bg-gray-100 flex-shrink-0" />
+                          : <div className="w-10 h-10 rounded-lg bg-line flex-shrink-0" />
                         }
                         <div className="flex-1 min-w-0">
                           {/* [작업2] 티커칩 + 제목 */}
                           <div className="flex items-center gap-1.5">
                             {entry.ticker && (
-                              <span className="text-[10px] font-mono font-semibold tracking-wider px-1.5 py-0.5 rounded bg-[#E0A92E]/15 text-[#B07F1E] flex-shrink-0">
+                              <span className="text-micro font-mono font-semibold tracking-wider px-1.5 py-0.5 rounded bg-[#E0A92E]/15 text-[#B07F1E] flex-shrink-0">
                                 {entry.ticker}
                               </span>
                             )}
-                            <p className="text-sm font-medium text-gray-900 truncate">{entry.title}</p>
+                            <p className="text-body font-medium text-ink truncate">{entry.title}</p>
                           </div>
                           {/* 내 썰(메모) 한 줄 미리보기 — 사적 화면이라 노출 OK */}
-                          {entry.memo && <p className="text-xs text-gray-400 truncate mt-0.5 italic">{entry.memo}</p>}
+                          {entry.memo && <p className="text-caption text-ink-soft truncate mt-0.5 italic">{entry.memo}</p>}
                         </div>
                         {/* 버그 #2: 원가(취소선) → 실제지출 나란히 + 절약수익 */}
                         <div className="text-right flex-shrink-0">
-                          <p className="text-sm font-mono font-semibold text-emerald-500">+₩{fmt(entry.profit)}</p>
-                          <p className="text-xs text-gray-400 tabular-nums">
+                          <p className="text-body font-mono font-semibold text-emerald-500">+₩{fmt(entry.profit)}</p>
+                          <p className="text-caption text-ink-soft tabular-nums">
                             <span className="line-through">₩{fmt(entry.originalAmount)}</span>
-                            <span className="mx-1 text-gray-300">→</span>
-                            <span className="text-gray-600">₩{fmt(entry.actualAmount)}</span>
+                            <span className="mx-1 text-ink-faint">→</span>
+                            <span className="text-ink-soft">₩{fmt(entry.actualAmount)}</span>
                           </p>
                         </div>
                         <button onClick={() => setStoryEntry(entry)}
-                          className="p-1.5 text-gray-300 hover:text-emerald-500 transition-colors flex-shrink-0">
+                          className="p-1.5 text-ink-faint hover:text-emerald-500 transition-colors flex-shrink-0">
                           <Share2 size={13} />
                         </button>
                         <button onClick={() => startEdit(entry)}
-                          className="p-1.5 text-gray-300 hover:text-emerald-500 transition-colors flex-shrink-0">
+                          className="p-1.5 text-ink-faint hover:text-emerald-500 transition-colors flex-shrink-0">
                           <Pencil size={13} />
                         </button>
                         <button
                           onClick={() => { if (confirm(`"${entry.title}" 기록을 삭제할까요?`)) deleteEntry.mutate({ id: entry.id }); }}
-                          className="p-1.5 text-gray-300 hover:text-red-400 transition-colors flex-shrink-0">
+                          className="p-1.5 text-ink-faint hover:text-red-400 transition-colors flex-shrink-0">
                           <Trash2 size={13} />
                         </button>
                       </div>
@@ -716,58 +727,58 @@ export default function Ledger() {
                     {editingId === entry.id && editForm && (
                       <form
                         onSubmit={e => handleEditSubmit(e, entry.id)}
-                        className="border border-emerald-200 rounded-xl p-3 my-1 space-y-2 bg-emerald-50/30"
+                        className="border border-emerald-200 rounded-card p-3 my-1 space-y-2 bg-emerald-50/30"
                       >
                         <div className="grid grid-cols-2 gap-2">
                           <div>
-                            <label className="text-[10px] text-gray-400 block mb-0.5">날짜</label>
+                            <label className="text-micro text-ink-soft block mb-0.5">날짜</label>
                             <input type="date" value={editForm.date}
                               onChange={e => setEditForm(f => f ? { ...f, date: e.target.value } : f)}
-                              className="w-full text-xs border border-gray-200 rounded px-2 py-1.5 focus:outline-none focus:border-emerald-400 bg-white" />
+                              className="w-full text-caption border border-line rounded px-2 py-1.5 focus:outline-none focus:border-emerald-400 bg-white" />
                           </div>
                           <div>
-                            <label className="text-[10px] text-gray-400 block mb-0.5">카테고리</label>
+                            <label className="text-micro text-ink-soft block mb-0.5">카테고리</label>
                             <select value={editForm.category}
                               onChange={e => setEditForm(f => f ? { ...f, category: e.target.value } : f)}
-                              className="w-full text-xs border border-gray-200 rounded px-2 py-1.5 focus:outline-none focus:border-emerald-400 bg-white">
+                              className="w-full text-caption border border-line rounded px-2 py-1.5 focus:outline-none focus:border-emerald-400 bg-white">
                               {categoryNames.map((c: string) => <option key={c} value={c}>{c}</option>)}
                             </select>
                           </div>
                         </div>
                         <div>
-                          <label className="text-[10px] text-gray-400 block mb-0.5">항목명</label>
+                          <label className="text-micro text-ink-soft block mb-0.5">항목명</label>
                           <input value={editForm.title}
                             onChange={e => setEditForm(f => f ? { ...f, title: e.target.value } : f)}
-                            className="w-full text-xs border border-gray-200 rounded px-2 py-1.5 focus:outline-none focus:border-emerald-400 bg-white" />
+                            className="w-full text-caption border border-line rounded px-2 py-1.5 focus:outline-none focus:border-emerald-400 bg-white" />
                         </div>
                         <div className="grid grid-cols-2 gap-2">
                           <div>
-                            <label className="text-[10px] text-gray-400 block mb-0.5">원가</label>
+                            <label className="text-micro text-ink-soft block mb-0.5">원가</label>
                             <input type="number" value={editForm.originalAmount}
                               onChange={e => setEditForm(f => f ? { ...f, originalAmount: e.target.value } : f)}
-                              className="w-full text-xs border border-gray-200 rounded px-2 py-1.5 focus:outline-none focus:border-emerald-400 bg-white" />
+                              className="w-full text-caption border border-line rounded px-2 py-1.5 focus:outline-none focus:border-emerald-400 bg-white" />
                           </div>
                           <div>
-                            <label className="text-[10px] text-gray-400 block mb-0.5">실제 지출</label>
+                            <label className="text-micro text-ink-soft block mb-0.5">실제 지출</label>
                             <input type="number" value={editForm.actualAmount}
                               onChange={e => setEditForm(f => f ? { ...f, actualAmount: e.target.value } : f)}
-                              className="w-full text-xs border border-gray-200 rounded px-2 py-1.5 focus:outline-none focus:border-emerald-400 bg-white" />
+                              className="w-full text-caption border border-line rounded px-2 py-1.5 focus:outline-none focus:border-emerald-400 bg-white" />
                           </div>
                         </div>
                         <div>
-                          <label className="text-[10px] text-gray-400 block mb-0.5">메모</label>
+                          <label className="text-micro text-ink-soft block mb-0.5">메모</label>
                           <input value={editForm.memo}
                             onChange={e => setEditForm(f => f ? { ...f, memo: e.target.value } : f)}
                             placeholder="메모 (선택)"
-                            className="w-full text-xs border border-gray-200 rounded px-2 py-1.5 focus:outline-none focus:border-emerald-400 bg-white" />
+                            className="w-full text-caption border border-line rounded px-2 py-1.5 focus:outline-none focus:border-emerald-400 bg-white" />
                         </div>
                         <div className="flex gap-2">
                           <button type="submit" disabled={updateEntry.isPending}
-                            className="flex-1 py-1.5 bg-emerald-500 text-white text-xs font-medium rounded-lg hover:bg-emerald-600 disabled:opacity-50 transition-colors">
+                            className="flex-1 py-1.5 bg-emerald-500 text-white text-caption font-medium rounded-lg hover:bg-emerald-600 disabled:opacity-50 transition-colors">
                             {updateEntry.isPending ? <Loader2 className="w-3 h-3 animate-spin mx-auto" /> : "저장"}
                           </button>
                           <button type="button" onClick={() => { setEditingId(null); setEditForm(null); }}
-                            className="px-3 py-1.5 text-xs text-gray-500 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
+                            className="px-3 py-1.5 text-caption text-ink-soft border border-line rounded-lg hover:bg-cream transition-colors">
                             취소
                           </button>
                         </div>
@@ -782,20 +793,20 @@ export default function Ledger() {
           {/* Export */}
           <section className="mb-6">
             <button onClick={() => setShowExport(v => !v)}
-              className="w-full flex items-center justify-between py-3 text-sm text-gray-500 hover:text-gray-700 transition-colors">
+              className="w-full flex items-center justify-between py-3 text-body text-ink-soft hover:text-ink transition-colors">
               <span className="flex items-center gap-1.5"><Download size={14} /> 데이터 내보내기</span>
               {showExport ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
             </button>
 
             {showExport && (
-              <div className="border border-gray-200 rounded-xl p-4 space-y-4">
+              <div className="border border-line rounded-card p-4 space-y-4">
                 <div>
-                  <p className="text-xs text-gray-400 mb-2">기간 선택</p>
+                  <p className="text-caption text-ink-soft mb-2">기간 선택</p>
                   <div className="flex gap-2 flex-wrap">
                     {(["all", "month", "week", "custom"] as ExportRange[]).map(r => (
                       <button key={r} onClick={() => setExportRange(r)}
-                        className={`px-3 py-1.5 text-xs rounded-lg border transition-colors ${
-                          exportRange === r ? "bg-emerald-500 text-white border-emerald-500" : "border-gray-200 text-gray-500 hover:border-emerald-300"
+                        className={`px-3 py-1.5 text-caption rounded-lg border transition-colors ${
+                          exportRange === r ? "bg-emerald-500 text-white border-emerald-500" : "border-line text-ink-soft hover:border-emerald-300"
                         }`}>
                         {{ all: "전체", month: "이번 달", week: "이번 주", custom: "직접 선택" }[r]}
                       </button>
@@ -804,27 +815,27 @@ export default function Ledger() {
                   {exportRange === "custom" && (
                     <div className="flex gap-2 mt-2">
                       <input type="date" value={customFrom} onChange={e => setCustomFrom(e.target.value)}
-                        className="flex-1 text-xs border border-gray-200 rounded-lg px-2 py-1.5 focus:outline-none focus:border-emerald-400" />
-                      <span className="text-xs text-gray-400 self-center">~</span>
+                        className="flex-1 text-caption border border-line rounded-lg px-2 py-1.5 focus:outline-none focus:border-emerald-400" />
+                      <span className="text-caption text-ink-soft self-center">~</span>
                       <input type="date" value={customTo} onChange={e => setCustomTo(e.target.value)}
-                        className="flex-1 text-xs border border-gray-200 rounded-lg px-2 py-1.5 focus:outline-none focus:border-emerald-400" />
+                        className="flex-1 text-caption border border-line rounded-lg px-2 py-1.5 focus:outline-none focus:border-emerald-400" />
                     </div>
                   )}
                 </div>
-                <div className="bg-gray-50 rounded-lg px-3 py-2">
-                  <p className="text-xs text-gray-500">
+                <div className="bg-cream rounded-lg px-3 py-2">
+                  <p className="text-caption text-ink-soft">
                     {exportEntries.length}건 · 수익{" "}
                     <span className="font-semibold text-emerald-600">₩{fmt(exportEntries.reduce((s, e) => s + e.profit, 0))}</span>
                   </p>
                 </div>
                 <div className="flex gap-2">
                   <button onClick={handleCopyMd} disabled={exportEntries.length === 0}
-                    className="flex-1 flex items-center justify-center gap-1.5 py-2.5 text-sm border border-gray-200 rounded-lg hover:border-emerald-300 hover:text-emerald-600 disabled:opacity-40 transition-colors">
+                    className="flex-1 flex items-center justify-center gap-1.5 py-2.5 text-body border border-line rounded-lg hover:border-emerald-300 hover:text-emerald-600 disabled:opacity-40 transition-colors">
                     {copied ? <Check size={14} className="text-emerald-500" /> : <Copy size={14} />}
                     Notion MD 복사
                   </button>
                   <button onClick={handleDownloadCsv} disabled={exportEntries.length === 0}
-                    className="flex-1 flex items-center justify-center gap-1.5 py-2.5 text-sm border border-gray-200 rounded-lg hover:border-emerald-300 hover:text-emerald-600 disabled:opacity-40 transition-colors">
+                    className="flex-1 flex items-center justify-center gap-1.5 py-2.5 text-body border border-line rounded-lg hover:border-emerald-300 hover:text-emerald-600 disabled:opacity-40 transition-colors">
                     <Download size={14} />
                     CSV 다운로드
                   </button>
@@ -844,7 +855,7 @@ export default function Ledger() {
 
       {/* 푸터 */}
       <footer className="text-center pb-4">
-        <p className="text-xs text-gray-300">거지답게 아꼈서 벌었다</p>
+        <p className="text-caption text-ink-faint">거지답게 아꼈서 벌었다</p>
       </footer>
 
       {/* 스토리 카드 모달 */}

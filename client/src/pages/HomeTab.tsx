@@ -92,7 +92,7 @@ export default function HomeTab({ onCapture, onOpenProfile, job, onOpenConfirm, 
       {/* 단일 액션 — 큰 기록 버튼 / 진행 상태칩 */}
       {analyzingJob ? (
         <div className="mt-7 flex items-center gap-3 bg-emerald-50 border border-emerald-100 rounded-card p-3.5 shadow-sm">
-          <img src={analyzingJob.preview} alt="" className="w-12 h-12 rounded-xl object-cover shrink-0" />
+          <img src={analyzingJob.preview} alt="" className="w-12 h-12 rounded-card object-cover shrink-0" />
           <div className="text-left">
             <p className="text-body font-medium text-emerald-700">{CHARACTER_NAME}가 분석하고 있어요</p>
             <p className="text-micro text-emerald-600">잠시 둘러보고 계셔도 됩니다</p>
@@ -100,7 +100,7 @@ export default function HomeTab({ onCapture, onOpenProfile, job, onOpenConfirm, 
         </div>
       ) : readyJob ? (
         <button onClick={onOpenConfirm} className="mt-7 w-full flex items-center gap-3 border border-emerald-200 bg-emerald-50 rounded-card p-3 text-left shadow-sm active:bg-emerald-100 transition-colors">
-          <img src={readyJob.preview} alt="" className="w-12 h-12 rounded-xl object-cover shrink-0" />
+          <img src={readyJob.preview} alt="" className="w-12 h-12 rounded-card object-cover shrink-0" />
           <div className="flex-1 min-w-0">
             <p className="text-body font-medium text-ink truncate">{readyJob.data.title || "분석 완료"}</p>
             <p className="text-micro text-emerald-600 flex items-center gap-0.5"><Check size={12} /> 분석 완료 · 확인하고 저장</p>
@@ -109,7 +109,7 @@ export default function HomeTab({ onCapture, onOpenProfile, job, onOpenConfirm, 
         </button>
       ) : errorJob ? (
         <button onClick={onOpenConfirm} className="mt-7 w-full flex items-center gap-3 border border-line bg-white rounded-card p-3 text-left shadow-sm active:bg-cream transition-colors">
-          <img src={errorJob.preview} alt="" className="w-12 h-12 rounded-xl object-cover shrink-0" />
+          <img src={errorJob.preview} alt="" className="w-12 h-12 rounded-card object-cover shrink-0" />
           <div className="flex-1 min-w-0">
             <p className="text-body font-medium text-ink">분석을 못 했어요</p>
             <p className="text-micro text-ink-soft">탭해서 직접 입력하기</p>
@@ -137,8 +137,8 @@ export default function HomeTab({ onCapture, onOpenProfile, job, onOpenConfirm, 
         </button>
       )}
 
-      {/* 도사 한 마디 — 하단 앵커 */}
-      <div className="mt-auto pt-8">
+      {/* 도사 한 마디 */}
+      <div className="mt-10">
         <div className="relative bg-butler border border-butler-line rounded-card px-5 py-5 overflow-hidden">
           <span className="absolute -top-3 right-3 text-[68px] leading-none font-serif text-gold/20 select-none" aria-hidden="true">”</span>
           <p className="text-micro text-gold mb-2 tracking-wide font-medium">도사의 오늘 한 마디</p>
