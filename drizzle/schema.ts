@@ -73,3 +73,18 @@ export const userCategories = sqliteTable("user_categories", {
 
 export type UserCategory = typeof userCategories.$inferSelect;
 export type InsertUserCategory = typeof userCategories.$inferInsert;
+
+// ── 사용량 이벤트 (측정 + AI 호출 제한) ──────────────────────────────
+// type 예: "entry_create" | "ai_analyze_image" | "ai_parse_sms"
+export const usageEvents = sqliteTable("usage_events", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  userId: integer("userId").notNull(),
+  type: text("type").notNull(),
+  meta: text("meta"), // 선택: 부가정보(JSON 문자열 등)
+  createdAt: integer("createdAt", { mode: "timestamp" })
+    .notNull()
+    .default(sql`(unixepoch())`),
+});
+
+export type UsageEvent = typeof usageEvents.$inferSelect;
+export type InsertUsageEvent = typeof usageEvents.$inferInsert;

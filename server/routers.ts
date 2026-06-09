@@ -1,8 +1,9 @@
 import { z } from "zod";
+import { TRPCError } from "@trpc/server";
 import { COOKIE_NAME } from "@shared/const";
 import { getSessionCookieOptions } from "./_core/cookies";
-import { publicProcedure, protectedProcedure, router } from "./_core/trpc";
-import { getSavingsEntries, createSavingsEntry, deleteSavingsEntry, deleteMultipleSavingsEntries, deleteAllSavingsEntries, countSavingsEntriesByCategory, updateSavingsEntry, getUserCategories, createUserCategory, deleteUserCategory, renameUserCategory, updateUserName } from "./db";
+import { publicProcedure, protectedProcedure, adminProcedure, router } from "./_core/trpc";
+import { getSavingsEntries, createSavingsEntry, deleteSavingsEntry, deleteMultipleSavingsEntries, deleteAllSavingsEntries, countSavingsEntriesByCategory, updateSavingsEntry, getUserCategories, createUserCategory, deleteUserCategory, renameUserCategory, updateUserName, logUsageEvent, countAiCallsToday, getUsageStats } from "./db";
 import { invokeLLM } from "./_core/llm";
 import { storagePut, storageGetSignedUrl } from "./storage";
 
@@ -13,6 +14,9 @@ function generateTicker(category: string, count: number): string {
   const prefix = prefixMap[category] ?? "SAVE";
   return `${prefix}-${String(count + 1).padStart(3, "0")}`;
 }
+
+// AI 분석(사진·문자)은 유저당 하루 호출 상한 — 비용 폭탄·봇 방어.
+const AI_DAILY_LIMIT = 30;
 
 export const appRouter = router({
   auth: router({
@@ -55,7 +59,7 @@ export const appRouter = router({
         const count = await countSavingsEntriesByCategory(ctx.user.id, input.category);
         const ticker = generateTicker(input.category, count);
         const profit = input.originalAmount - input.actualAmount;
-        return createSavingsEntry({
+        const created = await createSavingsEntry({
           userId: ctx.user.id,
           date: input.date,
           title: input.title,
@@ -70,6 +74,8 @@ export const appRouter = router({
           imageUrl: input.imageUrl,
           memo: input.memo,
         });
+        await logUsageEvent(ctx.user.id, "entry_create");
+        return created;
       }),
 
     update: protectedProcedure
@@ -141,7 +147,14 @@ export const appRouter = router({
         imageBase64: z.string(),
         mimeType: z.string().default("image/jpeg"),
       }))
-      .mutation(async ({ input }) => {
+      .mutation(async ({ ctx, input }) => {
+        const used = await countAiCallsToday(ctx.user.id);
+        if (used >= AI_DAILY_LIMIT) {
+          throw new TRPCError({
+            code: "TOO_MANY_REQUESTS",
+            message: `오늘 AI 분석 한도(${AI_DAILY_LIMIT}회)를 다 썼어요. 내일 다시 이용해주세요.`,
+          });
+        }
         const buffer = Buffer.from(input.imageBase64, "base64");
         const { key } = await storagePut(
           `ai-analysis/${Date.now()}.jpg`,
@@ -243,6 +256,7 @@ cropBox 추정 원칙:
           reason: string; confidence: "high" | "medium" | "low";
           cropBox: { x: number; y: number };
         };
+        await logUsageEvent(ctx.user.id, "ai_analyze_image");
         return { ...parsed, imageUrl: `/manus-storage/${key}` };
       }),
 
@@ -263,7 +277,14 @@ cropBox 추정 원칙:
 
     parseSmsText: protectedProcedure
       .input(z.object({ text: z.string().min(1) }))
-      .mutation(async ({ input }) => {
+      .mutation(async ({ ctx, input }) => {
+        const used = await countAiCallsToday(ctx.user.id);
+        if (used >= AI_DAILY_LIMIT) {
+          throw new TRPCError({
+            code: "TOO_MANY_REQUESTS",
+            message: `오늘 AI 분석 한도(${AI_DAILY_LIMIT}회)를 다 썼어요. 내일 다시 이용해주세요.`,
+          });
+        }
         const result = await invokeLLM({
           messages: [
             {
@@ -318,10 +339,18 @@ cropBox 추정 원칙:
 
         const content = result.choices[0]?.message?.content;
         if (!content || typeof content !== "string") throw new Error("파싱 결과를 받지 못했습니다");
+        await logUsageEvent(ctx.user.id, "ai_parse_sms");
         return JSON.parse(content) as
           | { parsed: true; amount: number; merchant: string; date: string; category: string }
           | { parsed: false; reason: string };
       }),
+  }),
+
+  admin: router({
+    // 운영 지표 조회(소유자/관리자 전용). 화면(대시보드)에서 호출해 쓸 수 있다.
+    usageStats: adminProcedure.query(async () => {
+      return getUsageStats();
+    }),
   }),
 });
 
