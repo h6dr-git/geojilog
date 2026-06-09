@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/select";
 import {
   Plus, PlusCircle, CheckCircle2, Camera, MessageSquare, PenLine,
-  Loader2, Sparkles, Upload, X, ChevronRight, AlertCircle,
+  Loader2, Sparkles, Upload, X, ChevronRight, AlertCircle, RotateCw,
 } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
@@ -51,6 +51,7 @@ interface Props {
 
 interface AnalyzedItem {
   id: string;
+  file: File; // 원본 보관 → 분석 실패 시 같은 파일로 재분석(다시 업로드 X)
   previewUrl: string;
   fileName: string;
   status: "pending" | "analyzing" | "done" | "error";
@@ -161,6 +162,7 @@ export default function AddEntryDialog({ onAdd, fullWidth = false, categoryNames
     if (arr.length === 0) { toast.error("이미지 파일만 업로드 가능합니다"); return; }
     const newItems: AnalyzedItem[] = arr.map(file => ({
       id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+      file, // 원본 보관 → 재시도 가능
       previewUrl: URL.createObjectURL(file),
       fileName: file.name,
       status: "pending" as const,
@@ -185,6 +187,13 @@ export default function AddEntryDialog({ onAdd, fullWidth = false, categoryNames
   });
   const updateItem = (id: string, patch: Partial<AnalyzedItem>) =>
     setItems(prev => prev.map(it => it.id === id ? { ...it, ...patch } : it));
+
+  // 분석 실패 항목 재시도 — 보관한 원본 File로 다시 분석(다시 업로드 강요 X).
+  // 실패하면 analyzeFile 내부 catch가 status를 다시 "error"로 되돌린다.
+  const retryItem = (item: AnalyzedItem) => {
+    setItems(prev => prev.map(it => it.id === item.id ? { ...it, status: "analyzing" as const } : it));
+    analyzeFile(item.file, item.id);
+  };
 
   // ── 문자 파싱 ──────────────────────────────────────────────
   const handleParseSms = async () => {
@@ -404,9 +413,12 @@ export default function AddEntryDialog({ onAdd, fullWidth = false, categoryNames
                                 <span className="font-mono text-[9px] text-emerald-600 tracking-widest uppercase">AI ANALYZING...</span>
                               </div>
                             ) : item.status === "error" ? (
-                              <div className="flex items-center gap-1.5">
-                                <AlertCircle size={11} className="text-red-500" />
-                                <span className="font-mono text-[9px] text-red-500">분석 실패 — 직접 입력 탭을 이용해주세요</span>
+                              <div className="space-y-0.5">
+                                <div className="flex items-center gap-1.5">
+                                  <AlertCircle size={11} className="text-red-500" />
+                                  <span className="font-mono text-[9px] text-red-500">분석에 실패했어요</span>
+                                </div>
+                                <p className="font-mono text-[8px] text-muted-foreground/70">다시 시도하거나 직접 입력하세요</p>
                               </div>
                             ) : (
                               <div className="space-y-0.5">
@@ -422,6 +434,22 @@ export default function AddEntryDialog({ onAdd, fullWidth = false, categoryNames
                             )}
                           </div>
                           <div className="flex items-center gap-1 flex-shrink-0">
+                            {item.status === "error" && (
+                              <>
+                                <button
+                                  onClick={() => retryItem(item)}
+                                  className="font-mono text-[8px] px-1.5 py-0.5 rounded-sm border border-emerald-200 text-emerald-600 hover:bg-emerald-50 transition-colors flex items-center gap-0.5"
+                                >
+                                  <RotateCw size={9} /> 다시 시도
+                                </button>
+                                <button
+                                  onClick={() => setMode("manual")}
+                                  className="font-mono text-[8px] px-1.5 py-0.5 rounded-sm border border-border text-muted-foreground hover:bg-muted transition-colors"
+                                >
+                                  직접 입력
+                                </button>
+                              </>
+                            )}
                             {item.status === "done" && (
                               <button
                                 onClick={() => updateItem(item.id, { selected: !item.selected })}

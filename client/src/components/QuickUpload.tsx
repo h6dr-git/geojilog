@@ -3,7 +3,7 @@
 // ============================================================
 
 import { useRef, useCallback, useState } from "react";
-import { Plus, Camera, ImageIcon, PenLine, X } from "lucide-react";
+import { Plus, Camera, ImageIcon, PenLine, X, RotateCw, Loader2 } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
 import { getExifDate } from "@/lib/exif";
@@ -19,10 +19,20 @@ interface Props {
 const DEFAULT_CATEGORY = "식비";
 const today = new Date().toISOString().split("T")[0];
 
+// 분석 실패 항목 — 원본 File 보관 → 다시 업로드 없이 재분석(Home.tsx 패턴과 동일)
+interface FailedItem {
+  id: string;
+  file: File;
+  previewUrl: string;
+  fileName: string;
+  retrying: boolean;
+}
+
 export default function QuickUpload({ categoryNames, onDone, onStart, onManualEntry }: Props) {
   const cameraRef = useRef<HTMLInputElement>(null);
   const galleryRef = useRef<HTMLInputElement>(null);
   const [showOptions, setShowOptions] = useState(false);
+  const [failed, setFailed] = useState<FailedItem[]>([]);
 
   const analyzeImage = trpc.ai.analyzeImage.useMutation();
   const uploadCroppedImage = trpc.ai.uploadImage.useMutation();
@@ -108,10 +118,44 @@ export default function QuickUpload({ categoryNames, onDone, onStart, onManualEn
         .then(() => toast.dismiss(`analyzing-${file.name}`))
         .catch(() => {
           toast.dismiss(`analyzing-${file.name}`);
-          toast.error("분석에 실패했습니다. 직접 입력해주세요.");
+          // 알림만 띄우고 끝내지 않는다 — 원본을 보관해 '다시 시도' 카드로 노출(다시 업로드 강요 X)
+          setFailed(prev => [...prev, {
+            id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+            file,
+            previewUrl: URL.createObjectURL(file),
+            fileName: file.name,
+            retrying: false,
+          }]);
         });
     });
   }, [processFileInBackground, onStart]);
+
+  // 실패 항목 재시도 — 보관한 원본 File로 다시 분석(다시 업로드 강요 X)
+  const retryFailed = useCallback((item: FailedItem) => {
+    setFailed(prev => prev.map(it => it.id === item.id ? { ...it, retrying: true } : it));
+    toast.loading(`AI 분석 중... (${item.fileName.slice(0, 10)})`, {
+      id: `retry-${item.id}`,
+      duration: 30000,
+    });
+    processFileInBackground(item.file)
+      .then(() => {
+        toast.dismiss(`retry-${item.id}`);
+        URL.revokeObjectURL(item.previewUrl);
+        setFailed(prev => prev.filter(it => it.id !== item.id));
+      })
+      .catch(() => {
+        toast.dismiss(`retry-${item.id}`);
+        setFailed(prev => prev.map(it => it.id === item.id ? { ...it, retrying: false } : it));
+      });
+  }, [processFileInBackground]);
+
+  const removeFailed = useCallback((id: string) => {
+    setFailed(prev => {
+      const it = prev.find(i => i.id === id);
+      if (it) URL.revokeObjectURL(it.previewUrl);
+      return prev.filter(i => i.id !== id);
+    });
+  }, []);
 
   return (
     <>
@@ -168,6 +212,45 @@ export default function QuickUpload({ categoryNames, onDone, onStart, onManualEn
             </div>
           </div>
         </>
+      )}
+
+      {/* 분석 실패 — 다시 시도 / 직접 입력 폴백 (다시 업로드 강요 X) */}
+      {failed.length > 0 && (
+        <div className="fixed bottom-[88px] left-1/2 -translate-x-1/2 z-40 w-[calc(100vw-2rem)] max-w-sm space-y-2">
+          {failed.map(item => (
+            <div key={item.id} className="bg-card border border-red-200 rounded-xl shadow-lg p-3">
+              <div className="flex items-center gap-3">
+                <div className="w-11 h-11 rounded-lg bg-red-50 overflow-hidden flex-shrink-0">
+                  <img src={item.previewUrl} alt="" className="w-full h-full object-cover opacity-40" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-medium text-red-500">분석에 실패했어요</p>
+                  <p className="text-[11px] text-gray-400 truncate">다시 시도하거나 직접 입력하세요</p>
+                </div>
+                <button onClick={() => removeFailed(item.id)} className="p-1 text-gray-300 hover:text-gray-500 flex-shrink-0">
+                  <X size={14} />
+                </button>
+              </div>
+              <div className="flex gap-2 mt-2.5">
+                <button
+                  onClick={() => retryFailed(item)}
+                  disabled={item.retrying}
+                  className="flex-1 flex items-center justify-center gap-1.5 py-1.5 text-xs text-emerald-600 border border-emerald-200 rounded-lg hover:bg-emerald-50 disabled:opacity-50 active:scale-95 transition-all"
+                >
+                  {item.retrying ? <Loader2 size={12} className="animate-spin" /> : <RotateCw size={12} />}
+                  다시 시도
+                </button>
+                <button
+                  onClick={() => { onManualEntry?.(); removeFailed(item.id); }}
+                  className="flex-1 flex items-center justify-center gap-1.5 py-1.5 text-xs text-gray-500 border border-gray-200 rounded-lg hover:bg-gray-50 active:scale-95 transition-all"
+                >
+                  <PenLine size={12} />
+                  직접 입력
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
       )}
 
       {/* hidden inputs */}
