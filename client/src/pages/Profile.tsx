@@ -35,6 +35,10 @@ function Stat({ label, value }: { label: string; value: string }) {
 export default function Profile({ onGoRecords }: { onGoRecords: () => void }) {
   const { isAuthenticated, user, logout } = useAuth();
   const utils = trpc.useUtils();
+  // 닉네임 저장 — 끝나면(성공/실패 무관) me 재검증으로 서버 값과 동기화(실패 시 낙관적 변경 원복)
+  const updateName = trpc.user.updateName.useMutation({
+    onSettled: () => utils.auth.me.invalidate(),
+  });
   const { data: entries = [] } = trpc.savings.list.useQuery(undefined, {
     enabled: isAuthenticated,
   });
@@ -53,7 +57,6 @@ export default function Profile({ onGoRecords }: { onGoRecords: () => void }) {
   const displayName = user?.name || "회장님";
 
   // ── 닉네임 수정 (✎) ──────────────────────────────────────────
-  // 저장은 화면 즉시 반영(낙관적). 새로고침 후에도 유지하려면 A의 user.updateName 연결 필요.
   const [editing, setEditing] = useState(false);
   const [draftName, setDraftName] = useState("");
 
@@ -63,11 +66,11 @@ export default function Profile({ onGoRecords }: { onGoRecords: () => void }) {
   }
   function saveName() {
     const name = draftName.trim().slice(0, 20);
-    if (name) {
+    if (name && name !== displayName) {
       // 낙관적: auth.me 캐시에 새 이름을 즉시 반영
       utils.auth.me.setData(undefined, (prev) => (prev ? { ...prev, name } : prev));
-      // TODO(A2 의존): A가 trpc.user.updateName 추가하면 아래 한 줄로 서버 저장.
-      //   trpc.user.updateName.mutate({ name })  // 그래야 새로고침/다른 기기에도 유지됨
+      // 실제 서버 저장 (A의 user.updateName). onSettled에서 me 재검증.
+      updateName.mutate({ name });
     }
     setEditing(false);
   }
