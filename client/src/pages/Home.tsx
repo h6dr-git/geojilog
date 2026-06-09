@@ -181,6 +181,13 @@ function MiniCalendar({ entries }: { entries: SavingsEntry[] }) {
     if (!albumRef.current) return;
     setSavingAlbum(true);
     try {
+      // 캡처 전 폰트 로딩 보장 — 한글(Pretendard)이 폴백으로 박히는 것 방지
+      try {
+        if (document.fonts) {
+          await document.fonts.ready;
+          await document.fonts.load("700 20px Pretendard").catch(() => {});
+        }
+      } catch { /* 폰트 API 미지원 시 무시 */ }
       const html2canvas = (await import("html2canvas")).default;
       const canvas = await html2canvas(albumRef.current, {
         scale: 2, useCORS: true, backgroundColor: "#16201A", logging: false,
@@ -511,7 +518,7 @@ function MiniCalendar({ entries }: { entries: SavingsEntry[] }) {
                       </div>
                       <div style={{ textAlign: "right" }}>
                         <div style={{ fontSize: "9px", color: "#7E8C82", marginBottom: "2px" }}>{monthEntries.length}건 지켜냄</div>
-                        <div style={{ fontSize: "20px", fontWeight: 800, color: "#10B981", fontFamily: "ui-monospace, 'Courier New', monospace" }}>+₩{fmt(monthTotal)}</div>
+                        <div style={{ fontSize: "20px", fontWeight: 800, color: "#10B981", fontFamily: "'JetBrains Mono', ui-monospace, monospace" }}>+₩{fmt(monthTotal)}</div>
                       </div>
                     </div>
                     {monthPhotos.length > 0 ? (

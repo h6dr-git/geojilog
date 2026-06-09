@@ -1,7 +1,8 @@
-// SavingsStoryCard — 저장/공유 카드 (다크그린 #16201A)
-// [작업4] 공유물 = 객관적 사실 + 캐릭터 voice. 구성: +수익 + 티커 + 사진(3겹) + 김집사 평.
-//  - 사용자 날것 메모(entry.memo)는 기본 미포함 (공유는 사실 + 캐릭터 코멘트만).
-//  - html2canvas는 oklch를 못 다루므로 카드 내부 색상은 전부 inline hex/rgba.
+// SavingsStoryCard — 저장/공유 카드 (다크그린 #16201A, 수익 실현 통지서 핀테크 패러디)
+// [v2] 한글=Pretendard / 숫자·티커=JetBrains Mono. 김집사=과장된 금융 보고체("회장님 … 수익 실현").
+//  - 공유물 = 객관적 사실(+수익·원가→실제·티커) + 김집사 voice. 사용자 날것 메모는 미포함.
+//  - 사진 3겹(블러필·정사각 초점·스크림), 사진 없어도 타이포로 완성.
+//  - html2canvas: oklch 회피 위해 카드 내부 색상 전부 inline hex. 캡처 전 폰트 로딩 보장.
 // ============================================================
 
 import { useRef, useState, useCallback, useEffect } from "react";
@@ -30,44 +31,42 @@ const fmt = (n: number) => n.toLocaleString("ko-KR");
 
 // 디자인 토큰 (캡처 안전 inline hex)
 const C = {
-  bg: "#16201A",        // 저장카드 다크그린
+  bg: "#16201A",
   cream: "#F4EFE3",
   muted: "#8A978C",
   faint: "#5E6A60",
-  emerald: "#10B981",   // 수익
-  gold: "#E0A92E",      // 티커
+  emerald: "#10B981",
+  gold: "#E0A92E",
   panel: "#1E2A23",
 };
+// 한글=Pretendard, 숫자·티커·코드=모노
+const SANS = "'Pretendard', 'Apple SD Gothic Neo', 'Inter', system-ui, sans-serif";
+const MONO = "'JetBrains Mono', ui-monospace, monospace";
 
-// [작업4] 김집사 평 — 절약액(객관 사실)에 캐릭터 voice를 입힌 한 줄. 사용자 메모는 쓰지 않는다.
-function butlerComment(profit: number, id: number): string {
-  const pools =
-    profit <= 0
-      ? [
-          "이번엔 본전이옵니다, 주인님. 다음 기회를 노리시지요.",
-          "남기진 못했사오나, 기록이야말로 곳간의 첫 삽이옵니다.",
-        ]
-      : profit < 3000
-      ? [
-          "티끌 모아 태산이라 하였습니다. 오늘의 한 푼, 소인이 장부에 곱게 적었사옵니다.",
-          "작은 절약도 절약이옵니다. 주인님 살림이 차곡차곡 여뭅니다.",
-        ]
+// [v2] 김집사 브리핑 — 과장된 금융 보고체. 호칭 '회장님', 사극 금지.
+//  객관 사실(절약액)만 다루고 사용자 메모는 쓰지 않는다.
+function butlerBrief(profit: number, id: number): { full?: string; suffix?: string } {
+  const pick = (arr: string[]) => arr[Math.abs(id) % arr.length];
+  if (profit <= 0) {
+    return {
+      full: pick([
+        "회장님, 이번 건은 본전으로 마감했습니다. 다음 장을 노리시지요.",
+        "회장님, 손실은 막으셨습니다. 다음 기회를 기다리시지요.",
+      ]),
+    };
+  }
+  const suffix =
+    profit < 3000
+      ? pick(["수익 실현하셨습니다. 티끌이 모여 자산이 됩니다.", "알뜰히 챙기셨습니다. 견실한 운용이십니다."])
       : profit < 10000
-      ? [
-          "과연 주인님이십니다. 이 돈, 곳간에 잘 모셔두겠사옵니다.",
-          "오늘의 결단이 곳간을 살찌웁니다. 훌륭하시옵니다.",
-        ]
-      : [
-          "허허, 이만하면 곳간이 절로 차오릅니다. 경의를 표하옵니다, 주인님.",
-          "이만한 절약이라니. 소인, 주인님 모시는 일이 자랑스럽사옵니다.",
-        ];
-  return pools[Math.abs(id) % pools.length];
+      ? pick(["수익 실현하셨습니다. 포트폴리오가 견조합니다.", "확보하셨습니다. 시장이 주목하고 있습니다."])
+      : pick(["대형 수익 실현하셨습니다. 월가가 술렁입니다.", "수익을 실현하셨습니다. 거래소가 들썩입니다."]);
+  return { suffix };
 }
 
-// [작업4] 3겹 중 1겹 — 극단비율 블러필 배경.
-//  html2canvas가 CSS filter:blur를 신뢰성 있게 못 그리므로, 캔버스에 '실제 블러 픽셀'을
-//  구워 dataURL로 만들어 <img>로 깐다. 정사각 사진이면 가려지지만 비정사각 안전판.
-async function makeBlurBg(url: string, w = 340, h = 300): Promise<string | null> {
+// [v2] 3겹 중 1겹 — 극단비율 블러필 배경. html2canvas가 CSS blur를 신뢰성 있게 못 그리므로
+//  캔버스에 실제 블러 픽셀을 구워 dataURL로 깐다. (정사각 사진이면 가려지지만 비정사각 안전판)
+async function makeBlurBg(url: string, w = 340, h = 200): Promise<string | null> {
   return new Promise((resolve) => {
     const img = new Image();
     img.crossOrigin = "anonymous";
@@ -78,13 +77,13 @@ async function makeBlurBg(url: string, w = 340, h = 300): Promise<string | null>
         c.height = h;
         const ctx = c.getContext("2d");
         if (!ctx) return resolve(null);
-        const scale = Math.max(w / img.width, h / img.height) * 1.25; // cover + 오버스캔
+        const scale = Math.max(w / img.width, h / img.height) * 1.25;
         const dw = img.width * scale;
         const dh = img.height * scale;
         ctx.filter = "blur(26px)";
         ctx.drawImage(img, (w - dw) / 2, (h - dh) / 2, dw, dh);
         ctx.filter = "none";
-        ctx.fillStyle = "rgba(12,18,14,0.45)"; // 어둡게 깔아 텍스트 가독 확보
+        ctx.fillStyle = "rgba(12,18,14,0.45)";
         ctx.fillRect(0, 0, w, h);
         resolve(c.toDataURL("image/jpeg", 0.72));
       } catch {
@@ -96,6 +95,21 @@ async function makeBlurBg(url: string, w = 340, h = 300): Promise<string | null>
   });
 }
 
+// [v2] 캡처 전 폰트 로딩 보장 — 안 기다리면 첫 콜드 캡처가 폴백 폰트로 박힘(html2canvas 한계)
+async function ensureFontsReady() {
+  try {
+    if (!document.fonts) return;
+    await document.fonts.ready;
+    await Promise.all([
+      document.fonts.load("700 36px 'JetBrains Mono'"),
+      document.fonts.load("600 16px Pretendard"),
+      document.fonts.load("400 13px Pretendard"),
+    ]).catch(() => {});
+  } catch {
+    /* 폰트 API 미지원 시 무시 */
+  }
+}
+
 export default function SavingsStoryCard({ entry, onClose }: Props) {
   const cardRef = useRef<HTMLDivElement>(null);
   const [capturing, setCapturing] = useState(false);
@@ -104,9 +118,8 @@ export default function SavingsStoryCard({ entry, onClose }: Props) {
 
   const hasPhoto = !!entry.imageUrl;
   const rate = entry.originalAmount > 0 ? Math.round((entry.profit / entry.originalAmount) * 100) : 0;
-  const comment = butlerComment(entry.profit, entry.id);
+  const brief = butlerBrief(entry.profit, entry.id);
 
-  // 사진 있으면 블러 배경 미리 굽기 (캡처 시 바로 사용)
   useEffect(() => {
     let alive = true;
     if (entry.imageUrl) {
@@ -120,6 +133,7 @@ export default function SavingsStoryCard({ entry, onClose }: Props) {
   const handleCapture = useCallback(async () => {
     if (!cardRef.current) return;
     setCapturing(true);
+    await ensureFontsReady();
     // oklch 색상 변수를 html2canvas 호환되게 임시 무력화
     const root = document.documentElement;
     const oklchVars = [
@@ -180,16 +194,10 @@ export default function SavingsStoryCard({ entry, onClose }: Props) {
   };
 
   const tickerChip = entry.ticker ? (
-    <span
-      style={{
-        fontSize: "10px", fontWeight: 700, letterSpacing: "1.5px",
-        color: C.gold, backgroundColor: "rgba(224,169,46,0.16)",
-        padding: "3px 8px", borderRadius: "6px",
-      }}
-    >
+    <span style={{ fontFamily: MONO, fontSize: "11px", fontWeight: 500, letterSpacing: "1px", color: C.gold, backgroundColor: "rgba(224,169,46,0.14)", padding: "3px 8px", borderRadius: "6px" }}>
       {entry.ticker}
     </span>
-  ) : null;
+  ) : <span />;
 
   return (
     <div
@@ -216,68 +224,58 @@ export default function SavingsStoryCard({ entry, onClose }: Props) {
       </button>
 
       {/* ── 카드 (캡처 대상) ── */}
-      <div
-        ref={cardRef}
-        style={{
-          width: "340px", backgroundColor: C.bg, borderRadius: "18px",
-          overflow: "hidden", position: "relative",
-          fontFamily: "ui-monospace, 'Courier New', Courier, monospace",
-        }}
-      >
-        {/* 사진 영역 — 3겹: (1)블러필 배경 (2)정사각 초점 사진 (3)스크림+메타 */}
-        {hasPhoto ? (
-          <div style={{ position: "relative", width: "100%", height: "300px", backgroundColor: "#0E140F", overflow: "hidden" }}>
-            {blurBg && (
-              <img src={blurBg} alt="" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }} />
-            )}
-            <img
-              src={entry.imageUrl ?? ""}
-              crossOrigin="anonymous"
-              alt=""
-              style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "contain" }}
-            />
-            <div
-              style={{
-                position: "absolute", inset: 0,
-                background: "linear-gradient(to bottom, rgba(12,18,14,0.4) 0%, rgba(12,18,14,0) 28%, rgba(12,18,14,0) 52%, rgba(22,32,26,0.96) 100%)",
-              }}
-            />
-            <div style={{ position: "absolute", top: "14px", left: "14px", right: "14px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              {tickerChip ?? <span />}
-              <span style={{ fontSize: "10px", color: "rgba(244,239,227,0.85)" }}>{entry.date.replace(/-/g, ".")}</span>
-            </div>
+      <div ref={cardRef} style={{ width: "340px", backgroundColor: C.bg, borderRadius: "18px", overflow: "hidden", fontFamily: SANS }}>
+
+        {/* 통지서 헤더 */}
+        <div style={{ padding: "16px 20px 12px" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "10px" }}>
+            {tickerChip}
+            <span style={{ fontFamily: MONO, fontSize: "11px", color: C.muted }}>{entry.date.replace(/-/g, ".")}</span>
           </div>
-        ) : (
-          // 무사진 — 타이포만으로 완성되는 헤더 밴드
-          <div style={{ padding: "20px 22px 0", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            {tickerChip ?? <span />}
-            <span style={{ fontSize: "10px", color: C.muted }}>{entry.date.replace(/-/g, ".")}</span>
+          <div style={{ display: "flex", alignItems: "baseline", gap: "8px" }}>
+            <span style={{ fontSize: "13px", fontWeight: 600, color: C.cream, letterSpacing: "0.5px" }}>수익 실현 통지서</span>
+            <span style={{ fontFamily: MONO, fontSize: "9px", letterSpacing: "1.5px", color: C.faint }}>PROFIT REALIZED</span>
+          </div>
+        </div>
+
+        {/* 사진 (3겹) */}
+        {hasPhoto && (
+          <div style={{ position: "relative", width: "100%", height: "200px", backgroundColor: "#0E140F", overflow: "hidden" }}>
+            {blurBg && <img src={blurBg} alt="" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }} />}
+            <img src={entry.imageUrl ?? ""} crossOrigin="anonymous" alt="" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "contain" }} />
+            <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to bottom, rgba(12,18,14,0.25) 0%, rgba(12,18,14,0) 35%, rgba(12,18,14,0) 62%, rgba(22,32,26,0.92) 100%)" }} />
           </div>
         )}
 
         {/* 본문 */}
-        <div style={{ padding: hasPhoto ? "16px 22px 22px" : "14px 22px 22px" }}>
-          <div style={{ fontSize: "9px", letterSpacing: "3px", color: C.muted, textTransform: "uppercase", marginBottom: "6px" }}>지켜낸 돈</div>
+        <div style={{ padding: hasPhoto ? "14px 20px 20px" : "6px 20px 20px" }}>
+          <div style={{ fontSize: "11px", color: C.muted, marginBottom: "4px" }}>지켜낸 돈</div>
           <div style={{ display: "flex", alignItems: "baseline", gap: "8px" }}>
-            <span style={{ fontSize: "38px", fontWeight: 900, color: C.emerald, letterSpacing: "-1px", lineHeight: 1 }}>+₩{fmt(entry.profit)}</span>
-            <span style={{ fontSize: "14px", fontWeight: 700, color: "rgba(16,185,129,0.85)" }}>지켜냄</span>
+            <span style={{ fontFamily: MONO, fontSize: "36px", fontWeight: 700, color: C.emerald, lineHeight: 1 }}>
+              +<span style={{ fontSize: "23px", margin: "0 1px 0 2px" }}>₩</span>{fmt(entry.profit)}
+            </span>
+            <span style={{ fontSize: "14px", fontWeight: 600, color: "rgba(16,185,129,0.85)" }}>지켜냄</span>
           </div>
 
-          <div style={{ fontSize: "15px", fontWeight: 700, color: C.cream, marginTop: "12px", lineHeight: 1.3 }}>{entry.title}</div>
-          <div style={{ fontSize: "10px", color: C.muted, marginTop: "6px" }}>
-            {entry.category} · 원가 ₩{fmt(entry.originalAmount)} → 실제 ₩{fmt(entry.actualAmount)}{rate > 0 ? ` · ${rate}% 절감` : ""}
+          <div style={{ fontSize: "16px", fontWeight: 600, color: C.cream, marginTop: "12px" }}>{entry.title}</div>
+          <div style={{ fontSize: "12px", color: C.muted, marginTop: "5px" }}>
+            {entry.category} · 원가 <span style={{ fontFamily: MONO }}>₩{fmt(entry.originalAmount)}</span> → 실제 <span style={{ fontFamily: MONO }}>₩{fmt(entry.actualAmount)}</span>{rate > 0 ? ` · ${rate}% 절감` : ""}
           </div>
 
-          {/* 김집사 평 */}
-          <div style={{ marginTop: "16px", backgroundColor: C.panel, borderRadius: "12px", padding: "12px 14px", borderLeft: `2px solid ${C.gold}` }}>
-            <div style={{ fontSize: "8px", letterSpacing: "2px", color: C.gold, textTransform: "uppercase", marginBottom: "5px" }}>김집사 평</div>
-            <div style={{ fontSize: "11px", color: "#D9E0D7", lineHeight: 1.6 }}>{comment}</div>
+          {/* 김집사 브리핑 */}
+          <div style={{ marginTop: "16px", backgroundColor: C.panel, borderRadius: "12px", padding: "12px 14px" }}>
+            <div style={{ fontSize: "10px", fontWeight: 600, letterSpacing: "0.5px", color: C.gold, marginBottom: "5px" }}>김집사 브리핑</div>
+            <div style={{ fontSize: "13px", color: "#DCE3DA", lineHeight: 1.55 }}>
+              {brief.full ?? (
+                <>회장님, <span style={{ fontFamily: MONO, color: C.cream }}>+₩{fmt(entry.profit)}</span> {brief.suffix}</>
+              )}
+            </div>
           </div>
 
           {/* 푸터 */}
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "16px" }}>
-            <span style={{ fontSize: "8px", letterSpacing: "2px", color: C.faint }}>GEOJILOG</span>
-            <span style={{ fontSize: "8px", letterSpacing: "1px", color: C.faint }}>{entry.date.replace(/-/g, "")}</span>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "16px", paddingTop: "12px", borderTop: "0.5px solid rgba(255,255,255,0.07)" }}>
+            <span style={{ fontFamily: MONO, fontSize: "10px", letterSpacing: "2px", color: C.faint }}>GEOJILOG</span>
+            <span style={{ fontSize: "10px", color: C.faint }}>거지답게 아껴서 벌었다</span>
           </div>
         </div>
       </div>
@@ -346,11 +344,7 @@ export default function SavingsStoryCard({ entry, onClose }: Props) {
       {/* 미리보기 */}
       {imageUrl && (
         <div style={{ marginTop: "12px", textAlign: "center" }}>
-          <img
-            src={imageUrl}
-            alt="preview"
-            style={{ width: "160px", borderRadius: "8px", boxShadow: "0 4px 20px rgba(0,0,0,0.5)" }}
-          />
+          <img src={imageUrl} alt="preview" style={{ width: "160px", borderRadius: "8px", boxShadow: "0 4px 20px rgba(0,0,0,0.5)" }} />
         </div>
       )}
 
