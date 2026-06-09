@@ -1,7 +1,7 @@
 // 앱 셸 — 온보딩(첫 방문) + 하단 탭(집무실/장부/회장님) + 가운데 사진 캡처를 앱 상단에서 관리.
 // 분석은 백그라운드(비차단). 탭을 옮겨다녀도 분석이 끊기지 않고, 끝나면 막지 않고 '확인하기'로만 알린다.
 import { useRef, useState, type ChangeEvent } from "react";
-import Home from "@/pages/Home";
+import Ledger from "@/pages/Ledger";
 import HomeTab from "@/pages/HomeTab";
 import Profile from "@/pages/Profile";
 import Onboarding from "@/components/Onboarding";
@@ -152,7 +152,7 @@ export default function Shell() {
               onCompleteDraft={completeDraft}
             />
           )}
-          {tab === "records" && <Home />}
+          {tab === "records" && <Ledger />}
           {tab === "profile" && <Profile onGoRecords={() => setTab("records")} />}
 
           {/* 다른 탭에 있을 때 비차단 알림 칩 — 가운데 기록 버튼을 가리지 않게 위로 띄운다 */}

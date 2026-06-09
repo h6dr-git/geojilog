@@ -1,4 +1,4 @@
-// 거지로그 V2.1 — QA 버그 수정 (개별 로딩, 금액 UI, Enter 제출, 제목 자동 네이밍)
+// 거지로그 — 장부(Ledger) 화면: 기록 리스트·미니 캘린더·입력/수정·내보내기. (탭바 "장부")
 // ============================================================
 
 import { useState, useRef, useCallback, useMemo } from "react";
@@ -41,7 +41,7 @@ interface QueueItem {
 type MainTab = "input" | "calendar";
 
 // ── 메인 컴포넌트 ─────────────────────────────────────────────
-export default function Home() {
+export default function Ledger() {
   const { isAuthenticated, loading: authLoading } = useAuth();
 
   const utils = trpc.useUtils();
