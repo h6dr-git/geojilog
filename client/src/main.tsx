@@ -5,26 +5,25 @@ import { httpBatchLink, TRPCClientError } from "@trpc/client";
 import { createRoot } from "react-dom/client";
 import superjson from "superjson";
 import App from "./App";
-import { getLoginUrl } from "./const";
 import "./index.css";
 
 const queryClient = new QueryClient();
 
-const redirectToLoginIfUnauthorized = (error: unknown) => {
+// [작업1-b] 인증 에러 시 window.location.href 강제 이동 제거.
+//  - 기존: 401 발생 -> 페이지를 통째로 새로고침 -> 업로드 큐(분석 중 사진들)가 전멸.
+//  - 변경: 강제 이동을 없애고 로깅만. 인증 끊김은 useAuth/Home의 인라인 "다시 시도"
+//    화면이 비파괴적으로 처리하므로, 분석 중이던 원본 File과 큐가 보존된다.
+const logUnauthorized = (error: unknown) => {
   if (!(error instanceof TRPCClientError)) return;
-  if (typeof window === "undefined") return;
-
-  const isUnauthorized = error.message === UNAUTHED_ERR_MSG;
-
-  if (!isUnauthorized) return;
-
-  window.location.href = getLoginUrl();
+  if (error.message !== UNAUTHED_ERR_MSG) return;
+  // 강제 새로고침/리다이렉트 없음 - 큐 보존이 우선.
+  console.warn("[Auth] 세션 인증 실패 — 페이지 새로고침 없이 인라인 복구에 위임합니다.");
 };
 
 queryClient.getQueryCache().subscribe(event => {
   if (event.type === "updated" && event.action.type === "error") {
     const error = event.query.state.error;
-    redirectToLoginIfUnauthorized(error);
+    logUnauthorized(error);
     console.error("[API Query Error]", error);
   }
 });
@@ -32,7 +31,7 @@ queryClient.getQueryCache().subscribe(event => {
 queryClient.getMutationCache().subscribe(event => {
   if (event.type === "updated" && event.action.type === "error") {
     const error = event.mutation.state.error;
-    redirectToLoginIfUnauthorized(error);
+    logUnauthorized(error);
     console.error("[API Mutation Error]", error);
   }
 });

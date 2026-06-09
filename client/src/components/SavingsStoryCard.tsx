@@ -1,16 +1,18 @@
-// SavingsStoryCard — 영수증 스킨 (사진 없음, AI 멘트 전문, 메모/배수 제거)
-// html2canvas: oklch 금지, 모든 색상 hex/rgba inline style
+// SavingsStoryCard — 저장/공유 카드 (다크그린 #16201A)
+// [작업4] 공유물 = 객관적 사실 + 캐릭터 voice. 구성: +수익 + 티커 + 사진(3겹) + 김집사 평.
+//  - 사용자 날것 메모(entry.memo)는 기본 미포함 (공유는 사실 + 캐릭터 코멘트만).
+//  - html2canvas는 oklch를 못 다루므로 카드 내부 색상은 전부 inline hex/rgba.
 // ============================================================
 
-import { useRef, useState, useCallback } from "react";
+import { useRef, useState, useCallback, useEffect } from "react";
 import { Share2, Download, X, Loader2 } from "lucide-react";
-import { trpc } from "@/lib/trpc";
 
 interface SavingsEntry {
   id: number;
   date: string;
   title: string;
   category: string;
+  ticker?: string | null;
   originalAmount: number;
   actualAmount: number;
   profit: number;
@@ -26,97 +28,99 @@ interface Props {
 
 const fmt = (n: number) => n.toLocaleString("ko-KR");
 
-// 이모지 제거 요청으로 CATEGORY_EMOJI 삭제
+// 디자인 토큰 (캡처 안전 inline hex)
+const C = {
+  bg: "#16201A",        // 저장카드 다크그린
+  cream: "#F4EFE3",
+  muted: "#8A978C",
+  faint: "#5E6A60",
+  emerald: "#10B981",   // 수익
+  gold: "#E0A92E",      // 티커
+  panel: "#1E2A23",
+};
 
-// 바코드 줄무늬 장식
-function BarcodeDecor() {
-  const bars = [3,1,2,1,3,1,1,2,1,3,2,1,1,3,1,2,1,1,3,1,2,3,1,1,2,1,3,1,2,1];
-  return (
-    <div style={{ display: "flex", alignItems: "flex-end", height: "28px", gap: "1px", justifyContent: "center" }}>
-      {bars.map((w, i) => (
-        <div
-          key={i}
-          style={{
-            width: `${w * 1.5}px`,
-            height: i % 5 === 0 ? "28px" : "20px",
-            backgroundColor: i % 2 === 0 ? "#222222" : "transparent",
-            flexShrink: 0,
-          }}
-        />
-      ))}
-    </div>
-  );
+// [작업4] 김집사 평 — 절약액(객관 사실)에 캐릭터 voice를 입힌 한 줄. 사용자 메모는 쓰지 않는다.
+function butlerComment(profit: number, id: number): string {
+  const pools =
+    profit <= 0
+      ? [
+          "이번엔 본전이옵니다, 주인님. 다음 기회를 노리시지요.",
+          "남기진 못했사오나, 기록이야말로 곳간의 첫 삽이옵니다.",
+        ]
+      : profit < 3000
+      ? [
+          "티끌 모아 태산이라 하였습니다. 오늘의 한 푼, 소인이 장부에 곱게 적었사옵니다.",
+          "작은 절약도 절약이옵니다. 주인님 살림이 차곡차곡 여뭅니다.",
+        ]
+      : profit < 10000
+      ? [
+          "과연 주인님이십니다. 이 돈, 곳간에 잘 모셔두겠사옵니다.",
+          "오늘의 결단이 곳간을 살찌웁니다. 훌륭하시옵니다.",
+        ]
+      : [
+          "허허, 이만하면 곳간이 절로 차오릅니다. 경의를 표하옵니다, 주인님.",
+          "이만한 절약이라니. 소인, 주인님 모시는 일이 자랑스럽사옵니다.",
+        ];
+  return pools[Math.abs(id) % pools.length];
 }
 
-type CardTheme = "dark" | "cream" | "pnl" | "pnl_light";
-
-const THEMES: Record<CardTheme, { bg: string; cardBg: string; cardText: string; subText: string; border: string; label: string }> = {
-  dark: {
-    bg: "#0a0a0a",
-    cardBg: "#ffffff",
-    cardText: "#111111",
-    subText: "#888888",
-    border: "#cccccc",
-    label: "다크",
-  },
-  cream: {
-    bg: "#f5f0e8",
-    cardBg: "#fffdf7",
-    cardText: "#2a2218",
-    subText: "#9a8f7e",
-    border: "#d4c9b0",
-    label: "크림",
-  },
-  pnl: {
-    bg: "#0f1117",
-    cardBg: "#0f1117",
-    cardText: "#e8e8e8",
-    subText: "#6b7280",
-    border: "#2a2d35",
-    label: "손익(다크)",
-  },
-  pnl_light: {
-    bg: "#f8f9fa",
-    cardBg: "#f8f9fa",
-    cardText: "#1a1a2e",
-    subText: "#6b7280",
-    border: "#e2e8f0",
-    label: "손익(라이트)",
-  },
-};
+// [작업4] 3겹 중 1겹 — 극단비율 블러필 배경.
+//  html2canvas가 CSS filter:blur를 신뢰성 있게 못 그리므로, 캔버스에 '실제 블러 픽셀'을
+//  구워 dataURL로 만들어 <img>로 깐다. 정사각 사진이면 가려지지만 비정사각 안전판.
+async function makeBlurBg(url: string, w = 340, h = 300): Promise<string | null> {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.onload = () => {
+      try {
+        const c = document.createElement("canvas");
+        c.width = w;
+        c.height = h;
+        const ctx = c.getContext("2d");
+        if (!ctx) return resolve(null);
+        const scale = Math.max(w / img.width, h / img.height) * 1.25; // cover + 오버스캔
+        const dw = img.width * scale;
+        const dh = img.height * scale;
+        ctx.filter = "blur(26px)";
+        ctx.drawImage(img, (w - dw) / 2, (h - dh) / 2, dw, dh);
+        ctx.filter = "none";
+        ctx.fillStyle = "rgba(12,18,14,0.45)"; // 어둡게 깔아 텍스트 가독 확보
+        ctx.fillRect(0, 0, w, h);
+        resolve(c.toDataURL("image/jpeg", 0.72));
+      } catch {
+        resolve(null);
+      }
+    };
+    img.onerror = () => resolve(null);
+    img.src = url;
+  });
+}
 
 export default function SavingsStoryCard({ entry, onClose }: Props) {
   const cardRef = useRef<HTMLDivElement>(null);
   const [capturing, setCapturing] = useState(false);
-  const [imageUrl, setImageUrl] = useState<string | null>(null);
-  const [theme, setTheme] = useState<CardTheme>("dark");
-  const t = THEMES[theme];
+  const [imageUrl, setImageUrl] = useState<string | null>(null); // 캡처 결과 PNG
+  const [blurBg, setBlurBg] = useState<string | null>(null);
 
-  // 항목명만 편집 가능 (메모는 카드에 미표시)
-  const [editTitle, setEditTitle] = useState(entry.title);
+  const hasPhoto = !!entry.imageUrl;
+  const rate = entry.originalAmount > 0 ? Math.round((entry.profit / entry.originalAmount) * 100) : 0;
+  const comment = butlerComment(entry.profit, entry.id);
 
-  const utils = trpc.useUtils();
-  const updateEntry = trpc.savings.update.useMutation({
-    onSuccess: () => utils.savings.list.invalidate(),
-  });
-
-  // 이모지 미사용
+  // 사진 있으면 블러 배경 미리 굽기 (캡처 시 바로 사용)
+  useEffect(() => {
+    let alive = true;
+    if (entry.imageUrl) {
+      makeBlurBg(entry.imageUrl).then((bg) => { if (alive) setBlurBg(bg); });
+    } else {
+      setBlurBg(null);
+    }
+    return () => { alive = false; };
+  }, [entry.imageUrl]);
 
   const handleCapture = useCallback(async () => {
     if (!cardRef.current) return;
-
-    // 항목명이 수정된 경우 원본 기록에 먼저 반영
-    if (editTitle !== entry.title) {
-      try {
-        await updateEntry.mutateAsync({ id: entry.id, title: editTitle || entry.title });
-      } catch {
-        setCapturing(false);
-        return;
-      }
-    }
-
     setCapturing(true);
-    // oklch 색상 변수를 html2canvas 호환 hex로 임시 교체
+    // oklch 색상 변수를 html2canvas 호환되게 임시 무력화
     const root = document.documentElement;
     const oklchVars = [
       "--background", "--foreground", "--card", "--card-foreground",
@@ -126,7 +130,7 @@ export default function SavingsStoryCard({ entry, onClose }: Props) {
       "--border", "--input", "--ring",
     ];
     const saved: Record<string, string> = {};
-    oklchVars.forEach(v => {
+    oklchVars.forEach((v) => {
       saved[v] = root.style.getPropertyValue(v);
       root.style.setProperty(v, "transparent");
     });
@@ -136,28 +140,27 @@ export default function SavingsStoryCard({ entry, onClose }: Props) {
         scale: 2,
         useCORS: true,
         allowTaint: false,
-        backgroundColor: "#0a0a0a",
+        backgroundColor: C.bg,
         logging: false,
         ignoreElements: (el) => el.tagName === "STYLE" && el.textContent?.includes("oklch") === true,
       });
       setImageUrl(canvas.toDataURL("image/png"));
     } catch (e) {
-      console.error("캐처 실패", e);
+      console.error("캡처 실패", e);
     } finally {
-      // oklch 변수 복원
-      oklchVars.forEach(v => {
+      oklchVars.forEach((v) => {
         if (saved[v]) root.style.setProperty(v, saved[v]);
         else root.style.removeProperty(v);
       });
       setCapturing(false);
     }
-  }, [editTitle, entry, updateEntry]);
+  }, []);
 
   const handleDownload = () => {
     if (!imageUrl) return;
     const a = document.createElement("a");
     a.href = imageUrl;
-    a.download = `거지로그_${entry.date}_${editTitle}.png`;
+    a.download = `거지로그_${entry.date}_${entry.title}.png`;
     a.click();
   };
 
@@ -166,7 +169,7 @@ export default function SavingsStoryCard({ entry, onClose }: Props) {
     try {
       const blob = await (await fetch(imageUrl)).blob();
       const file = new File([blob], `거지로그_${entry.date}.png`, { type: "image/png" });
-      if (navigator.share && navigator.canShare({ files: [file] })) {
+      if (navigator.share && navigator.canShare?.({ files: [file] })) {
         await navigator.share({ files: [file], title: "거지로그 절약 인증" });
       } else {
         handleDownload();
@@ -176,6 +179,18 @@ export default function SavingsStoryCard({ entry, onClose }: Props) {
     }
   };
 
+  const tickerChip = entry.ticker ? (
+    <span
+      style={{
+        fontSize: "10px", fontWeight: 700, letterSpacing: "1.5px",
+        color: C.gold, backgroundColor: "rgba(224,169,46,0.16)",
+        padding: "3px 8px", borderRadius: "6px",
+      }}
+    >
+      {entry.ticker}
+    </span>
+  ) : null;
+
   return (
     <div
       style={{
@@ -183,8 +198,7 @@ export default function SavingsStoryCard({ entry, onClose }: Props) {
         backgroundColor: "rgba(0,0,0,0.95)",
         display: "flex", flexDirection: "column",
         alignItems: "center", justifyContent: "center",
-        padding: "16px",
-        overflowY: "auto",
+        padding: "16px", overflowY: "auto",
       }}
     >
       {/* 닫기 */}
@@ -201,181 +215,71 @@ export default function SavingsStoryCard({ entry, onClose }: Props) {
         <X size={18} />
       </button>
 
-      {/* 항목명 편집 + 테마 (캡처 밖) */}
-      {!imageUrl && (
-        <div style={{ width: "340px", marginBottom: "12px" }}>
-          {/* 테마 선택 */}
-          <div style={{ display: "flex", gap: "6px", marginBottom: "10px" }}>
-            {(Object.keys(THEMES) as CardTheme[]).map(k => (
-              <button
-                key={k}
-                onClick={() => setTheme(k)}
-                style={{
-                  padding: "5px 12px", fontSize: "11px", borderRadius: "6px",
-                  border: theme === k ? "1px solid #10b981" : "1px solid rgba(255,255,255,0.15)",
-                  backgroundColor: theme === k ? "rgba(16,185,129,0.15)" : "rgba(255,255,255,0.06)",
-                  color: theme === k ? "#10b981" : "rgba(255,255,255,0.5)",
-                  cursor: "pointer",
-                }}
-              >
-                {THEMES[k].label}
-              </button>
-            ))}
-          </div>
-          <label style={{ fontSize: "10px", color: "rgba(255,255,255,0.4)", display: "block", marginBottom: "4px" }}>
-            항목명 (편집 시 원본도 수정됨)
-          </label>
-          <input
-            value={editTitle}
-            onChange={e => setEditTitle(e.target.value)}
-            style={{
-              width: "100%", padding: "8px 10px",
-              backgroundColor: "rgba(255,255,255,0.08)",
-              border: "1px solid rgba(255,255,255,0.15)",
-              borderRadius: "6px", color: "#ffffff",
-              fontSize: "13px", outline: "none", boxSizing: "border-box",
-            }}
-          />
-        </div>
-      )}
-
       {/* ── 카드 (캡처 대상) ── */}
-      <div ref={cardRef} style={{ width: "340px", position: "relative", fontFamily: "'Courier New', Courier, monospace" }}>
-
-        {/* ── 영수증 스킨 (dark / cream) ── */}
-        {theme !== "pnl" && theme !== "pnl_light" && (
-          <div style={{
-            backgroundColor: t.bg,
-            display: "flex", flexDirection: "column", alignItems: "center",
-            padding: "32px 24px 28px", position: "relative",
-          }}>
-            <div style={{
-              position: "absolute", inset: 0,
-              backgroundImage: theme === "dark"
-                ? "radial-gradient(circle, rgba(255,255,255,0.018) 1px, transparent 1px)"
-                : "radial-gradient(circle, rgba(0,0,0,0.04) 1px, transparent 1px)",
-              backgroundSize: "18px 18px", pointerEvents: "none",
-            }} />
-            <div style={{
-              width: "100%", backgroundColor: t.cardBg, borderRadius: "4px",
-              padding: "22px 20px 18px",
-              boxShadow: theme === "dark" ? "4px 6px 0px rgba(0,0,0,0.6)" : "4px 6px 0px rgba(0,0,0,0.12)",
-              transform: "rotate(-0.4deg)", position: "relative", zIndex: 1,
-            }}>
-              <div style={{ position: "absolute", top: "-8px", left: "50%", transform: "translateX(-50%)", width: "14px", height: "14px", backgroundColor: t.bg, borderRadius: "50%" }} />
-              <div style={{ textAlign: "center", marginBottom: "14px" }}>
-                <div style={{ fontSize: "9px", letterSpacing: "4px", color: t.subText, textTransform: "uppercase", marginBottom: "3px" }}>거지로그</div>
-                <div style={{ fontSize: "12px", fontWeight: "bold", color: t.cardText, letterSpacing: "3px" }}>SAVINGS RECEIPT</div>
-              </div>
-              <div style={{ borderTop: `1px dashed ${t.border}`, marginBottom: "12px" }} />
-              <div style={{ display: "flex", justifyContent: "space-between", fontSize: "10px", color: t.subText, marginBottom: "10px" }}>
-                <span>{entry.date.replace(/-/g, ".")}</span>
-                <span>{entry.category}</span>
-              </div>
-              <div style={{ fontSize: "15px", fontWeight: "bold", color: t.cardText, marginBottom: "16px", lineHeight: 1.3 }}>{editTitle}</div>
-              <div style={{ display: "flex", justifyContent: "space-between", fontSize: "11px", color: t.subText, marginBottom: "4px" }}>
-                <span>원가</span><span style={{ textDecoration: "line-through" }}>₩{fmt(entry.originalAmount)}</span>
-              </div>
-              <div style={{ display: "flex", justifyContent: "space-between", fontSize: "11px", color: t.cardText, marginBottom: "14px" }}>
-                <span>실제 지출</span><span>₩{fmt(entry.actualAmount)}</span>
-              </div>
-              <div style={{ borderTop: `1px dashed ${t.border}`, marginBottom: "14px" }} />
-              <div style={{ marginBottom: "4px" }}>
-                <div style={{ fontSize: "8px", color: t.subText, letterSpacing: "2px", textTransform: "uppercase", marginBottom: "4px" }}>수익</div>
-                <div style={{ fontSize: "30px", fontWeight: "900", color: "#10b981", letterSpacing: "-1px", lineHeight: 1 }}>+₩{fmt(entry.profit)}</div>
-              </div>
-              {entry.aiReason && (
-                <div style={{ marginTop: "14px", paddingTop: "10px", borderTop: `1px solid ${t.border}`, fontSize: "9px", color: t.subText, lineHeight: 1.6 }}>{entry.aiReason}</div>
-              )}
-              <div style={{ borderTop: `1px dashed ${t.border}`, marginTop: "16px", marginBottom: "12px" }} />
-              <BarcodeDecor />
-              <div style={{ textAlign: "center", fontSize: "7px", color: t.subText, marginTop: "5px", letterSpacing: "2px" }}>GEJILOK · {entry.date.replace(/-/g, "")}</div>
-            </div>
-          </div>
-        )}
-
-        {/* ── 손익계산서 스킨 (pnl / pnl_light) ── */}
-        {(theme === "pnl" || theme === "pnl_light") && (
-          <div style={{
-            backgroundColor: "#0f1117",
-            padding: "28px 24px 24px",
-            minHeight: "420px",
-          }}>
-            {/* 상단 헤더 */}
-            <div style={{ marginBottom: "24px" }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-                <div>
-                  <div style={{ fontSize: "8px", letterSpacing: "3px", color: "#4b5563", textTransform: "uppercase", marginBottom: "4px" }}>거지로그</div>
-                  <div style={{ fontSize: "13px", fontWeight: "700", color: t.cardText, letterSpacing: "1px" }}>손익계산서</div>
-                  <div style={{ fontSize: "8px", color: "#4b5563", marginTop: "2px" }}>PROFIT & LOSS STATEMENT</div>
-                </div>
-                <div style={{ textAlign: "right" }}>
-                  <div style={{ fontSize: "9px", color: "#4b5563" }}>{entry.date.replace(/-/g, ".")}</div>
-                  <div style={{ fontSize: "9px", color: "#4b5563", marginTop: "2px" }}>{entry.category}</div>
-                </div>
-              </div>
-              <div style={{ height: "1px", backgroundColor: t.border, marginTop: "16px" }} />
-            </div>
-
-            {/* 항목명 */}
-            <div style={{ marginBottom: "20px" }}>
-              <div style={{ fontSize: "8px", color: "#4b5563", letterSpacing: "2px", textTransform: "uppercase", marginBottom: "6px" }}>항목</div>
-              <div style={{ fontSize: "16px", fontWeight: "700", color: t.cardText, lineHeight: 1.3 }}>{editTitle}</div>
-            </div>
-
-            {/* 수익 섹션 */}
-            <div style={{ marginBottom: "8px" }}>
-              <div style={{ fontSize: "8px", color: "#4b5563", letterSpacing: "2px", textTransform: "uppercase", marginBottom: "8px" }}>I. 효익</div>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 12px", backgroundColor: theme === "pnl" ? "#161b27" : "#edf2f7", borderRadius: "4px", marginBottom: "4px" }}>
-                <span style={{ fontSize: "11px", color: t.subText }}>원가 (시중가 기준)</span>
-                <span style={{ fontSize: "11px", color: t.cardText, fontFamily: "'Courier New', monospace" }}>₩{fmt(entry.originalAmount)}</span>
-              </div>
-            </div>
-
-            {/* 비용 섹션 */}
-            <div style={{ marginBottom: "8px" }}>
-              <div style={{ fontSize: "8px", color: "#4b5563", letterSpacing: "2px", textTransform: "uppercase", marginBottom: "8px" }}>II. 비용</div>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 12px", backgroundColor: theme === "pnl" ? "#161b27" : "#edf2f7", borderRadius: "4px", marginBottom: "4px" }}>
-                <span style={{ fontSize: "11px", color: t.subText }}>실제 지출액</span>
-                <span style={{ fontSize: "11px", color: "#f87171", fontFamily: "'Courier New', monospace" }}>-₩{fmt(entry.actualAmount)}</span>
-              </div>
-            </div>
-
-            {/* 구분선 */}
-            <div style={{ height: "1px", backgroundColor: t.border, margin: "16px 0" }} />
-
-            {/* 이익 */}
-            <div style={{ marginBottom: "20px" }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 14px", backgroundColor: "rgba(16,185,129,0.08)", borderRadius: "6px", border: "1px solid rgba(16,185,129,0.2)" }}>
-                <div>
-                  <div style={{ fontSize: "8px", color: "#4b5563", letterSpacing: "2px", textTransform: "uppercase", marginBottom: "3px" }}>III. 순익</div>
-                  <div style={{ fontSize: "9px", color: "#6b7280" }}>NET PROFIT</div>
-                </div>
-                <div style={{ textAlign: "right" }}>
-                  <div style={{ fontSize: "26px", fontWeight: "900", color: "#10b981", letterSpacing: "-1px", lineHeight: 1, fontFamily: "'Courier New', monospace" }}>+₩{fmt(entry.profit)}</div>
-                  <div style={{ fontSize: "9px", color: "#10b981", opacity: 0.6, marginTop: "2px" }}>
-                    {entry.actualAmount > 0 ? `절감률 ${Math.round((entry.profit / entry.originalAmount) * 100)}%` : "100% 절감"}
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* AI 코멘트 */}
-            {entry.aiReason && (
-              <div style={{ padding: "10px 12px", backgroundColor: theme === "pnl" ? "#161b27" : "#edf2f7", borderRadius: "4px", borderLeft: "2px solid #10b981" }}>
-                <div style={{ fontSize: "8px", color: "#4b5563", letterSpacing: "2px", textTransform: "uppercase", marginBottom: "5px" }}>AI 분석</div>
-                <div style={{ fontSize: "9px", color: "#6b7280", lineHeight: 1.6 }}>{entry.aiReason}</div>
-              </div>
+      <div
+        ref={cardRef}
+        style={{
+          width: "340px", backgroundColor: C.bg, borderRadius: "18px",
+          overflow: "hidden", position: "relative",
+          fontFamily: "ui-monospace, 'Courier New', Courier, monospace",
+        }}
+      >
+        {/* 사진 영역 — 3겹: (1)블러필 배경 (2)정사각 초점 사진 (3)스크림+메타 */}
+        {hasPhoto ? (
+          <div style={{ position: "relative", width: "100%", height: "300px", backgroundColor: "#0E140F", overflow: "hidden" }}>
+            {blurBg && (
+              <img src={blurBg} alt="" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }} />
             )}
-
-            {/* 하단 */}
-            <div style={{ height: "1px", backgroundColor: t.border, marginTop: "20px", marginBottom: "10px" }} />
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <div style={{ fontSize: "7px", color: t.subText, letterSpacing: "2px" }}>GEJILOK P&L</div>
-              <div style={{ fontSize: "7px", color: t.subText, letterSpacing: "1px" }}>{entry.date.replace(/-/g, "")}</div>
+            <img
+              src={entry.imageUrl ?? ""}
+              crossOrigin="anonymous"
+              alt=""
+              style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "contain" }}
+            />
+            <div
+              style={{
+                position: "absolute", inset: 0,
+                background: "linear-gradient(to bottom, rgba(12,18,14,0.4) 0%, rgba(12,18,14,0) 28%, rgba(12,18,14,0) 52%, rgba(22,32,26,0.96) 100%)",
+              }}
+            />
+            <div style={{ position: "absolute", top: "14px", left: "14px", right: "14px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              {tickerChip ?? <span />}
+              <span style={{ fontSize: "10px", color: "rgba(244,239,227,0.85)" }}>{entry.date.replace(/-/g, ".")}</span>
             </div>
           </div>
+        ) : (
+          // 무사진 — 타이포만으로 완성되는 헤더 밴드
+          <div style={{ padding: "20px 22px 0", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            {tickerChip ?? <span />}
+            <span style={{ fontSize: "10px", color: C.muted }}>{entry.date.replace(/-/g, ".")}</span>
+          </div>
         )}
+
+        {/* 본문 */}
+        <div style={{ padding: hasPhoto ? "16px 22px 22px" : "14px 22px 22px" }}>
+          <div style={{ fontSize: "9px", letterSpacing: "3px", color: C.muted, textTransform: "uppercase", marginBottom: "6px" }}>지켜낸 돈</div>
+          <div style={{ display: "flex", alignItems: "baseline", gap: "8px" }}>
+            <span style={{ fontSize: "38px", fontWeight: 900, color: C.emerald, letterSpacing: "-1px", lineHeight: 1 }}>+₩{fmt(entry.profit)}</span>
+            <span style={{ fontSize: "14px", fontWeight: 700, color: "rgba(16,185,129,0.85)" }}>지켜냄</span>
+          </div>
+
+          <div style={{ fontSize: "15px", fontWeight: 700, color: C.cream, marginTop: "12px", lineHeight: 1.3 }}>{entry.title}</div>
+          <div style={{ fontSize: "10px", color: C.muted, marginTop: "6px" }}>
+            {entry.category} · 원가 ₩{fmt(entry.originalAmount)} → 실제 ₩{fmt(entry.actualAmount)}{rate > 0 ? ` · ${rate}% 절감` : ""}
+          </div>
+
+          {/* 김집사 평 */}
+          <div style={{ marginTop: "16px", backgroundColor: C.panel, borderRadius: "12px", padding: "12px 14px", borderLeft: `2px solid ${C.gold}` }}>
+            <div style={{ fontSize: "8px", letterSpacing: "2px", color: C.gold, textTransform: "uppercase", marginBottom: "5px" }}>김집사 평</div>
+            <div style={{ fontSize: "11px", color: "#D9E0D7", lineHeight: 1.6 }}>{comment}</div>
+          </div>
+
+          {/* 푸터 */}
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "16px" }}>
+            <span style={{ fontSize: "8px", letterSpacing: "2px", color: C.faint }}>GEOJILOG</span>
+            <span style={{ fontSize: "8px", letterSpacing: "1px", color: C.faint }}>{entry.date.replace(/-/g, "")}</span>
+          </div>
+        </div>
       </div>
 
       {/* 하단 버튼 */}
@@ -386,9 +290,9 @@ export default function SavingsStoryCard({ entry, onClose }: Props) {
             disabled={capturing}
             style={{
               flex: 1, padding: "14px",
-              backgroundColor: "#10b981", color: "#ffffff",
+              backgroundColor: C.emerald, color: "#ffffff",
               border: "none", borderRadius: "10px",
-              fontSize: "14px", fontWeight: "600",
+              fontSize: "14px", fontWeight: 600,
               cursor: capturing ? "not-allowed" : "pointer",
               opacity: capturing ? 0.7 : 1,
               display: "flex", alignItems: "center", justifyContent: "center", gap: "8px",
@@ -396,8 +300,7 @@ export default function SavingsStoryCard({ entry, onClose }: Props) {
           >
             {capturing
               ? <><Loader2 size={16} style={{ animation: "spin 1s linear infinite" }} /> 생성 중...</>
-              : <><Share2 size={16} /> 이미지 생성</>
-            }
+              : <><Share2 size={16} /> 이미지로 저장</>}
           </button>
         ) : (
           <>
@@ -416,9 +319,9 @@ export default function SavingsStoryCard({ entry, onClose }: Props) {
               onClick={handleDownload}
               style={{
                 flex: 1, padding: "14px",
-                backgroundColor: "#1a1a1a", color: "#ffffff",
+                backgroundColor: "#1A1A17", color: "#ffffff",
                 border: "1px solid rgba(255,255,255,0.15)", borderRadius: "10px",
-                fontSize: "13px", fontWeight: "500", cursor: "pointer",
+                fontSize: "13px", fontWeight: 500, cursor: "pointer",
                 display: "flex", alignItems: "center", justifyContent: "center", gap: "6px",
               }}
             >
@@ -428,9 +331,9 @@ export default function SavingsStoryCard({ entry, onClose }: Props) {
               onClick={handleShare}
               style={{
                 flex: 2, padding: "14px",
-                backgroundColor: "#10b981", color: "#ffffff",
+                backgroundColor: C.emerald, color: "#ffffff",
                 border: "none", borderRadius: "10px",
-                fontSize: "14px", fontWeight: "600", cursor: "pointer",
+                fontSize: "14px", fontWeight: 600, cursor: "pointer",
                 display: "flex", alignItems: "center", justifyContent: "center", gap: "8px",
               }}
             >

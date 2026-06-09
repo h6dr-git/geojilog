@@ -10,7 +10,7 @@ import { smartCropToSquare } from "@/lib/smartCrop";
 import {
   Upload, Camera, ImageIcon, PenLine, Loader2, Download,
   Copy, Trash2, ChevronDown, ChevronUp, Check,
-  Pencil, X, ChevronLeft, ChevronRight, BarChart2, Share2,
+  Pencil, X, ChevronLeft, ChevronRight, BarChart2, Share2, RotateCw,
 } from "lucide-react";
 import SavingsStoryCard from "@/components/SavingsStoryCard";
 import Hwasubun from "@/components/Hwasubun";
@@ -37,6 +37,7 @@ interface SavingsEntry {
 // 업로드 큐 아이템 — submitting 필드 추가 (버그 #1 수정)
 interface QueueItem {
   id: string;
+  file: File; // [작업1-a] 원본 File 보관 → 분석 실패 시 재시도(재분석) 가능
   previewUrl: string;
   fileName: string;
   status: "analyzing" | "ready" | "error";
@@ -169,6 +170,31 @@ function MiniCalendar({ entries }: { entries: SavingsEntry[] }) {
     monthEntries.forEach(e => { map[e.category] = (map[e.category] ?? 0) + e.profit; });
     return Object.entries(map).sort((a, b) => b[1] - a[1]);
   }, [monthEntries]);
+
+  // [작업3] 월간 앨범 — 사진 있는 기록만(포토덤프) + 이미지로 저장
+  const monthPhotos = useMemo(() => monthEntries.filter(e => e.imageUrl), [monthEntries]);
+  const monthTotal = useMemo(() => monthEntries.reduce((s, e) => s + e.profit, 0), [monthEntries]);
+  const albumRef = useRef<HTMLDivElement>(null);
+  const [savingAlbum, setSavingAlbum] = useState(false);
+
+  const handleSaveAlbum = async () => {
+    if (!albumRef.current) return;
+    setSavingAlbum(true);
+    try {
+      const html2canvas = (await import("html2canvas")).default;
+      const canvas = await html2canvas(albumRef.current, {
+        scale: 2, useCORS: true, backgroundColor: "#16201A", logging: false,
+      });
+      const a = document.createElement("a");
+      a.download = `geojilog_${year}.${String(month + 1).padStart(2, "0")}_album.png`;
+      a.href = canvas.toDataURL("image/png");
+      a.click();
+    } catch {
+      /* 캡처 실패 시 조용히 무시 */
+    } finally {
+      setSavingAlbum(false);
+    }
+  };
 
   const prevMonth = () => {
     setViewDate(d => new Date(d.getFullYear(), d.getMonth() - 1, 1));
@@ -460,9 +486,53 @@ function MiniCalendar({ entries }: { entries: SavingsEntry[] }) {
                 <div className="flex justify-between items-center">
                   <span className="text-xs text-gray-400">{monthEntries.length}건</span>
                   <span className="text-lg font-mono font-bold text-emerald-500">
-                    +₩{fmt(monthEntries.reduce((s, e) => s + e.profit, 0))}
+                    +₩{fmt(monthTotal)}
                   </span>
                 </div>
+
+                {/* [작업3] 월간 앨범 — 포토덤프 3-col + 월 합계 + 이미지로 저장 */}
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-xs font-mono text-gray-400 tracking-widest uppercase">앨범</span>
+                    <button
+                      onClick={handleSaveAlbum}
+                      disabled={savingAlbum}
+                      className="flex items-center gap-1 text-xs text-emerald-600 hover:text-emerald-700 disabled:opacity-40 transition-colors"
+                    >
+                      {savingAlbum ? <Loader2 size={12} className="animate-spin" /> : <Download size={12} />}
+                      이미지로 저장
+                    </button>
+                  </div>
+                  <div ref={albumRef} style={{ backgroundColor: "#16201A", padding: "18px", borderRadius: "16px" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: "14px" }}>
+                      <div>
+                        <div style={{ fontSize: "9px", letterSpacing: "3px", color: "#7E8C82", textTransform: "uppercase", marginBottom: "3px" }}>거지로그</div>
+                        <div style={{ fontSize: "17px", fontWeight: 700, color: "#F4EFE3" }}>{year}.{String(month + 1).padStart(2, "0")} 앨범</div>
+                      </div>
+                      <div style={{ textAlign: "right" }}>
+                        <div style={{ fontSize: "9px", color: "#7E8C82", marginBottom: "2px" }}>{monthEntries.length}건 지켜냄</div>
+                        <div style={{ fontSize: "20px", fontWeight: 800, color: "#10B981", fontFamily: "ui-monospace, 'Courier New', monospace" }}>+₩{fmt(monthTotal)}</div>
+                      </div>
+                    </div>
+                    {monthPhotos.length > 0 ? (
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "4px" }}>
+                        {monthPhotos.map(e => (
+                          <img
+                            key={e.id}
+                            src={e.imageUrl!}
+                            crossOrigin="anonymous"
+                            alt=""
+                            style={{ width: "100%", aspectRatio: "1 / 1", objectFit: "cover", borderRadius: "8px", display: "block" }}
+                          />
+                        ))}
+                      </div>
+                    ) : (
+                      <div style={{ fontSize: "12px", color: "#7E8C82", textAlign: "center", padding: "24px 0" }}>이 달엔 사진 기록이 없어요</div>
+                    )}
+                    <div style={{ textAlign: "center", fontSize: "8px", color: "#5E6A60", letterSpacing: "2px", marginTop: "14px" }}>GEOJILOG · {year}{String(month + 1).padStart(2, "0")}</div>
+                  </div>
+                </div>
+
                 {/* 카테고리별 */}
                 <div className="space-y-1.5">
                   {monthByCategory.map(([cat, profit]) => {
@@ -606,10 +676,11 @@ export default function Home() {
 
     const newItems: QueueItem[] = arr.map(file => ({
       id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+      file, // [작업1-a] 원본 File 보관 → 재시도 가능
       previewUrl: URL.createObjectURL(file),
       fileName: file.name,
       status: "analyzing" as const,
-      submitting: false, // 버그 #1: 개별 로딩 상태 초기화
+      submitting: false,
       title: "", category: categoryNames[0] ?? "식비",
       originalAmount: "", actualAmount: "",
       aiReason: "", date: todayStr(), memo: "",
@@ -617,12 +688,20 @@ export default function Home() {
 
     setQueue(prev => [...prev, ...newItems]);
 
-    newItems.forEach((item, idx) => {
-      processFile(arr[idx], item.id).catch(() => {
+    newItems.forEach((item) => {
+      processFile(item.file, item.id).catch(() => {
         setQueue(prev => prev.map(it => it.id === item.id ? { ...it, status: "error" as const } : it));
       });
     });
   }, [processFile, categoryNames]);
+
+  // [작업1-a] 분석 실패 항목 재시도 — 보관해 둔 원본 File로 다시 분석 (큐 유지)
+  const retryQueueItem = useCallback((item: QueueItem) => {
+    setQueue(prev => prev.map(it => it.id === item.id ? { ...it, status: "analyzing" as const } : it));
+    processFile(item.file, item.id).catch(() => {
+      setQueue(prev => prev.map(it => it.id === item.id ? { ...it, status: "error" as const } : it));
+    });
+  }, [processFile]);
 
   // ── 큐 아이템 등록 — 버그 #1: 개별 submitting 상태 사용 ──
   const handleQueueConfirm = async (item: QueueItem) => {
@@ -644,7 +723,8 @@ export default function Home() {
         imageUrl: item.imageUrl,
         memo: item.memo || undefined,
       });
-      toast.success(`✓ ${item.title || item.fileName} 등록됨`);
+      const saved = Math.max(0, Number(item.originalAmount) - Number(item.actualAmount));
+      toast.success(`+₩${fmt(saved)} 지켜냈어요`, { description: `${item.title || item.fileName} 기록됨` });
       setQueue(prev => {
         const it = prev.find(i => i.id === item.id);
         if (it) URL.revokeObjectURL(it.previewUrl);
@@ -907,17 +987,23 @@ export default function Home() {
                     </div>
                   )}
 
-                  {/* 오류 */}
+                  {/* 오류 — [작업1-a] 보관한 원본 File로 재분석 가능 */}
                   {item.status === "error" && (
                     <div className="flex items-center gap-3 p-3">
                       <div className="w-14 h-14 rounded-lg bg-red-50 flex-shrink-0 overflow-hidden">
                         <img src={item.previewUrl} alt="" className="w-full h-full object-cover opacity-40" />
                       </div>
-                      <div className="flex-1">
-                        <p className="text-xs text-red-500">분석 실패 — 직접 입력해주세요</p>
-                        <p className="text-xs text-gray-400 truncate">{item.fileName}</p>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs text-red-500">분석에 실패했어요</p>
+                        <p className="text-xs text-gray-400 truncate">다시 시도하거나 아래에서 직접 입력하세요</p>
                       </div>
-                      <button onClick={() => removeQueueItem(item.id)} className="p-1 text-gray-300 hover:text-gray-500">
+                      <button
+                        onClick={() => retryQueueItem(item)}
+                        className="flex items-center gap-1 px-2.5 py-1.5 text-xs text-emerald-600 border border-emerald-200 rounded-lg hover:bg-emerald-50 active:scale-95 transition-all flex-shrink-0"
+                      >
+                        <RotateCw size={12} /> 다시 시도
+                      </button>
+                      <button onClick={() => removeQueueItem(item.id)} className="p-1 text-gray-300 hover:text-gray-500 flex-shrink-0">
                         <X size={14} />
                       </button>
                     </div>
@@ -960,47 +1046,44 @@ export default function Home() {
                         </button>
                       </div>
 
-                      {/* 금액 */}
-                      <div className="grid grid-cols-3 gap-2">
-                        <div>
-                          <label className="text-[10px] text-gray-400 block mb-0.5">원가</label>
-                          <input
-                            type="number"
-                            value={item.originalAmount}
-                            onChange={e => updateQueueItem(item.id, { originalAmount: e.target.value })}
-                            className="w-full text-xs border border-gray-200 rounded px-2 py-1.5 focus:outline-none focus:border-emerald-400"
-                          />
-                        </div>
-                        <div>
-                          <label className="text-[10px] text-gray-400 block mb-0.5">실제 지출</label>
-                          <input
-                            type="number"
-                            value={item.actualAmount}
-                            onChange={e => updateQueueItem(item.id, { actualAmount: e.target.value })}
-                            className="w-full text-xs border border-gray-200 rounded px-2 py-1.5 focus:outline-none focus:border-emerald-400"
-                          />
-                        </div>
-                        <div>
-                          <label className="text-[10px] text-gray-400 block mb-0.5">수익</label>
-                          <div className="text-xs font-semibold text-emerald-500 px-2 py-1.5">
-                            {item.originalAmount && item.actualAmount
-                              ? `+₩${fmt(Number(item.originalAmount) - Number(item.actualAmount))}`
-                              : "—"}
-                          </div>
-                        </div>
+                      {/* [작업5] 리빌 히어로 — 도파민은 "지켜냄"(절약=수익 리프레임) */}
+                      <div className="flex items-baseline justify-between rounded-xl bg-emerald-50 px-3 py-2.5">
+                        <span className="text-[11px] font-medium text-emerald-700/70">이번에 지켜낸 돈</span>
+                        <span className="font-mono text-xl font-extrabold tabular-nums text-emerald-600">
+                          {item.originalAmount && item.actualAmount
+                            ? `+₩${fmt(Math.max(0, Number(item.originalAmount) - Number(item.actualAmount)))}`
+                            : "—"}
+                          <span className="ml-1 text-xs font-semibold text-emerald-600/80">지켜냄</span>
+                        </span>
                       </div>
 
-                      {/* 메모 */}
+                      {/* [작업5] AI 원가추정은 작은 보조줄 — 바로 탭해서 수정 (원가 → 실제) */}
+                      <div className="flex items-center gap-2 px-1 text-[11px] text-gray-400">
+                        <span className="font-mono uppercase tracking-wider text-gray-300">AI 추정</span>
+                        <span className="flex items-center gap-1">원가
+                          <input type="number" value={item.originalAmount}
+                            onChange={e => updateQueueItem(item.id, { originalAmount: e.target.value })}
+                            className="w-16 border-0 border-b border-gray-200 bg-transparent text-right tabular-nums text-gray-600 focus:border-emerald-400 focus:outline-none" />
+                        </span>
+                        <span className="text-gray-300">→</span>
+                        <span className="flex items-center gap-1">실제
+                          <input type="number" value={item.actualAmount}
+                            onChange={e => updateQueueItem(item.id, { actualAmount: e.target.value })}
+                            className="w-16 border-0 border-b border-gray-200 bg-transparent text-right tabular-nums text-gray-600 focus:border-emerald-400 focus:outline-none" />
+                        </span>
+                      </div>
+
+                      {/* 내 썰(메모) — 사적 화면 노출 OK, 공유 카드엔 기본 미포함 */}
                       <input
                         value={item.memo}
                         onChange={e => updateQueueItem(item.id, { memo: e.target.value })}
-                        placeholder="메모 (선택)"
+                        placeholder="내 썰 한 줄 (선택)"
                         className="w-full text-xs border border-gray-200 rounded px-2 py-1.5 focus:outline-none focus:border-emerald-400"
                       />
 
-                      {/* AI 근거 */}
+                      {/* AI 근거 — 더 작게 보조 표기 */}
                       {item.aiReason && (
-                        <p className="text-[10px] text-gray-400 leading-relaxed">{item.aiReason}</p>
+                        <p className="text-[10px] text-gray-300 leading-relaxed">{item.aiReason}</p>
                       )}
 
                       {/* 버그 #1: item.submitting 으로 개별 로딩 */}
@@ -1114,7 +1197,16 @@ export default function Home() {
                           : <div className="w-10 h-10 rounded-lg bg-gray-100 flex-shrink-0" />
                         }
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-gray-900 truncate">{entry.title}</p>
+                          {/* [작업2] 티커칩 + 제목 */}
+                          <div className="flex items-center gap-1.5">
+                            {entry.ticker && (
+                              <span className="text-[10px] font-mono font-semibold tracking-wider px-1.5 py-0.5 rounded bg-[#E0A92E]/15 text-[#B07F1E] flex-shrink-0">
+                                {entry.ticker}
+                              </span>
+                            )}
+                            <p className="text-sm font-medium text-gray-900 truncate">{entry.title}</p>
+                          </div>
+                          {/* 내 썰(메모) 한 줄 미리보기 — 사적 화면이라 노출 OK */}
                           {entry.memo && <p className="text-xs text-gray-400 truncate mt-0.5 italic">{entry.memo}</p>}
                         </div>
                         {/* 버그 #2: 원가(취소선) → 실제지출 나란히 + 절약수익 */}
