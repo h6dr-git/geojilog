@@ -2,7 +2,7 @@ import { z } from "zod";
 import { COOKIE_NAME } from "@shared/const";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { publicProcedure, protectedProcedure, router } from "./_core/trpc";
-import { getSavingsEntries, createSavingsEntry, deleteSavingsEntry, deleteMultipleSavingsEntries, deleteAllSavingsEntries, countSavingsEntriesByCategory, updateSavingsEntry, getUserCategories, createUserCategory, deleteUserCategory, renameUserCategory } from "./db";
+import { getSavingsEntries, createSavingsEntry, deleteSavingsEntry, deleteMultipleSavingsEntries, deleteAllSavingsEntries, countSavingsEntriesByCategory, updateSavingsEntry, getUserCategories, createUserCategory, deleteUserCategory, renameUserCategory, updateUserName } from "./db";
 import { invokeLLM } from "./_core/llm";
 import { storagePut, storageGetSignedUrl } from "./storage";
 
@@ -22,6 +22,15 @@ export const appRouter = router({
       ctx.res.clearCookie(COOKIE_NAME, { ...cookieOptions, maxAge: -1 });
       return { success: true } as const;
     }),
+  }),
+
+  user: router({
+    updateName: protectedProcedure
+      .input(z.object({ name: z.string().trim().min(1).max(20) }))
+      .mutation(async ({ ctx, input }) => {
+        await updateUserName(ctx.user.id, input.name);
+        return { success: true };
+      }),
   }),
 
   savings: router({

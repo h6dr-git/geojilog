@@ -16,6 +16,13 @@ function getRedirectUri(req: Request): string {
   return `${base}/api/auth/kakao/callback`;
 }
 
+// 카카오 닉네임 → 기본 표시 이름. 성씨 한 글자 + "회장님" (예: 박상욱 → 박회장님).
+// 닉네임이 비어 있으면 그냥 "회장님".
+function toPresidentName(nickname: string | undefined | null): string {
+  const surname = Array.from((nickname ?? "").trim())[0];
+  return surname ? surname + "회장님" : "회장님";
+}
+
 export function registerKakaoAuth(app: Express): void {
   // 1) 로그인 시작 → 카카오 인가 화면으로
   app.get("/api/auth/kakao", (req, res) => {
@@ -69,8 +76,9 @@ export function registerKakaoAuth(app: Express): void {
       };
 
       const openId = "kakao_" + me.id;
-      const nickname =
-        me.kakao_account?.profile?.nickname || me.properties?.nickname || "회장님";
+      const rawNickname =
+        me.kakao_account?.profile?.nickname || me.properties?.nickname || "";
+      const displayName = toPresidentName(rawNickname);
 
       // 계정 find-or-link
       let uid: number;
@@ -94,12 +102,12 @@ export function registerKakaoAuth(app: Express): void {
           // 지금 쓰던 게스트 계정을 카카오로 연결(기존 데이터 유지)
           await db.updateUserIdentity(currentUser.id, {
             openId,
-            name: nickname,
+            name: displayName,
             loginMethod: "kakao",
           });
           uid = currentUser.id;
         } else {
-          uid = await db.createUser({ openId, name: nickname, loginMethod: "kakao" });
+          uid = await db.createUser({ openId, name: displayName, loginMethod: "kakao" });
         }
       }
 

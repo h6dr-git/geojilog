@@ -112,13 +112,48 @@ export async function mergeUserData(fromUserId: number, toUserId: number): Promi
   if (fromUserId === toUserId) return;
   const db = await getDb();
   if (!db) throw new Error("Database not available");
-  const { and } = await import("drizzle-orm");
-  await db.update(savingsEntries).set({ userId: toUserId }).where(eq(savingsEntries.userId, fromUserId));
+  const { and, inArray } = await import("drizzle-orm");
+
+  // 절약기록 이동: 같은 내용(date+title+category+originalAmount+actualAmount)이
+  // 이미 to에 있으면 중복이므로 옮기지 않고(게스트 중복 사본은 정리), 없는 것만 옮긴다.
+  const keyOf = (e: {
+    date: string; title: string; category: string;
+    originalAmount: number; actualAmount: number;
+  }) => `${e.date} ${e.title} ${e.category} ${e.originalAmount} ${e.actualAmount}`;
+
+  const [fromEntries, toEntries] = await Promise.all([
+    db.select().from(savingsEntries).where(eq(savingsEntries.userId, fromUserId)),
+    db.select().from(savingsEntries).where(eq(savingsEntries.userId, toUserId)),
+  ]);
+
+  const existingKeys = new Set(toEntries.map(keyOf));
+  const moveIds: number[] = [];
+  const dupIds: number[] = [];
+  for (const e of fromEntries) {
+    if (existingKeys.has(keyOf(e))) dupIds.push(e.id); // 이미 to에 있는 중복 → 옮기지 않음
+    else moveIds.push(e.id);
+  }
+
+  if (moveIds.length > 0) {
+    await db.update(savingsEntries).set({ userId: toUserId }).where(inArray(savingsEntries.id, moveIds));
+  }
+  if (dupIds.length > 0) {
+    // 옮기지 않은 게스트 중복분은 남기면 고아 레코드가 되므로 삭제(데이터는 to에 보존됨).
+    await db.delete(savingsEntries).where(inArray(savingsEntries.id, dupIds));
+  }
+
   // 기본 카테고리는 양쪽에 다 있어 중복되니 직접 만든(커스텀) 카테고리만 이동
   await db
     .update(userCategories)
     .set({ userId: toUserId })
     .where(and(eq(userCategories.userId, fromUserId), eq(userCategories.isDefault, "no")));
+}
+
+/** 사용자 표시 이름(닉네임) 변경 */
+export async function updateUserName(id: number, name: string): Promise<void> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.update(users).set({ name }).where(eq(users.id, id));
 }
 
 export async function upsertUser(user: InsertUser): Promise<void> {
