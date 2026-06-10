@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
-import { X, Pencil, Trash2, Share2, Loader2 } from "lucide-react";
+import { X, Pencil, Trash2, Loader2, Maximize2 } from "lucide-react";
 import ConfirmDialog from "@/components/ConfirmDialog";
 import { SavingsEntry, fmt } from "@/lib/ledger";
 
@@ -86,24 +86,25 @@ export default function EntryDetailSheet({
           </button>
         </div>
 
-        {/* 사진 */}
+        {/* 사진 — 탭하면 카드 뷰로 (명시적 '공유' 버튼 대신 자발적 발견, 피드백) */}
         {entry.imageUrl && !editing && (
-          <div className="w-full aspect-[4/3] rounded-2xl overflow-hidden bg-line mb-4">
+          <button
+            onClick={() => onShare(entry)}
+            className="relative w-full aspect-[4/3] rounded-2xl overflow-hidden bg-line mb-4 active:opacity-90 transition-opacity"
+          >
             <img src={entry.imageUrl} alt="" className="w-full h-full object-cover" />
-          </div>
+            <span className="absolute bottom-2 right-2 w-7 h-7 rounded-full flex items-center justify-center" style={{ background: "rgba(0,0,0,0.35)" }}>
+              <Maximize2 size={13} className="text-white" />
+            </span>
+          </button>
         )}
 
         {!editing ? (
           <>
-            {/* 메타: 날짜 · 카테고리 · 티커 */}
+            {/* 메타: 날짜 · 카테고리 (티커는 의미 전달 0 판정으로 표시 제거 — 데이터는 보존) */}
             <div className="flex items-center gap-2 text-caption text-ink-soft mb-1.5">
               <span className="font-mono">{entry.date.replace(/-/g, ".")}</span>
               <span className="px-2 py-0.5 rounded-full bg-cream">{entry.category}</span>
-              {entry.ticker && (
-                <span className="text-micro font-mono font-semibold tracking-wider px-1.5 py-0.5 rounded bg-gold/15 text-[#B07F1E]">
-                  {entry.ticker}
-                </span>
-              )}
             </div>
 
             <p className="text-title font-semibold text-ink">{entry.title}</p>
@@ -124,14 +125,8 @@ export default function EntryDetailSheet({
               <p className="text-micro text-ink-faint leading-relaxed mt-2 bg-cream rounded-card px-3 py-2">{entry.aiReason}</p>
             )}
 
-            {/* 액션 */}
+            {/* 액션 — '공유' 버튼 없음(짜침 방지): 카드는 사진 탭으로 자발적 발견 */}
             <div className="flex gap-2 mt-5">
-              <button
-                onClick={() => onShare(entry)}
-                className="flex-1 flex items-center justify-center gap-1.5 py-3 text-body border border-line rounded-xl active:bg-cream transition-colors"
-              >
-                <Share2 size={15} className="text-emerald-500" /> 공유 카드
-              </button>
               <button
                 onClick={() => setEditing(true)}
                 className="flex-1 flex items-center justify-center gap-1.5 py-3 text-body border border-line rounded-xl active:bg-cream transition-colors"

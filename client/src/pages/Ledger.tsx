@@ -83,8 +83,15 @@ export default function Ledger({ initialFocus = null }: { initialFocus?: "week" 
     if (y && m) { setViewDate(new Date(y, m - 1, 1)); setFilterDate(null); }
   };
 
-  // ── 접이식 달력 ──
-  const [showCal, setShowCal] = useState(false);
+  // ── 접이식 달력 — 접기 효익: 가계부의 주 사용(기록 확인)이 첫 화면에 보이게. 선호는 기기별 기억 ──
+  const [showCal, setShowCal] = useState<boolean>(() => {
+    try { return localStorage.getItem("geojilog:ledger-cal") === "1"; } catch { return false; }
+  });
+  const toggleCal = () => setShowCal((v) => {
+    const next = !v;
+    try { localStorage.setItem("geojilog:ledger-cal", next ? "1" : "0"); } catch { /* 무시 */ }
+    return next;
+  });
 
   // ── 주간 딥링크 (회장님 '주간 결산' → 이번 주 기록만) ──
   const [weekFilter, setWeekFilter] = useState<{ start: string; end: string } | null>(() => {
@@ -118,7 +125,12 @@ export default function Ledger({ initialFocus = null }: { initialFocus?: "week" 
   }, [displayEntries]);
 
   const monthTotal = useMemo(() => monthEntries.reduce((s, e) => s + e.profit, 0), [monthEntries]);
-  const profitDates = useMemo(() => new Set(monthEntries.map((e) => e.date)), [monthEntries]);
+  // 달력용 일자별 합계 — 점 표시 대신 금액 숫자 (피드백)
+  const profitByDate = useMemo(() => {
+    const map: Record<string, number> = {};
+    monthEntries.forEach((e) => { map[e.date] = (map[e.date] ?? 0) + e.profit; });
+    return map;
+  }, [monthEntries]);
   const monthPhotos = useMemo(() => monthEntries.filter((e) => e.imageUrl), [monthEntries]);
   const monthByCategory = useMemo(() => {
     const map: Record<string, number> = {};
@@ -414,10 +426,7 @@ export default function Ledger({ initialFocus = null }: { initialFocus?: "week" 
 
       {/* ── 헤더 ── */}
       <header className="pt-12 pb-4 flex items-center justify-between">
-        <div className="flex items-baseline gap-2">
-          <p className="text-title font-semibold text-ink">장부</p>
-          <p className="text-caption font-mono text-ink-soft tracking-wider">{(entries as SavingsEntry[]).length}건</p>
-        </div>
+        <p className="text-title font-semibold text-ink">장부</p>
         <button
           onClick={() => setShowAdd(true)}
           className="flex items-center gap-1 pl-2.5 pr-3.5 py-2 rounded-full bg-emerald-500 text-white text-caption font-medium shadow-sm shadow-emerald-500/30 active:scale-95 transition-transform"
@@ -473,7 +482,7 @@ export default function Ledger({ initialFocus = null }: { initialFocus?: "week" 
             </button>
             {mainTab === "list" && (
               <button
-                onClick={() => setShowCal(v => !v)}
+                onClick={toggleCal}
                 aria-label="달력 보기"
                 className={`ml-1 w-8 h-8 flex items-center justify-center rounded-lg transition-colors ${showCal ? "text-emerald-600 bg-emerald-50" : "text-ink-soft active:bg-line/60"}`}
               >
@@ -492,9 +501,11 @@ export default function Ledger({ initialFocus = null }: { initialFocus?: "week" 
       {weekFilter && (
         <div className="flex items-center justify-between mb-3 px-3.5 py-2.5 rounded-card bg-butler border border-butler-line">
           <span className="text-caption" style={{ color: "#5c5647" }}>
-            이번 주 기록 보는 중 ({weekFilter.start.slice(5).replace("-", ".")} ~ {weekFilter.end.slice(5).replace("-", ".")})
+            {weekFilter.start.slice(5).replace("-", ".")} ~ {weekFilter.end.slice(5).replace("-", ".")} 주간 기록 보는 중
           </span>
-          <button onClick={() => setWeekFilter(null)} className="text-caption text-gold font-medium active:opacity-70">전체 보기</button>
+          <button onClick={() => setWeekFilter(null)} className="flex items-center gap-0.5 text-caption text-gold font-semibold active:opacity-70">
+            <ChevronLeft size={13} /> 전체 보기
+          </button>
         </div>
       )}
 
@@ -504,45 +515,73 @@ export default function Ledger({ initialFocus = null }: { initialFocus?: "week" 
           {/* 접이식 달력 — 날짜 탭하면 그 날만 필터 */}
           {showCal && !weekFilter && (
             <div className="bg-white border border-line rounded-card px-2 py-3 mb-3">
-              <div className="grid grid-cols-7 mb-1">
+              <div className="grid grid-cols-8 mb-1">
                 {KO_DAYS.map((d, i) => (
                   <div key={d} className={`text-center text-micro py-0.5 ${i === 0 ? "text-red-400" : i === 6 ? "text-blue-400" : "text-ink-soft"}`}>{d}</div>
                 ))}
+                <div />
               </div>
-              {calWeeks.map((week, wi) => (
-                <div key={wi} className="grid grid-cols-7">
-                  {week.map((day, di) => {
-                    if (day === null) return <div key={`e${wi}-${di}`} />;
-                    const ds = `${ym}-${String(day).padStart(2, "0")}`;
-                    const has = profitDates.has(ds);
-                    const selected = filterDate === ds;
-                    const isToday = ds === todayFull;
-                    return (
-                      <button
-                        key={ds}
-                        onClick={() => setFilterDate(selected ? null : ds)}
-                        className="flex flex-col items-center py-1 min-h-[38px] rounded-lg active:bg-line/50 transition-colors"
-                      >
-                        <span className={`text-caption w-6 h-6 flex items-center justify-center rounded-full ${
-                          selected ? "bg-emerald-500 text-white font-semibold"
-                          : isToday ? "border border-gold/60 text-ink font-medium"
-                          : "text-ink"
-                        }`}>{day}</span>
-                        <span className={`w-1 h-1 rounded-full mt-0.5 ${has ? "bg-emerald-400" : "bg-transparent"}`} />
-                      </button>
-                    );
-                  })}
-                </div>
-              ))}
+              {calWeeks.map((week, wi) => {
+                // 이 주의 실제 날짜 범위 (주간 보기용)
+                const firstD = week.find((d) => d !== null);
+                const lastD = [...week].reverse().find((d) => d !== null);
+                const weekStart = firstD ? `${ym}-${String(firstD).padStart(2, "0")}` : null;
+                const weekEnd = lastD ? `${ym}-${String(lastD).padStart(2, "0")}` : null;
+                return (
+                  <div key={wi} className="grid grid-cols-8">
+                    {week.map((day, di) => {
+                      if (day === null) return <div key={`e${wi}-${di}`} />;
+                      const ds = `${ym}-${String(day).padStart(2, "0")}`;
+                      const profit = profitByDate[ds];
+                      const selected = filterDate === ds;
+                      const isToday = ds === todayFull;
+                      return (
+                        <button
+                          key={ds}
+                          onClick={() => setFilterDate(selected ? null : ds)}
+                          className="flex flex-col items-center py-1 min-h-[42px] rounded-lg active:bg-line/50 transition-colors"
+                        >
+                          <span className={`text-caption w-6 h-6 flex items-center justify-center rounded-full ${
+                            selected ? "bg-emerald-500 text-white font-semibold"
+                            : isToday ? "border border-gold/60 text-ink font-medium"
+                            : "text-ink"
+                          }`}>{day}</span>
+                          {/* 금액 숫자 — 점보다 정보가 많다 (피드백) */}
+                          {profit !== undefined && (
+                            <span className="text-emerald-500 font-medium leading-tight tabular-nums" style={{ fontSize: "8.5px" }}>
+                              +{fmt(profit)}
+                            </span>
+                          )}
+                        </button>
+                      );
+                    })}
+                    {/* 주 단위 보기 (피드백 4) */}
+                    <button
+                      onClick={() => weekStart && weekEnd && setWeekFilter({ start: weekStart, end: weekEnd })}
+                      aria-label="이 주만 보기"
+                      className="flex items-center justify-center text-ink-faint active:text-emerald-500 transition-colors"
+                      title="이 주만 보기"
+                    >
+                      <ChevronRight size={12} />
+                    </button>
+                  </div>
+                );
+              })}
+              <p className="text-center text-micro text-ink-faint mt-1.5">날짜를 누르면 그날만 · 오른쪽 화살표는 그 주만</p>
             </div>
           )}
 
           {/* 날짜 필터 칩 */}
           {filterDate && (
-            <div className="flex items-center justify-between mb-2 px-1">
-              <span className="text-caption text-ink-soft">{filterDate.replace(/-/g, ".")} 기록만 보는 중</span>
-              <button onClick={() => setFilterDate(null)} className="text-caption text-emerald-600 font-medium active:opacity-70">전체</button>
-            </div>
+            <button
+              onClick={() => setFilterDate(null)}
+              className="w-full flex items-center justify-between mb-2 px-3.5 py-2.5 rounded-card bg-emerald-50 border border-emerald-200 active:bg-emerald-100 transition-colors"
+            >
+              <span className="text-caption text-emerald-700 font-medium">{filterDate.replace(/-/g, ".")} 기록만 보는 중</span>
+              <span className="flex items-center gap-0.5 text-caption text-emerald-600 font-semibold">
+                <ChevronLeft size={13} /> {month + 1}월 전체 보기
+              </span>
+            </button>
           )}
 
           {isLoading ? (
@@ -684,11 +723,6 @@ export default function Ledger({ initialFocus = null }: { initialFocus?: "week" 
         </section>
       )}
 
-      {/* 푸터 */}
-      <footer className="text-center pb-4">
-        <p className="text-caption text-ink-faint">거지답게 아껴서 벌었다</p>
-      </footer>
-
       {/* ══════════ 기록 추가 시트 ══════════ */}
       {showAdd && (
         <div
@@ -713,7 +747,7 @@ export default function Ledger({ initialFocus = null }: { initialFocus?: "week" 
             {/* P1 — 늘 지키는 것 */}
             {frequents.length > 0 && (
               <section className="mb-5">
-                <p className="text-caption font-mono text-ink-soft tracking-widest uppercase mb-2">늘 지키는 것 — 탭 한 번</p>
+                <p className="text-caption font-mono text-ink-soft tracking-widest uppercase mb-2">자주 기록하는 항목</p>
                 <div className="flex gap-2 flex-wrap">
                   {frequents.map((f) => (
                     <button
@@ -728,7 +762,7 @@ export default function Ledger({ initialFocus = null }: { initialFocus?: "week" 
                     </button>
                   ))}
                 </div>
-                <p className="text-micro text-ink-faint mt-1.5">오늘 날짜·지난 금액으로 바로 기록돼요. 금액이 다르면 목록에서 수정.</p>
+                <p className="text-micro text-ink-faint mt-1.5">탭하면 오늘 기록으로 바로 추가돼요 (지난번 금액 기준 · 목록에서 수정 가능)</p>
               </section>
             )}
 
