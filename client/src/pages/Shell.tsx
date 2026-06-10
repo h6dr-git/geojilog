@@ -8,6 +8,7 @@ import Profile from "@/pages/Profile";
 import Onboarding from "@/components/Onboarding";
 import BottomNav, { type MainNavTab } from "@/components/BottomNav";
 import LoginFailNotice from "@/components/LoginFailNotice";
+import SaveReveal from "@/components/SaveReveal";
 import QuickRecord from "@/components/QuickRecord";
 import { trpc } from "@/lib/trpc";
 import type { CaptureJob, Prefill } from "@/lib/capture";
@@ -190,6 +191,9 @@ export default function Shell() {
           )}
 
           <BottomNav tab={tab} onChange={changeTab} />
+
+          {/* 저장 축하 리빌 — 어디서 저장하든 전역으로 한 번 */}
+          <SaveReveal />
 
           {confirmData && <QuickRecord data={confirmData} onClose={closeSheet} onSaved={onResolved} />}
         </>

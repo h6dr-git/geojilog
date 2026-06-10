@@ -7,6 +7,7 @@ import { won } from "@/lib/format";
 import { toast } from "sonner";
 import { X, Loader2, Trash2 } from "lucide-react";
 import ConfirmDialog from "@/components/ConfirmDialog";
+import { celebrateSave } from "@/lib/celebrate";
 import type { Prefill } from "@/lib/capture";
 
 const DEFAULT_CATEGORIES = ["식비", "카페", "교통", "쇼핑", "문화/여가", "기타"];
@@ -66,7 +67,8 @@ export default function QuickRecord({ data, onClose, onSaved }: Props) {
         imageUrl: data.imageUrl || undefined,
       });
       if (data.draftId) removeDraft(data.draftId);
-      toast.success("기록됐어요");
+      if (profit > 0) celebrateSave({ profit, title: title.trim() });
+      else toast.success("기록됐어요");
       onSaved?.();
       onClose();
     } catch {

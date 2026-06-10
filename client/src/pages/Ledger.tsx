@@ -19,6 +19,7 @@ import ExportSheet from "@/components/ExportSheet";
 import ConfirmDialog from "@/components/ConfirmDialog";
 import Jarureu from "@/components/Jarureu";
 import { SavingsEntry, fmt, todayStr, makeDefaultTitle } from "@/lib/ledger";
+import { celebrateSave } from "@/lib/celebrate";
 
 // 파일 시그니처(이름|크기|수정시각) — 같은 사진 중복 업로드 감지용
 const fileSig = (f: File) => `${f.name}|${f.size}|${f.lastModified}`;
@@ -219,7 +220,8 @@ export default function Ledger({ initialFocus = null }: { initialFocus?: "week" 
         memo: item.memo || undefined,
       });
       const saved = Math.max(0, Number(item.originalAmount) - Number(item.actualAmount));
-      toast.success(`+₩${fmt(saved)} 지켜냈어요`, { description: `${item.title || item.fileName} 기록됨` });
+      if (saved > 0) celebrateSave({ profit: saved, title: item.title || item.fileName });
+      else toast.success("기록됐어요", { description: `${item.title || item.fileName} 기록됨` });
       setQueue(prev => {
         const it = prev.find(i => i.id === item.id);
         if (it) URL.revokeObjectURL(it.previewUrl);
@@ -257,7 +259,9 @@ export default function Ledger({ initialFocus = null }: { initialFocus?: "week" 
         memo: manualForm.memo || undefined,
         aiEstimated: "no",
       });
-      toast.success("등록됐습니다");
+      const manualSaved = Number(manualForm.originalAmount) - Number(manualForm.actualAmount);
+      if (manualSaved > 0) celebrateSave({ profit: manualSaved, title: manualForm.title });
+      else toast.success("등록됐습니다");
       const d = todayStr();
       setManualForm({ date: d, title: makeDefaultTitle(d, "식비"), category: "식비", originalAmount: "", actualAmount: "", description: "", memo: "" });
       setManualTitleEdited(false);

@@ -7,6 +7,8 @@ import Jarureu from "@/components/Jarureu";
 import LoginChip from "@/components/LoginChip";
 import { useDrafts, type Draft } from "@/lib/drafts";
 import type { CaptureJob } from "@/lib/capture";
+import { dosaLineOfDay, jarureuLine } from "@/lib/voice";
+import { useRef, useState } from "react";
 import { Camera, ChevronRight, Check } from "lucide-react";
 
 const WEEKLY_GOAL = 50000;
@@ -27,21 +29,6 @@ function butlerGreeting(): string {
   if (h < 22) return "회장님, 오늘 하루도 무탈히 지켜내셨습니다.";
   return "회장님, 늦은 시각입니다. 오늘의 한 끼만 정리하고 쉬시지요.";
 }
-const DOSA_LINES = [
-  "남에게 보이려 쓰는 돈이, 너를 가난하게 한다.",
-  "아낀 한 끼는 사라지지 않는다. 너의 내일로 갈 뿐.",
-  "가벼운 지갑이 부끄러운 게 아니라, 빈 마음이 부끄러운 것이다.",
-  "오늘 참은 작은 것이, 내일의 큰 자유가 된다.",
-  "쓰지 않은 돈은, 가장 조용한 효도다.",
-  "검소함은 궁상이 아니라, 제 삶의 주인이 되는 길이다.",
-  "필요와 욕심을 가릴 줄 아는 자가, 진짜 부자다.",
-];
-function dosaLineOfDay(): string {
-  const now = new Date();
-  const start = new Date(now.getFullYear(), 0, 0);
-  const day = Math.floor((now.getTime() - start.getTime()) / 86400000);
-  return DOSA_LINES[day % DOSA_LINES.length];
-}
 
 type Props = {
   onCapture: () => void;
@@ -61,6 +48,21 @@ export default function HomeTab({ onCapture, onOpenProfile, job, onOpenConfirm, 
   const readyJob = job && job.status === "ready" ? job : null;
   const errorJob = job && job.status === "error" ? job : null;
 
+  // 자르르 말풍선 — 탭하면 김집사 인사 대신 자르르가 한 마디(3.2초). 오늘 기록 여부로 톤이 갈린다.
+  const today = (() => {
+    const d = new Date();
+    const p = (n: number) => String(n).padStart(2, "0");
+    return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+  })();
+  const fedToday = (entries as Entry[]).some((e) => e.date === today);
+  const [jarLine, setJarLine] = useState<string | null>(null);
+  const jarTimer = useRef<number | undefined>(undefined);
+  function pokeJarureu() {
+    setJarLine(jarureuLine(fedToday));
+    window.clearTimeout(jarTimer.current);
+    jarTimer.current = window.setTimeout(() => setJarLine(null), 3200);
+  }
+
   return (
     <div
       className="min-h-dvh max-w-lg mx-auto px-5 pb-24 flex flex-col"
@@ -73,7 +75,7 @@ export default function HomeTab({ onCapture, onOpenProfile, job, onOpenConfirm, 
 
       {/* 자르르 주인공 + 김집사 말풍선 인사 */}
       <div className="flex flex-col items-center mt-10">
-        <div className="relative">
+        <div className="relative" onClick={pokeJarureu}>
           <Jarureu level={level} size={156} analyzing={!!analyzingJob} />
           <div className="absolute left-1/2 -translate-x-1/2 -bottom-0.5 w-24 h-3.5 rounded-[50%] bg-black/10 blur-md" aria-hidden="true" />
         </div>
@@ -81,9 +83,14 @@ export default function HomeTab({ onCapture, onOpenProfile, job, onOpenConfirm, 
         <div className="relative mt-7 w-full max-w-[19.5rem]">
           <div className="absolute -top-1.5 left-1/2 -translate-x-1/2 w-3 h-3 bg-white border-l border-t border-line rotate-45" aria-hidden="true" />
           <div className="relative bg-white border border-line rounded-card px-4 py-3 shadow-sm flex items-start gap-2.5">
-            <span className="w-6 h-6 rounded-lg flex items-center justify-center text-micro font-medium shrink-0" style={{ background: "#eadfc6", color: "#a9863f" }}>집</span>
+            <span
+              className="w-6 h-6 rounded-lg flex items-center justify-center text-micro font-medium shrink-0"
+              style={jarLine ? { background: "#f7e9c4", color: "#b07f1e" } : { background: "#eadfc6", color: "#a9863f" }}
+            >
+              {jarLine ? "자" : "집"}
+            </span>
             <p className="text-body text-ink/85 leading-relaxed text-left">
-              {analyzingJob ? `${josa(CHARACTER_NAME, "이", "가")} 사진을 살펴보는 중이에요…` : butlerGreeting()}
+              {jarLine ?? (analyzingJob ? `${josa(CHARACTER_NAME, "이", "가")} 사진을 살펴보는 중이에요…` : butlerGreeting())}
             </p>
           </div>
         </div>

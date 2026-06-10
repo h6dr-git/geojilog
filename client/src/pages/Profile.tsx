@@ -8,6 +8,7 @@ import { useAuth } from "@/hooks/useAuth";
 import Jarureu from "@/components/Jarureu";
 import { Download, ChevronRight, LogOut, Pencil, Check, X } from "lucide-react";
 import ExportSheet from "@/components/ExportSheet";
+import WeeklyWrapped from "@/components/WeeklyWrapped";
 import type { SavingsEntry } from "@/lib/ledger";
 
 type Entry = { date: string; profit: number };
@@ -55,6 +56,7 @@ export default function Profile({ onOpenWeekly }: { onOpenWeekly: () => void }) 
   const [editing, setEditing] = useState(false);
   const [draftName, setDraftName] = useState("");
   const [showExport, setShowExport] = useState(false);
+  const [showWrapped, setShowWrapped] = useState(false);
 
   function startEdit() {
     setDraftName(displayName);
@@ -110,8 +112,11 @@ export default function Profile({ onOpenWeekly }: { onOpenWeekly: () => void }) 
         </p>
       </header>
 
-      {/* 김집사 주간 결산 — 탭하면 장부 달력의 '이번 주 상세'로 바로 (애매한 탭 전환 X) */}
-      <button onClick={onOpenWeekly} className="w-full text-left bg-butler border border-butler-line rounded-card p-5 mb-3 active:scale-[0.99] active:opacity-90 transition-all">
+      {/* 김집사 주간 결산 — 기록 있으면 Wrapped 스토리, 없으면 장부 주간 상세로 */}
+      <button
+        onClick={() => (weekCount > 0 ? setShowWrapped(true) : onOpenWeekly())}
+        className="w-full text-left bg-butler border border-butler-line rounded-card p-5 mb-3 active:scale-[0.99] active:opacity-90 transition-all"
+      >
         <div className="flex items-center gap-2 mb-2.5">
           <span className="w-7 h-7 rounded-lg flex items-center justify-center text-caption font-medium shrink-0" style={{ background: "#eadfc6", color: "#a9863f" }}>집</span>
           <p className="text-micro text-gold tracking-wide">김집사의 주간 결산</p>
@@ -157,6 +162,17 @@ export default function Profile({ onOpenWeekly }: { onOpenWeekly: () => void }) 
       </button>
 
       {showExport && <ExportSheet entries={entries as SavingsEntry[]} onClose={() => setShowExport(false)} />}
+
+      {showWrapped && (
+        <WeeklyWrapped
+          entries={entries as SavingsEntry[]}
+          onClose={() => setShowWrapped(false)}
+          onGoDetail={() => {
+            setShowWrapped(false);
+            onOpenWeekly();
+          }}
+        />
+      )}
 
       <p className="text-center text-micro text-ink-faint mt-10 font-mono tracking-wider">
         {APP_NAME} · {josa(CHARACTER_NAME, "과", "와")} 함께
