@@ -11,12 +11,10 @@ export default function EntryDetailSheet({
   entry,
   categoryNames,
   onClose,
-  onShare,
 }: {
   entry: SavingsEntry;
   categoryNames: string[];
   onClose: () => void;
-  onShare: (e: SavingsEntry) => void;
 }) {
   const utils = trpc.useUtils();
   const updateEntry = trpc.savings.update.useMutation({ onSuccess: () => utils.savings.list.invalidate() });
@@ -24,6 +22,7 @@ export default function EntryDetailSheet({
 
   const [editing, setEditing] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [showPhoto, setShowPhoto] = useState(false); // 사진 탭 = 사진 확대 (관습 그대로 — #20 철회 반영)
   const [form, setForm] = useState({
     date: entry.date,
     title: entry.title,
@@ -86,10 +85,11 @@ export default function EntryDetailSheet({
           </button>
         </div>
 
-        {/* 사진 — 탭하면 카드 뷰로 (명시적 '공유' 버튼 대신 자발적 발견, 피드백) */}
+        {/* 사진 — 탭하면 '사진이' 커진다 (확대 아이콘은 확대를 해야 함 — #20 철회 반영).
+            공유 카드 진입은 '카드 스킨 프로젝트'에서 별도 재설계 예정 */}
         {entry.imageUrl && !editing && (
           <button
-            onClick={() => onShare(entry)}
+            onClick={() => setShowPhoto(true)}
             className="relative w-full aspect-[4/3] rounded-2xl overflow-hidden bg-line mb-4 active:opacity-90 transition-opacity"
           >
             <img src={entry.imageUrl} alt="" className="w-full h-full object-cover" />
@@ -194,6 +194,17 @@ export default function EntryDetailSheet({
           </form>
         )}
       </div>
+
+      {/* 사진 확대 뷰어 — 탭하면 닫힘 */}
+      {showPhoto && entry.imageUrl && (
+        <div
+          className="fixed inset-0 z-[80] flex items-center justify-center px-4"
+          style={{ background: "rgba(0,0,0,0.96)", animation: "edFade .2s ease" }}
+          onClick={(e) => { e.stopPropagation(); setShowPhoto(false); }}
+        >
+          <img src={entry.imageUrl} alt="" className="w-full max-h-[82vh] object-contain rounded-xl" />
+        </div>
+      )}
 
       {confirmDelete && (
         <ConfirmDialog

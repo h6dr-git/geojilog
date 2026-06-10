@@ -14,7 +14,6 @@ import {
   Copy, ChevronDown, ChevronUp, ChevronRight, ChevronLeft,
   X, RotateCw, Plus, Repeat, Sparkles, CalendarDays, ImageOff,
 } from "lucide-react";
-import SavingsStoryCard from "@/components/SavingsStoryCard";
 import EntryDetailSheet from "@/components/EntryDetailSheet";
 import AlbumKit from "@/components/AlbumKit";
 import Jarureu from "@/components/Jarureu";
@@ -149,9 +148,8 @@ export default function Ledger({ initialFocus = null }: { initialFocus?: "week" 
     return weeks;
   }, [year, month]);
 
-  // ── 상세/공유/꾸미기 ──
+  // ── 상세/꾸미기 ── (공유 카드 진입은 '카드 스킨 프로젝트'로 분리 — 피드백 #20 철회)
   const [detailEntry, setDetailEntry] = useState<SavingsEntry | null>(null);
-  const [storyEntry, setStoryEntry] = useState<SavingsEntry | null>(null);
   const [showKit, setShowKit] = useState(false);
 
   // ── 기록 추가 시트 ──
@@ -497,15 +495,19 @@ export default function Ledger({ initialFocus = null }: { initialFocus?: "week" 
         </div>
       )}
 
-      {/* 주간 필터 칩 (회장님 결산에서 진입) */}
+      {/* 주간 필터 브레드크럼 (달력 주 선택·회장님 결산 딥링크 공용) */}
       {weekFilter && (
-        <div className="flex items-center justify-between mb-3 px-3.5 py-2.5 rounded-card bg-butler border border-butler-line">
-          <span className="text-caption" style={{ color: "#5c5647" }}>
-            {weekFilter.start.slice(5).replace("-", ".")} ~ {weekFilter.end.slice(5).replace("-", ".")} 주간 기록 보는 중
-          </span>
-          <button onClick={() => setWeekFilter(null)} className="flex items-center gap-0.5 text-caption text-gold font-semibold active:opacity-70">
-            <ChevronLeft size={13} /> 전체 보기
+        <div className="flex items-center gap-1.5 mb-2.5 px-1 text-caption">
+          <button onClick={() => setWeekFilter(null)} className="text-ink-soft underline-offset-2 active:text-ink transition-colors">
+            전체
           </button>
+          <ChevronRight size={11} className="text-ink-faint" />
+          <span className="flex items-center gap-1.5 text-emerald-600 font-medium">
+            {weekFilter.start.slice(5).replace("-", ".")} ~ {weekFilter.end.slice(5).replace("-", ".")} 주간
+            <button onClick={() => setWeekFilter(null)} aria-label="필터 해제" className="w-4 h-4 rounded-full bg-line/70 flex items-center justify-center text-ink-soft active:bg-line">
+              <X size={9} />
+            </button>
+          </span>
         </div>
       )}
 
@@ -572,16 +574,20 @@ export default function Ledger({ initialFocus = null }: { initialFocus?: "week" 
           )}
 
           {/* 날짜 필터 칩 */}
+          {/* 필터 브레드크럼 — 배너보다 조용하게, 경로처럼 (피드백 #15 재작업) */}
           {filterDate && (
-            <button
-              onClick={() => setFilterDate(null)}
-              className="w-full flex items-center justify-between mb-2 px-3.5 py-2.5 rounded-card bg-emerald-50 border border-emerald-200 active:bg-emerald-100 transition-colors"
-            >
-              <span className="text-caption text-emerald-700 font-medium">{filterDate.replace(/-/g, ".")} 기록만 보는 중</span>
-              <span className="flex items-center gap-0.5 text-caption text-emerald-600 font-semibold">
-                <ChevronLeft size={13} /> {month + 1}월 전체 보기
+            <div className="flex items-center gap-1.5 mb-2.5 px-1 text-caption">
+              <button onClick={() => setFilterDate(null)} className="text-ink-soft underline-offset-2 active:text-ink transition-colors">
+                {month + 1}월 전체
+              </button>
+              <ChevronRight size={11} className="text-ink-faint" />
+              <span className="flex items-center gap-1.5 text-emerald-600 font-medium">
+                {(() => { const d = new Date(filterDate + "T00:00:00"); return `${d.getDate()}일 (${KO_DAYS[d.getDay()]})`; })()}
+                <button onClick={() => setFilterDate(null)} aria-label="필터 해제" className="w-4 h-4 rounded-full bg-line/70 flex items-center justify-center text-ink-soft active:bg-line">
+                  <X size={9} />
+                </button>
               </span>
-            </button>
+            </div>
           )}
 
           {isLoading ? (
@@ -1001,13 +1007,7 @@ export default function Ledger({ initialFocus = null }: { initialFocus?: "week" 
           entry={detailEntry}
           categoryNames={categoryNames}
           onClose={() => setDetailEntry(null)}
-          onShare={(e) => { setDetailEntry(null); setStoryEntry(e); }}
         />
-      )}
-
-      {/* 스토리 카드 모달 */}
-      {storyEntry && (
-        <SavingsStoryCard entry={storyEntry} onClose={() => setStoryEntry(null)} />
       )}
 
       {/* 월 카드 꾸미기 */}
