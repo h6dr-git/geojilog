@@ -1,7 +1,9 @@
-// 꾸미기 키트 — 앨범 공유카드 테마·스티커 (바이블 §6: '제약된 큐레이트', 프리폼 에디터 금지)
-// 테마 3종 + 스티커 4종 토글 + 실시간 미리보기 → 이미지로 저장. 선택은 localStorage에 기억.
-import { useEffect, useRef, useState } from "react";
-import { X, Download, Loader2, Check } from "lucide-react";
+// 꾸미기 키트 — 앨범 공유카드 테마·스티커 (SSOT: '제약된 큐레이트', 프리폼 에디터 금지)
+// 테마 3종 + 스티커 4종 토글 + 실시간 미리보기 → '크게 보기'(캡처 뷰). 선택은 localStorage에 기억.
+// [v2] 캡처 모드 전환(SSOT §2): 파일 생성 없음 — 공유는 사용자가 스크린샷으로.
+import { useEffect, useState } from "react";
+import { X, Maximize2, Check } from "lucide-react";
+import CaptureView from "@/components/CaptureView";
 import { SavingsEntry, fmt } from "@/lib/ledger";
 
 const KIT_KEY = "geojilog:album-kit";
@@ -87,8 +89,7 @@ export default function AlbumKit({
   const init = loadKit();
   const [themeId, setThemeId] = useState(init.theme);
   const [stickers, setStickers] = useState<StickerId[]>(init.stickers);
-  const [saving, setSaving] = useState(false);
-  const cardRef = useRef<HTMLDivElement>(null);
+  const [captureMode, setCaptureMode] = useState(false);
 
   const theme = THEMES.find((t) => t.id === themeId) ?? THEMES[0];
   const mm = String(month + 1).padStart(2, "0");
@@ -101,28 +102,74 @@ export default function AlbumKit({
     try { localStorage.setItem(KIT_KEY, JSON.stringify({ theme: themeId, stickers })); } catch { /* 무시 */ }
   }, [themeId, stickers]);
 
-  const handleSave = async () => {
-    if (!cardRef.current) return;
-    setSaving(true);
-    try {
-      try {
-        if (document.fonts) {
-          await document.fonts.ready;
-          await document.fonts.load("700 20px Pretendard").catch(() => {});
-        }
-      } catch { /* 무시 */ }
-      const html2canvas = (await import("html2canvas")).default;
-      const canvas = await html2canvas(cardRef.current, {
-        scale: 2, useCORS: true, backgroundColor: theme.bg, logging: false,
-      });
-      const a = document.createElement("a");
-      a.download = `geojilog_${year}.${mm}_album.png`;
-      a.href = canvas.toDataURL("image/png");
-      a.click();
-    } catch { /* 캡처 실패 시 조용히 무시 */ } finally {
-      setSaving(false);
-    }
-  };
+  // ── 카드 본체 (시트 미리보기·캡처 뷰에서 동일하게 사용) ──
+  const card = (
+    <div
+      className="mx-auto w-full"
+      style={{ maxWidth: "340px", position: "relative", backgroundColor: theme.bg, padding: "18px", borderRadius: "16px", border: `1px solid ${theme.border}`, overflow: "hidden" }}
+    >
+      {/* 스티커: ₩ 반짝 (배경 산란) */}
+      {has("won") && (
+        <div aria-hidden="true">
+          {[
+            { l: "8%", t: "30%", s: "22px", o: 0.12, r: "-14deg" },
+            { l: "82%", t: "18%", s: "16px", o: 0.14, r: "10deg" },
+            { l: "70%", t: "72%", s: "26px", o: 0.1, r: "-8deg" },
+            { l: "14%", t: "78%", s: "15px", o: 0.13, r: "12deg" },
+          ].map((p, i) => (
+            <span key={i} style={{ position: "absolute", left: p.l, top: p.t, fontSize: p.s, opacity: p.o, color: theme.accent, fontFamily: "'JetBrains Mono', ui-monospace, monospace", transform: `rotate(${p.r})` }}>₩</span>
+          ))}
+        </div>
+      )}
+
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: "14px", position: "relative" }}>
+        <div>
+          <div style={{ display: "flex", alignItems: "center", gap: "5px" }}>
+            <div style={{ fontSize: "9px", letterSpacing: "3px", color: theme.label, textTransform: "uppercase", marginBottom: "3px" }}>거지로그</div>
+            {/* 스티커: 왕관 */}
+            {has("crown") && <div style={{ marginTop: "-4px" }}><CrownSticker color="#E0A92E" /></div>}
+          </div>
+          <div style={{ fontSize: "17px", fontWeight: 700, color: theme.title }}>{year}.{mm} 앨범</div>
+        </div>
+        <div style={{ textAlign: "right" }}>
+          <div style={{ fontSize: "9px", color: theme.label, marginBottom: "2px" }}>{count}건 기록</div>
+          <div style={{ fontSize: "20px", fontWeight: 800, color: theme.accent, fontFamily: "'JetBrains Mono', ui-monospace, monospace" }}>+₩{fmt(total)}</div>
+        </div>
+      </div>
+
+      {photos.length > 0 ? (
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "4px", position: "relative" }}>
+          {photos.map((e) => (
+            <img
+              key={e.id}
+              src={e.imageUrl!}
+              crossOrigin="anonymous"
+              alt=""
+              style={{ width: "100%", aspectRatio: "1 / 1", objectFit: "cover", borderRadius: "8px", display: "block" }}
+            />
+          ))}
+        </div>
+      ) : (
+        <div style={{ fontSize: "12px", color: theme.sub, textAlign: "center", padding: "24px 0" }}>이 달엔 사진 기록이 없어요</div>
+      )}
+
+      <div style={{ position: "relative", marginTop: "14px", minHeight: "14px" }}>
+        <div style={{ textAlign: "center", fontSize: "8px", color: theme.footer, letterSpacing: "2px" }}>GEOJILOG · {year}{mm}</div>
+        {/* 스티커: 자르르 도장 */}
+        {has("jar") && (
+          <div style={{ position: "absolute", right: "0px", bottom: "-2px" }}>
+            <JarSticker />
+          </div>
+        )}
+        {/* 스티커: 지켜냄 인장 */}
+        {has("seal") && (
+          <div style={{ position: "absolute", left: "0px", bottom: "0px", border: `1.5px solid ${theme.accent}`, color: theme.accent, fontSize: "10px", fontWeight: 700, padding: "2px 6px", borderRadius: "4px", transform: "rotate(-8deg)", letterSpacing: "1px", opacity: 0.9 }}>
+            지켜냄
+          </div>
+        )}
+      </div>
+    </div>
+  );
 
   return (
     <div
@@ -144,73 +191,8 @@ export default function AlbumKit({
           </button>
         </div>
 
-        {/* ── 미리보기 = 캡처 대상 ── */}
-        <div
-          ref={cardRef}
-          className="mx-auto"
-          style={{ maxWidth: "340px", position: "relative", backgroundColor: theme.bg, padding: "18px", borderRadius: "16px", border: `1px solid ${theme.border}`, overflow: "hidden" }}
-        >
-          {/* 스티커: ₩ 반짝 (배경 산란) */}
-          {has("won") && (
-            <div aria-hidden="true">
-              {[
-                { l: "8%", t: "30%", s: "22px", o: 0.12, r: "-14deg" },
-                { l: "82%", t: "18%", s: "16px", o: 0.14, r: "10deg" },
-                { l: "70%", t: "72%", s: "26px", o: 0.1, r: "-8deg" },
-                { l: "14%", t: "78%", s: "15px", o: 0.13, r: "12deg" },
-              ].map((p, i) => (
-                <span key={i} style={{ position: "absolute", left: p.l, top: p.t, fontSize: p.s, opacity: p.o, color: theme.accent, fontFamily: "'JetBrains Mono', ui-monospace, monospace", transform: `rotate(${p.r})` }}>₩</span>
-              ))}
-            </div>
-          )}
-
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: "14px", position: "relative" }}>
-            <div>
-              <div style={{ display: "flex", alignItems: "center", gap: "5px" }}>
-                <div style={{ fontSize: "9px", letterSpacing: "3px", color: theme.label, textTransform: "uppercase", marginBottom: "3px" }}>거지로그</div>
-                {/* 스티커: 왕관 */}
-                {has("crown") && <div style={{ marginTop: "-4px" }}><CrownSticker color={theme.id === "hanji" ? "#E0A92E" : "#E0A92E"} /></div>}
-              </div>
-              <div style={{ fontSize: "17px", fontWeight: 700, color: theme.title }}>{year}.{mm} 앨범</div>
-            </div>
-            <div style={{ textAlign: "right" }}>
-              <div style={{ fontSize: "9px", color: theme.label, marginBottom: "2px" }}>{count}건 기록</div>
-              <div style={{ fontSize: "20px", fontWeight: 800, color: theme.accent, fontFamily: "'JetBrains Mono', ui-monospace, monospace" }}>+₩{fmt(total)}</div>
-            </div>
-          </div>
-
-          {photos.length > 0 ? (
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "4px", position: "relative" }}>
-              {photos.map((e) => (
-                <img
-                  key={e.id}
-                  src={e.imageUrl!}
-                  crossOrigin="anonymous"
-                  alt=""
-                  style={{ width: "100%", aspectRatio: "1 / 1", objectFit: "cover", borderRadius: "8px", display: "block" }}
-                />
-              ))}
-            </div>
-          ) : (
-            <div style={{ fontSize: "12px", color: theme.sub, textAlign: "center", padding: "24px 0" }}>이 달엔 사진 기록이 없어요</div>
-          )}
-
-          <div style={{ position: "relative", marginTop: "14px", minHeight: "14px" }}>
-            <div style={{ textAlign: "center", fontSize: "8px", color: theme.footer, letterSpacing: "2px" }}>GEOJILOG · {year}{mm}</div>
-            {/* 스티커: 자르르 도장 */}
-            {has("jar") && (
-              <div style={{ position: "absolute", right: "0px", bottom: "-2px" }}>
-                <JarSticker />
-              </div>
-            )}
-            {/* 스티커: 지켜냄 인장 */}
-            {has("seal") && (
-              <div style={{ position: "absolute", left: "0px", bottom: "0px", border: `1.5px solid ${theme.accent}`, color: theme.accent, fontSize: "10px", fontWeight: 700, padding: "2px 6px", borderRadius: "4px", transform: "rotate(-8deg)", letterSpacing: "1px", opacity: 0.9 }}>
-                지켜냄
-              </div>
-            )}
-          </div>
-        </div>
+        {/* ── 미리보기 (캡처 뷰에서도 동일 카드 사용) ── */}
+        {card}
 
         {/* ── 테마 선택 ── */}
         <p className="text-caption text-ink-soft mt-5 mb-2">테마</p>
@@ -246,16 +228,22 @@ export default function AlbumKit({
           ))}
         </div>
 
-        {/* ── 저장 ── */}
+        {/* ── 크게 보기 — 파일 저장 없음, 캡처는 본인 스크린샷으로 (SSOT §2) ── */}
         <button
-          onClick={handleSave}
-          disabled={saving || photos.length === 0}
+          onClick={() => setCaptureMode(true)}
+          disabled={photos.length === 0}
           className="mt-6 w-full flex items-center justify-center gap-2 py-3.5 bg-emerald-500 text-white text-body font-medium rounded-xl active:scale-[0.98] disabled:opacity-50 transition-transform"
         >
-          {saving ? <Loader2 size={16} className="animate-spin" /> : <Download size={16} />}
-          이미지로 저장
+          <Maximize2 size={16} />
+          크게 보기 · 캡처
         </button>
       </div>
+
+      {captureMode && (
+        <CaptureView bg={theme.bg} onClose={() => setCaptureMode(false)}>
+          {card}
+        </CaptureView>
+      )}
     </div>
   );
 }

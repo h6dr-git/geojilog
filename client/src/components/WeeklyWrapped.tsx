@@ -1,9 +1,10 @@
-// 주간 결산 Wrapped — 김집사의 주간 보고를 스토리 형식(4스텝)으로. (바이블 §6 '주간 결산: Wrapped식')
-// +수익 → 최고의 한 수 → 김집사 평 → 도사 한 줄 + 공유 카드(이미지 저장).
+// 주간 결산 Wrapped — 김집사의 주간 보고를 스토리 형식(4스텝)으로.
+// [v2] 캡처 모드 전환(SSOT §2): 파일 저장 제거 — '크게 보기'에서 본인이 스크린샷으로.
 // 좌/우 탭으로 이동, 상단 프로그레스 바. 사적 화면이라 숫자 노출 OK.
-import { useEffect, useMemo, useRef, useState } from "react";
-import { X, ChevronRight, Download, Loader2 } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { X, ChevronRight, Maximize2 } from "lucide-react";
 import Jarureu from "@/components/Jarureu";
+import CaptureView from "@/components/CaptureView";
 import { SavingsEntry, fmt } from "@/lib/ledger";
 import { butlerWeeklyComment, dosaLineOfDay } from "@/lib/voice";
 
@@ -31,8 +32,7 @@ export default function WeeklyWrapped({
 }) {
   const [step, setStep] = useState(0);
   const [n, setN] = useState(0);
-  const [saving, setSaving] = useState(false);
-  const cardRef = useRef<HTMLDivElement>(null);
+  const [captureMode, setCaptureMode] = useState(false);
 
   const { start, end } = useMemo(weekRange, []);
   const week = useMemo(
@@ -73,28 +73,18 @@ export default function WeeklyWrapped({
   const next = () => setStep((v) => Math.min(STEPS - 1, v + 1));
   const prev = () => setStep((v) => Math.max(0, v - 1));
 
-  const handleSaveCard = async () => {
-    if (!cardRef.current) return;
-    setSaving(true);
-    try {
-      try {
-        if (document.fonts) {
-          await document.fonts.ready;
-          await document.fonts.load("700 20px Pretendard").catch(() => {});
-        }
-      } catch { /* 폰트 API 미지원 시 무시 */ }
-      const html2canvas = (await import("html2canvas")).default;
-      const canvas = await html2canvas(cardRef.current, {
-        scale: 2, useCORS: true, backgroundColor: "#16201A", logging: false,
-      });
-      const a = document.createElement("a");
-      a.download = `geojilog_week_${start}.png`;
-      a.href = canvas.toDataURL("image/png");
-      a.click();
-    } catch { /* 캡처 실패 시 조용히 무시 */ } finally {
-      setSaving(false);
-    }
-  };
+  const shareCard = (
+            <div className="mx-auto" style={{ maxWidth: "320px", backgroundColor: "#16201A", padding: "22px 20px", borderRadius: "16px", border: "1px solid rgba(224,169,46,0.25)" }}>
+              <div style={{ fontSize: "9px", letterSpacing: "3px", color: "#7E8C82", textTransform: "uppercase", marginBottom: "4px", textAlign: "left" }}>거지로그 주간 결산</div>
+              <div style={{ fontSize: "11px", color: "#5E6A60", textAlign: "left", fontFamily: "'JetBrains Mono', ui-monospace, monospace" }}>{mmdd(start)} – {mmdd(end)}</div>
+              <div style={{ fontSize: "34px", fontWeight: 800, color: "#10B981", fontFamily: "'JetBrains Mono', ui-monospace, monospace", textAlign: "left", marginTop: "10px" }}>+₩{fmt(profit)}</div>
+              <div style={{ fontSize: "11px", color: "#9aa89e", textAlign: "left", marginTop: "2px" }}>{week.length}끼 기록{best ? ` · 최고의 한 수 ${best.title}` : ""}</div>
+              <div style={{ borderTop: "1px solid rgba(255,255,255,0.1)", margin: "14px 0" }} />
+              <div style={{ fontSize: "12px", color: "#d8cfae", textAlign: "left", lineHeight: 1.6 }}>{butler}</div>
+              <div style={{ fontSize: "11px", color: "#8C7B5A", textAlign: "left", marginTop: "10px", fontStyle: "italic", lineHeight: 1.6 }}>“{dosa}” — 무일푼 도사</div>
+              <div style={{ textAlign: "center", fontSize: "8px", color: "#5E6A60", letterSpacing: "2px", marginTop: "14px" }}>GEOJILOG</div>
+            </div>
+  );
 
   return (
     <div className="fixed inset-0 z-[60] flex flex-col" style={{ background: "#16201A", animation: "wwFade .25s ease" }}>
@@ -174,27 +164,18 @@ export default function WeeklyWrapped({
 
         {step === 3 && (
           <div key={3} className="w-full pointer-events-auto" style={{ animation: "wwRise .4s ease both" }}>
-            {/* 공유 카드 (캡처 대상) */}
-            <div ref={cardRef} className="mx-auto" style={{ maxWidth: "320px", backgroundColor: "#16201A", padding: "22px 20px", borderRadius: "16px", border: "1px solid rgba(224,169,46,0.25)" }}>
-              <div style={{ fontSize: "9px", letterSpacing: "3px", color: "#7E8C82", textTransform: "uppercase", marginBottom: "4px", textAlign: "left" }}>거지로그 주간 결산</div>
-              <div style={{ fontSize: "11px", color: "#5E6A60", textAlign: "left", fontFamily: "'JetBrains Mono', ui-monospace, monospace" }}>{mmdd(start)} – {mmdd(end)}</div>
-              <div style={{ fontSize: "34px", fontWeight: 800, color: "#10B981", fontFamily: "'JetBrains Mono', ui-monospace, monospace", textAlign: "left", marginTop: "10px" }}>+₩{fmt(profit)}</div>
-              <div style={{ fontSize: "11px", color: "#9aa89e", textAlign: "left", marginTop: "2px" }}>{week.length}끼 기록{best ? ` · 최고의 한 수 ${best.title}` : ""}</div>
-              <div style={{ borderTop: "1px solid rgba(255,255,255,0.1)", margin: "14px 0" }} />
-              <div style={{ fontSize: "12px", color: "#d8cfae", textAlign: "left", lineHeight: 1.6 }}>{butler}</div>
-              <div style={{ fontSize: "11px", color: "#8C7B5A", textAlign: "left", marginTop: "10px", fontStyle: "italic", lineHeight: 1.6 }}>“{dosa}” — 무일푼 도사</div>
-              <div style={{ textAlign: "center", fontSize: "8px", color: "#5E6A60", letterSpacing: "2px", marginTop: "14px" }}>GEOJILOG</div>
-            </div>
+            {/* 공유 카드 (캡처 뷰에서도 동일 사용) */}
+            {shareCard}
+
 
             <div className="flex gap-2 mt-5 max-w-[320px] mx-auto">
               <button
-                onClick={handleSaveCard}
-                disabled={saving}
+                onClick={() => setCaptureMode(true)}
                 className="flex-1 flex items-center justify-center gap-1.5 py-3 rounded-xl text-body font-medium active:scale-[0.98] transition-transform"
                 style={{ background: "#E0A92E", color: "#16201A" }}
               >
-                {saving ? <Loader2 size={15} className="animate-spin" /> : <Download size={15} />}
-                이미지로 저장
+                <Maximize2 size={15} />
+                크게 보기 · 캡처
               </button>
               <button
                 onClick={onGoDetail}
@@ -211,6 +192,12 @@ export default function WeeklyWrapped({
       <p className="pb-6 text-center text-micro" style={{ color: "#5E6A60" }}>
         {step < STEPS - 1 ? "탭해서 다음" : " "}
       </p>
+
+      {captureMode && (
+        <CaptureView bg="#16201A" onClose={() => setCaptureMode(false)}>
+          <div className="w-full max-w-[320px]">{shareCard}</div>
+        </CaptureView>
+      )}
     </div>
   );
 }

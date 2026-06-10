@@ -1,7 +1,7 @@
 // 장부의 달력·앨범 뷰 — view prop으로 Ledger 세그먼트가 직접 제어한다(내부 토글 없음).
 // 앨범은 화면에선 크림 톤(라이트), 공유 카드는 '이미지로 저장' → 꾸미기 키트(AlbumKit)에서 만든다.
 import { useState, useMemo, useRef } from "react";
-import { Download, ChevronDown, X, ChevronLeft, ChevronRight, ImageOff } from "lucide-react";
+import { Sparkles, ChevronDown, X, ChevronLeft, ChevronRight, ImageOff } from "lucide-react";
 import AlbumKit from "@/components/AlbumKit";
 import { SavingsEntry, fmt, todayStr, KO_DAYS } from "@/lib/ledger";
 
@@ -83,7 +83,7 @@ export default function MiniCalendar({
   // 월간 앨범 — 사진 있는 기록만(포토덤프) + 이미지로 저장
   const monthPhotos = useMemo(() => monthEntries.filter(e => e.imageUrl), [monthEntries]);
   const monthTotal = useMemo(() => monthEntries.reduce((s, e) => s + e.profit, 0), [monthEntries]);
-  // 이미지 저장 → 꾸미기 키트 시트(테마·스티커 고르고 캡처)
+  // 꾸미기 키트 시트(테마·스티커 → 크게 보기·캡처) — 파일 저장 없음(SSOT §2)
   const [showKit, setShowKit] = useState(false);
 
   const prevMonth = () => {
@@ -184,8 +184,8 @@ export default function MiniCalendar({
               disabled={monthPhotos.length === 0}
               className="flex items-center gap-1.5 px-3 py-2 rounded-full border border-line text-caption text-ink-soft active:bg-line/60 disabled:opacity-40 transition-colors"
             >
-              <Download size={13} />
-              꾸며서 저장
+              <Sparkles size={13} />
+              꾸미기
             </button>
           </div>
 
