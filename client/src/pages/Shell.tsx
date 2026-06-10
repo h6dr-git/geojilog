@@ -156,11 +156,12 @@ export default function Shell() {
   return (
     <>
       {/* 캡처 입력 — 항상 마운트(온보딩 버튼에서도 바로 호출) */}
+      {/* capture 속성 제거 — 모바일에서 '카메라 촬영 / 갤러리 선택'을 OS가 묻게 한다.
+          (이미 찍어둔 점심 사진을 올리는 동선이 첫 무리 시연의 핵심) */}
       <input
         ref={cameraRef}
         type="file"
         accept="image/*"
-        capture="environment"
         className="hidden"
         onChange={onPick}
       />
