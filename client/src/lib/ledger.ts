@@ -1,4 +1,4 @@
-// 거지로그 — 장부 공용 타입·유틸 (Home · MiniCalendar 공유)
+// 거지로그 — 장부 공용 타입·유틸 (Ledger·상세시트·Wrapped 등 공유)
 
 export interface SavingsEntry {
   id: number;

@@ -1,5 +1,6 @@
-// 거지로그 — 장부(Ledger) 화면: 보기 전용 세그먼트(기록·달력·앨범) + '기록 추가' 시트.
-// 네비 단일화: 탭 속 탭(기록추가|앨범 → 앨범|달력)을 없애고, 추가 행위는 시트 하나로 모았다.
+// 거지로그 — 장부: [기록 | 사진] 2뷰 + '기록 추가' 시트.
+// 2026-06-10 개편: 기록=날짜 그룹 리스트(+접이식 달력), 사진=관리 인덱스(탭→상세).
+// 행의 상시 아이콘을 없애고 행 탭 → 상세 시트(EntryDetailSheet)에서 보기·수정·삭제·공유.
 // ============================================================
 
 import { useState, useRef, useCallback, useMemo } from "react";
@@ -10,14 +11,14 @@ import { getExifDate } from "@/lib/exif";
 import { smartCropToSquare } from "@/lib/smartCrop";
 import {
   Upload, Camera, PenLine, Loader2,
-  Copy, Trash2, ChevronDown, ChevronUp, ChevronRight,
-  Pencil, X, Share2, RotateCw, Plus, Repeat,
+  Copy, ChevronDown, ChevronUp, ChevronRight, ChevronLeft,
+  X, RotateCw, Plus, Repeat, Sparkles, CalendarDays, ImageOff,
 } from "lucide-react";
 import SavingsStoryCard from "@/components/SavingsStoryCard";
-import MiniCalendar from "@/components/MiniCalendar";
-import ConfirmDialog from "@/components/ConfirmDialog";
+import EntryDetailSheet from "@/components/EntryDetailSheet";
+import AlbumKit from "@/components/AlbumKit";
 import Jarureu from "@/components/Jarureu";
-import { SavingsEntry, fmt, todayStr, makeDefaultTitle } from "@/lib/ledger";
+import { SavingsEntry, fmt, todayStr, makeDefaultTitle, KO_DAYS } from "@/lib/ledger";
 import { celebrateSave } from "@/lib/celebrate";
 
 // 파일 시그니처(이름|크기|수정시각) — 같은 사진 중복 업로드 감지용
@@ -26,13 +27,13 @@ const fileSig = (f: File) => `${f.name}|${f.size}|${f.lastModified}`;
 // 업로드 큐 아이템
 interface QueueItem {
   id: string;
-  file: File; // 원본 File 보관 → 분석 실패 시 재시도(재분석) 가능
+  file: File;
   previewUrl: string;
   fileName: string;
-  sig: string;           // 파일 시그니처 — 중복 감지용
-  dup?: boolean;         // 같은 배치/큐 내 중복 의심
+  sig: string;
+  dup?: boolean;
   status: "analyzing" | "ready" | "error";
-  submitting: boolean;   // 개별 등록 로딩 상태
+  submitting: boolean;
   title: string;
   category: string;
   originalAmount: string;
@@ -42,12 +43,11 @@ interface QueueItem {
   memo: string;
   imageUrl?: string;
   priorDate?: string; // P2 — 지난 확정가가 적용된 경우
-  // 데이터 해자: AI 추정 원본값 보관
   aiOriginalAmount?: number;
   aiActualAmount?: number;
 }
 
-type MainTab = "list" | "calendar" | "album";
+type MainTab = "list" | "photos";
 
 // ── 메인 컴포넌트 ─────────────────────────────────────────────
 export default function Ledger({ initialFocus = null }: { initialFocus?: "week" | null }) {
@@ -58,8 +58,6 @@ export default function Ledger({ initialFocus = null }: { initialFocus?: "week" 
   const { data: categories = [] } = trpc.categories.list.useQuery(undefined, { enabled: isAuthenticated });
 
   const createEntry = trpc.savings.create.useMutation({ onSuccess: () => utils.savings.list.invalidate() });
-  const updateEntry = trpc.savings.update.useMutation({ onSuccess: () => utils.savings.list.invalidate() });
-  const deleteEntry = trpc.savings.delete.useMutation({ onSuccess: () => utils.savings.list.invalidate() });
   const analyzeImage = trpc.ai.analyzeImage.useMutation();
   const uploadCroppedImage = trpc.ai.uploadImage.useMutation();
 
@@ -68,7 +66,99 @@ export default function Ledger({ initialFocus = null }: { initialFocus?: "week" 
     [categories]
   );
 
-  // ── P1: 늘 지키는 것 — 제목 기준 2회 이상 기록된 항목 상위 4개 (최근 금액으로 원탭 재기록) ──
+  // ── 뷰: 기록 | 사진 ──
+  const [mainTab, setMainTab] = useState<MainTab>("list");
+
+  // ── 월 네비게이션 (기록·사진 공통) ──
+  const [viewDate, setViewDate] = useState(() => new Date());
+  const year = viewDate.getFullYear();
+  const month = viewDate.getMonth();
+  const ym = `${year}-${String(month + 1).padStart(2, "0")}`;
+  const monthInputRef = useRef<HTMLInputElement>(null);
+  const [filterDate, setFilterDate] = useState<string | null>(null);
+  const prevMonth = () => { setViewDate((d) => new Date(d.getFullYear(), d.getMonth() - 1, 1)); setFilterDate(null); };
+  const nextMonth = () => { setViewDate((d) => new Date(d.getFullYear(), d.getMonth() + 1, 1)); setFilterDate(null); };
+  const handleMonthJump = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const [y, m] = e.target.value.split("-").map(Number);
+    if (y && m) { setViewDate(new Date(y, m - 1, 1)); setFilterDate(null); }
+  };
+
+  // ── 접이식 달력 ──
+  const [showCal, setShowCal] = useState(false);
+
+  // ── 주간 딥링크 (회장님 '주간 결산' → 이번 주 기록만) ──
+  const [weekFilter, setWeekFilter] = useState<{ start: string; end: string } | null>(() => {
+    if (initialFocus !== "week") return null;
+    const e = new Date(); e.setHours(0, 0, 0, 0);
+    const s = new Date(e); s.setDate(s.getDate() - 6);
+    const f = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    return { start: f(s), end: f(e) };
+  });
+
+  // ── 데이터 (서버가 날짜순 정렬) ──
+  const monthEntries = useMemo(
+    () => (entries as SavingsEntry[]).filter((e) => e.date.startsWith(ym)),
+    [entries, ym]
+  );
+  const displayEntries = useMemo(() => {
+    if (weekFilter) return (entries as SavingsEntry[]).filter((e) => e.date >= weekFilter.start && e.date <= weekFilter.end);
+    if (filterDate) return monthEntries.filter((e) => e.date === filterDate);
+    return monthEntries;
+  }, [entries, monthEntries, weekFilter, filterDate]);
+
+  // 날짜별 그룹 (장부의 본질: "언제, 얼마")
+  const groups = useMemo(() => {
+    const map = new Map<string, SavingsEntry[]>();
+    for (const e of displayEntries) {
+      const arr = map.get(e.date) ?? [];
+      arr.push(e);
+      map.set(e.date, arr);
+    }
+    return Array.from(map.entries()).sort((a, b) => b[0].localeCompare(a[0]));
+  }, [displayEntries]);
+
+  const monthTotal = useMemo(() => monthEntries.reduce((s, e) => s + e.profit, 0), [monthEntries]);
+  const profitDates = useMemo(() => new Set(monthEntries.map((e) => e.date)), [monthEntries]);
+  const monthPhotos = useMemo(() => monthEntries.filter((e) => e.imageUrl), [monthEntries]);
+  const monthByCategory = useMemo(() => {
+    const map: Record<string, number> = {};
+    monthEntries.forEach((e) => { map[e.category] = (map[e.category] ?? 0) + e.profit; });
+    return Object.entries(map).sort((a, b) => b[1] - a[1]);
+  }, [monthEntries]);
+
+  // 달력 그리드 (7열)
+  const calWeeks = useMemo(() => {
+    const firstDay = new Date(year, month, 1).getDay();
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const cells: (number | null)[] = [...Array(firstDay).fill(null), ...Array.from({ length: daysInMonth }, (_, i) => i + 1)];
+    while (cells.length % 7 !== 0) cells.push(null);
+    const weeks: (number | null)[][] = [];
+    for (let i = 0; i < cells.length; i += 7) weeks.push(cells.slice(i, i + 7));
+    return weeks;
+  }, [year, month]);
+
+  // ── 상세/공유/꾸미기 ──
+  const [detailEntry, setDetailEntry] = useState<SavingsEntry | null>(null);
+  const [storyEntry, setStoryEntry] = useState<SavingsEntry | null>(null);
+  const [showKit, setShowKit] = useState(false);
+
+  // ── 기록 추가 시트 ──
+  const [showAdd, setShowAdd] = useState(false);
+
+  // ── 업로드 큐 ──
+  const [queue, setQueue] = useState<QueueItem[]>([]);
+  const cameraRef = useRef<HTMLInputElement>(null);
+  const galleryRef = useRef<HTMLInputElement>(null);
+
+  // ── 수동 입력 ──
+  const [showManual, setShowManual] = useState(false);
+  const [manualTitleEdited, setManualTitleEdited] = useState(false);
+  const [manualForm, setManualForm] = useState(() => {
+    const d = todayStr();
+    return { date: d, title: makeDefaultTitle(d, "식비"), category: "식비", originalAmount: "", actualAmount: "", description: "", memo: "" };
+  });
+
+  // ── P1: 늘 지키는 것 — 제목 기준 2회 이상 기록된 항목 상위 4개 ──
   const frequents = useMemo(() => {
     type Freq = { title: string; category: string; originalAmount: number; actualAmount: number; count: number; lastDate: string };
     const map = new Map<string, Freq>();
@@ -79,11 +169,8 @@ export default function Ledger({ initialFocus = null }: { initialFocus?: "week" 
       if (cur) {
         cur.count += 1;
         if (e.date > cur.lastDate) {
-          cur.lastDate = e.date;
-          cur.title = e.title;
-          cur.category = e.category;
-          cur.originalAmount = e.originalAmount;
-          cur.actualAmount = e.actualAmount;
+          cur.lastDate = e.date; cur.title = e.title; cur.category = e.category;
+          cur.originalAmount = e.originalAmount; cur.actualAmount = e.actualAmount;
         }
       } else {
         map.set(key, { title: e.title, category: e.category, originalAmount: e.originalAmount, actualAmount: e.actualAmount, count: 1, lastDate: e.date });
@@ -101,12 +188,8 @@ export default function Ledger({ initialFocus = null }: { initialFocus?: "week" 
     setRepeating(true);
     try {
       await createEntry.mutateAsync({
-        date: todayStr(),
-        title: f.title,
-        category: f.category,
-        originalAmount: f.originalAmount,
-        actualAmount: f.actualAmount,
-        aiEstimated: "no",
+        date: todayStr(), title: f.title, category: f.category,
+        originalAmount: f.originalAmount, actualAmount: f.actualAmount, aiEstimated: "no",
       });
       const saved = f.originalAmount - f.actualAmount;
       if (saved > 0) celebrateSave({ profit: saved, title: f.title });
@@ -117,39 +200,6 @@ export default function Ledger({ initialFocus = null }: { initialFocus?: "week" 
       setRepeating(false);
     }
   };
-
-  // ── 세그먼트 (회장님 탭 '주간 결산' 딥링크 → 달력의 주간 상세) ──
-  const [mainTab, setMainTab] = useState<MainTab>(initialFocus === "week" ? "calendar" : "list");
-
-  // ── 기록 추가 시트 ──
-  const [showAdd, setShowAdd] = useState(false);
-
-  // ── 업로드 큐 ──
-  const [queue, setQueue] = useState<QueueItem[]>([]);
-  const cameraRef = useRef<HTMLInputElement>(null);
-  const galleryRef = useRef<HTMLInputElement>(null);
-
-  // ── 수동 입력 — userEdited 플래그로 자동 제목 덮어쓰기 방지 ──
-  const [showManual, setShowManual] = useState(false);
-  const [manualTitleEdited, setManualTitleEdited] = useState(false);
-  const [manualForm, setManualForm] = useState(() => {
-    const d = todayStr();
-    return {
-      date: d, title: makeDefaultTitle(d, "식비"), category: "식비",
-      originalAmount: "", actualAmount: "", description: "", memo: "",
-    };
-  });
-
-  // ── 인라인 수정 ──
-  const [editingId, setEditingId] = useState<number | null>(null);
-  const [editForm, setEditForm] = useState<{
-    title: string; category: string; originalAmount: string;
-    actualAmount: string; memo: string; date: string;
-  } | null>(null);
-
-  // ── 스토리 공유 / 삭제 확인 ── (내보내기는 회장님 탭으로 일원화 — SSOT §9-4)
-  const [storyEntry, setStoryEntry] = useState<SavingsEntry | null>(null);
-  const [deleteTarget, setDeleteTarget] = useState<SavingsEntry | null>(null);
 
   // ── AI 이미지 처리 ──
   const processFile = useCallback(async (file: File, itemId: string) => {
@@ -203,7 +253,6 @@ export default function Ledger({ initialFocus = null }: { initialFocus?: "week" 
     } : it));
   }, [analyzeImage, uploadCroppedImage]);
 
-  // 카메라 진입점 — 지금은 기기 카메라. 향후 앱 톤에 맞춘 자체 카메라로 교체할 단일 훅.
   const openCamera = useCallback(() => cameraRef.current?.click(), []);
 
   const handleFiles = useCallback((files: FileList | null) => {
@@ -224,7 +273,6 @@ export default function Ledger({ initialFocus = null }: { initialFocus?: "week" 
       aiReason: "", date: todayStr(), memo: "",
     }));
 
-    // 중복 표시: 이미 큐에 있거나 같은 배치 내 동일 파일이면 dup 마크(등록은 막지 않음)
     setQueue(prev => {
       const seen = new Set(prev.map(it => it.sig));
       return [...prev, ...newItems.map(it => {
@@ -241,7 +289,6 @@ export default function Ledger({ initialFocus = null }: { initialFocus?: "week" 
     });
   }, [processFile, categoryNames]);
 
-  // 분석 실패 항목 재시도 — 보관해 둔 원본 File로 다시 분석 (큐 유지)
   const retryQueueItem = useCallback((item: QueueItem) => {
     setQueue(prev => prev.map(it => it.id === item.id ? { ...it, status: "analyzing" as const } : it));
     processFile(item.file, item.id).catch(() => {
@@ -249,7 +296,6 @@ export default function Ledger({ initialFocus = null }: { initialFocus?: "week" 
     });
   }, [processFile]);
 
-  // ── 큐 아이템 등록 ──
   const handleQueueConfirm = async (item: QueueItem) => {
     if (!item.originalAmount || !item.actualAmount) {
       toast.error("원가와 실제 지출액을 입력해주세요");
@@ -322,62 +368,18 @@ export default function Ledger({ initialFocus = null }: { initialFocus?: "week" 
     }
   };
 
-  // 수동 입력 날짜/카테고리 변경 시 제목 자동 갱신 (userEdited 플래그 확인)
   const handleManualDateChange = (date: string) => {
-    setManualForm(f => ({
-      ...f,
-      date,
-      title: manualTitleEdited ? f.title : makeDefaultTitle(date, f.category),
-    }));
+    setManualForm(f => ({ ...f, date, title: manualTitleEdited ? f.title : makeDefaultTitle(date, f.category) }));
   };
-
   const handleManualCategoryChange = (category: string) => {
-    setManualForm(f => ({
-      ...f,
-      category,
-      title: manualTitleEdited ? f.title : makeDefaultTitle(f.date, category),
-    }));
+    setManualForm(f => ({ ...f, category, title: manualTitleEdited ? f.title : makeDefaultTitle(f.date, category) }));
   };
 
-  // ── 인라인 수정 ──
-  const startEdit = (entry: SavingsEntry) => {
-    setEditingId(entry.id);
-    setEditForm({
-      title: entry.title,
-      category: entry.category,
-      originalAmount: String(entry.originalAmount),
-      actualAmount: String(entry.actualAmount),
-      memo: entry.memo ?? "",
-      date: entry.date,
-    });
-  };
-
-  const handleEditSubmit = async (e: React.FormEvent, id: number) => {
-    e.preventDefault();
-    if (!editForm) return;
-    try {
-      await updateEntry.mutateAsync({
-        id,
-        title: editForm.title,
-        category: editForm.category,
-        originalAmount: Number(editForm.originalAmount),
-        actualAmount: Number(editForm.actualAmount),
-        memo: editForm.memo || null,
-        date: editForm.date,
-      });
-      toast.success("수정됐습니다");
-      setEditingId(null);
-      setEditForm(null);
-    } catch {
-      toast.error("수정에 실패했습니다");
-    }
-  };
-
-  // 분석 중/완료 개수 — 시트가 닫혀 있어도 진행 상황을 칩으로 보여준다
   const analyzingCount = queue.filter(q => q.status === "analyzing").length;
   const readyCount = queue.filter(q => q.status !== "analyzing").length;
+  const todayFull = todayStr();
 
-  // ── 로그인 화면 ──
+  // ── 로그인/로딩 ──
   if (authLoading) {
     return (
       <div className="min-h-dvh flex items-center justify-center bg-cream">
@@ -385,7 +387,6 @@ export default function Ledger({ initialFocus = null }: { initialFocus?: "week" 
       </div>
     );
   }
-
   if (!isAuthenticated) {
     return (
       <div className="min-h-dvh flex flex-col items-center justify-center bg-cream gap-6 px-6">
@@ -411,11 +412,11 @@ export default function Ledger({ initialFocus = null }: { initialFocus?: "week" 
   return (
     <div className="min-h-dvh bg-cream max-w-lg mx-auto px-5 pb-24">
 
-      {/* ── 헤더: 제목 + 기록 추가 ── */}
+      {/* ── 헤더 ── */}
       <header className="pt-12 pb-4 flex items-center justify-between">
         <div className="flex items-baseline gap-2">
           <p className="text-title font-semibold text-ink">장부</p>
-          <p className="text-caption font-mono text-ink-soft tracking-wider">{(entries as SavingsEntry[]).length}끼 기록</p>
+          <p className="text-caption font-mono text-ink-soft tracking-wider">{(entries as SavingsEntry[]).length}건</p>
         </div>
         <button
           onClick={() => setShowAdd(true)}
@@ -425,7 +426,7 @@ export default function Ledger({ initialFocus = null }: { initialFocus?: "week" 
         </button>
       </header>
 
-      {/* ── 분석 진행 칩 — 시트를 닫아도 큐 상황이 보인다 ── */}
+      {/* ── 분석 진행 칩 ── */}
       {queue.length > 0 && !showAdd && (
         <button
           onClick={() => setShowAdd(true)}
@@ -441,9 +442,9 @@ export default function Ledger({ initialFocus = null }: { initialFocus?: "week" 
         </button>
       )}
 
-      {/* ── 세그먼트: 기록 | 달력 | 앨범 (단일 네비) ── */}
-      <div className="flex gap-1 mb-5 bg-line/50 rounded-full p-1">
-        {([["list", "기록"], ["calendar", "달력"], ["album", "앨범"]] as [MainTab, string][]).map(([t, label]) => (
+      {/* ── 뷰 세그먼트: 기록 | 사진 ── */}
+      <div className="flex gap-1 mb-4 bg-line/50 rounded-full p-1">
+        {([["list", "기록"], ["photos", "사진"]] as [MainTab, string][]).map(([t, label]) => (
           <button
             key={t}
             onClick={() => setMainTab(t)}
@@ -456,157 +457,230 @@ export default function Ledger({ initialFocus = null }: { initialFocus?: "week" 
         ))}
       </div>
 
-      {/* ── 기록(리스트) ── */}
-      {mainTab === "list" && (
-        <>
-          <section className="mb-6">
-            {isLoading ? (
-              <div className="space-y-2">
-                {[1, 2, 3].map(i => <div key={i} className="h-14 bg-line rounded-lg animate-pulse" />)}
-              </div>
-            ) : (entries as SavingsEntry[]).length === 0 ? (
-              <div className="flex flex-col items-center text-center py-10">
-                <Jarureu level={0.12} size={64} />
-                <p className="text-body font-medium text-ink mt-3">아직 장부가 비어 있어요</p>
-                <p className="text-caption text-ink-soft mt-1">사진 한 장이면 자르르가 첫 수익을 찾아드려요</p>
-                <button
-                  onClick={() => setShowAdd(true)}
-                  className="mt-4 inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-emerald-500 text-white text-caption font-medium active:scale-95 transition-transform"
-                >
-                  <Camera size={14} /> 첫 기록 남기기
-                </button>
-              </div>
-            ) : (
-              <div className="space-y-1">
-                {(entries as SavingsEntry[]).map(entry => (
-                  <div key={entry.id}>
-                    {/* 일반 행 */}
-                    {editingId !== entry.id && (
-                      <div className="flex items-center gap-3 py-2.5 border-b border-line last:border-0">
-                        {entry.imageUrl
-                          ? <img src={entry.imageUrl} alt="" className="w-10 h-10 rounded-lg object-cover flex-shrink-0" />
-                          : <div className="w-10 h-10 rounded-lg bg-line flex-shrink-0" />
-                        }
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-1.5">
-                            {entry.ticker && (
-                              <span className="text-micro font-mono font-semibold tracking-wider px-1.5 py-0.5 rounded bg-gold/15 text-[#B07F1E] flex-shrink-0">
-                                {entry.ticker}
-                              </span>
-                            )}
-                            <p className="text-body font-medium text-ink truncate">{entry.title}</p>
-                          </div>
-                          {entry.memo && <p className="text-caption text-ink-soft truncate mt-0.5 italic">{entry.memo}</p>}
-                        </div>
-                        <div className="text-right flex-shrink-0">
-                          <p className="text-body font-mono font-semibold text-emerald-500">+₩{fmt(entry.profit)}</p>
-                          <p className="text-caption text-ink-soft tabular-nums">
-                            <span className="line-through">₩{fmt(entry.originalAmount)}</span>
-                            <span className="mx-1 text-ink-faint">→</span>
-                            <span className="text-ink-soft">₩{fmt(entry.actualAmount)}</span>
-                          </p>
-                        </div>
-                        <button onClick={() => setStoryEntry(entry)} aria-label="공유 카드"
-                          className="p-1.5 text-ink-faint active:text-emerald-500 transition-colors flex-shrink-0">
-                          <Share2 size={13} />
-                        </button>
-                        <button onClick={() => startEdit(entry)} aria-label="수정"
-                          className="p-1.5 text-ink-faint active:text-emerald-500 transition-colors flex-shrink-0">
-                          <Pencil size={13} />
-                        </button>
-                        <button
-                          onClick={() => setDeleteTarget(entry)} aria-label="삭제"
-                          className="p-1.5 text-ink-faint active:text-red-400 transition-colors flex-shrink-0">
-                          <Trash2 size={13} />
-                        </button>
-                      </div>
-                    )}
-
-                    {/* 인라인 수정 폼 */}
-                    {editingId === entry.id && editForm && (
-                      <form
-                        onSubmit={e => handleEditSubmit(e, entry.id)}
-                        className="border border-emerald-200 rounded-card p-3 my-1 space-y-2 bg-emerald-50/30"
-                      >
-                        <div className="grid grid-cols-2 gap-2">
-                          <div>
-                            <label className="text-micro text-ink-soft block mb-0.5">날짜</label>
-                            <input type="date" value={editForm.date}
-                              onChange={e => setEditForm(f => f ? { ...f, date: e.target.value } : f)}
-                              className="w-full text-caption border border-line rounded px-2 py-1.5 focus:outline-none focus:border-emerald-400 bg-white" />
-                          </div>
-                          <div>
-                            <label className="text-micro text-ink-soft block mb-0.5">카테고리</label>
-                            <select value={editForm.category}
-                              onChange={e => setEditForm(f => f ? { ...f, category: e.target.value } : f)}
-                              className="w-full text-caption border border-line rounded px-2 py-1.5 focus:outline-none focus:border-emerald-400 bg-white">
-                              {categoryNames.map((c: string) => <option key={c} value={c}>{c}</option>)}
-                            </select>
-                          </div>
-                        </div>
-                        <div>
-                          <label className="text-micro text-ink-soft block mb-0.5">항목명</label>
-                          <input value={editForm.title}
-                            onChange={e => setEditForm(f => f ? { ...f, title: e.target.value } : f)}
-                            className="w-full text-caption border border-line rounded px-2 py-1.5 focus:outline-none focus:border-emerald-400 bg-white" />
-                        </div>
-                        <div className="grid grid-cols-2 gap-2">
-                          <div>
-                            <label className="text-micro text-ink-soft block mb-0.5">원가</label>
-                            <input type="number" value={editForm.originalAmount}
-                              onChange={e => setEditForm(f => f ? { ...f, originalAmount: e.target.value } : f)}
-                              className="w-full text-caption border border-line rounded px-2 py-1.5 focus:outline-none focus:border-emerald-400 bg-white" />
-                          </div>
-                          <div>
-                            <label className="text-micro text-ink-soft block mb-0.5">실제 지출</label>
-                            <input type="number" value={editForm.actualAmount}
-                              onChange={e => setEditForm(f => f ? { ...f, actualAmount: e.target.value } : f)}
-                              className="w-full text-caption border border-line rounded px-2 py-1.5 focus:outline-none focus:border-emerald-400 bg-white" />
-                          </div>
-                        </div>
-                        <div>
-                          <label className="text-micro text-ink-soft block mb-0.5">메모</label>
-                          <input value={editForm.memo}
-                            onChange={e => setEditForm(f => f ? { ...f, memo: e.target.value } : f)}
-                            placeholder="메모 (선택)"
-                            className="w-full text-caption border border-line rounded px-2 py-1.5 focus:outline-none focus:border-emerald-400 bg-white" />
-                        </div>
-                        <div className="flex gap-2">
-                          <button type="submit" disabled={updateEntry.isPending}
-                            className="flex-1 py-1.5 bg-emerald-500 text-white text-caption font-medium rounded-lg active:scale-[0.98] disabled:opacity-50 transition-transform">
-                            {updateEntry.isPending ? <Loader2 className="w-3 h-3 animate-spin mx-auto" /> : "저장"}
-                          </button>
-                          <button type="button" onClick={() => { setEditingId(null); setEditForm(null); }}
-                            className="px-3 py-1.5 text-caption text-ink-soft border border-line rounded-lg active:bg-cream transition-colors">
-                            취소
-                          </button>
-                        </div>
-                      </form>
-                    )}
-                  </div>
-                ))}
-              </div>
+      {/* ── 월 네비 + 달력 토글 (주간 필터 중엔 숨김) ── */}
+      {!weekFilter && (
+        <div className="flex items-center justify-between mb-1">
+          <button onClick={prevMonth} aria-label="이전 달" className="min-w-[40px] min-h-[40px] flex items-center justify-center rounded-lg text-ink-soft active:bg-line/60 active:scale-95 transition-all">
+            <ChevronLeft size={16} />
+          </button>
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => monthInputRef.current?.showPicker?.() ?? monthInputRef.current?.click()}
+              className="text-body font-medium text-ink active:text-emerald-600 transition-colors flex items-center gap-1"
+            >
+              {year}년 {month + 1}월
+              <ChevronDown size={12} className="text-ink-soft" />
+            </button>
+            {mainTab === "list" && (
+              <button
+                onClick={() => setShowCal(v => !v)}
+                aria-label="달력 보기"
+                className={`ml-1 w-8 h-8 flex items-center justify-center rounded-lg transition-colors ${showCal ? "text-emerald-600 bg-emerald-50" : "text-ink-soft active:bg-line/60"}`}
+              >
+                <CalendarDays size={15} />
+              </button>
             )}
-          </section>
-
-        </>
+          </div>
+          <button onClick={nextMonth} aria-label="다음 달" className="min-w-[40px] min-h-[40px] flex items-center justify-center rounded-lg text-ink-soft active:bg-line/60 active:scale-95 transition-all">
+            <ChevronRight size={16} />
+          </button>
+          <input ref={monthInputRef} type="month" value={ym} onChange={handleMonthJump} className="sr-only" tabIndex={-1} />
+        </div>
       )}
 
-      {/* ── 달력 ── */}
-      {mainTab === "calendar" && (
+      {/* 주간 필터 칩 (회장님 결산에서 진입) */}
+      {weekFilter && (
+        <div className="flex items-center justify-between mb-3 px-3.5 py-2.5 rounded-card bg-butler border border-butler-line">
+          <span className="text-caption" style={{ color: "#5c5647" }}>
+            이번 주 기록 보는 중 ({weekFilter.start.slice(5).replace("-", ".")} ~ {weekFilter.end.slice(5).replace("-", ".")})
+          </span>
+          <button onClick={() => setWeekFilter(null)} className="text-caption text-gold font-medium active:opacity-70">전체 보기</button>
+        </div>
+      )}
+
+      {/* ════════ 기록 뷰 ════════ */}
+      {mainTab === "list" && (
         <section className="mb-6">
-          <MiniCalendar
-            entries={entries as SavingsEntry[]}
-            view="calendar"
-            initialDetailMode={initialFocus === "week" ? "week" : "day"}
-          />
+          {/* 접이식 달력 — 날짜 탭하면 그 날만 필터 */}
+          {showCal && !weekFilter && (
+            <div className="bg-white border border-line rounded-card px-2 py-3 mb-3">
+              <div className="grid grid-cols-7 mb-1">
+                {KO_DAYS.map((d, i) => (
+                  <div key={d} className={`text-center text-micro py-0.5 ${i === 0 ? "text-red-400" : i === 6 ? "text-blue-400" : "text-ink-soft"}`}>{d}</div>
+                ))}
+              </div>
+              {calWeeks.map((week, wi) => (
+                <div key={wi} className="grid grid-cols-7">
+                  {week.map((day, di) => {
+                    if (day === null) return <div key={`e${wi}-${di}`} />;
+                    const ds = `${ym}-${String(day).padStart(2, "0")}`;
+                    const has = profitDates.has(ds);
+                    const selected = filterDate === ds;
+                    const isToday = ds === todayFull;
+                    return (
+                      <button
+                        key={ds}
+                        onClick={() => setFilterDate(selected ? null : ds)}
+                        className="flex flex-col items-center py-1 min-h-[38px] rounded-lg active:bg-line/50 transition-colors"
+                      >
+                        <span className={`text-caption w-6 h-6 flex items-center justify-center rounded-full ${
+                          selected ? "bg-emerald-500 text-white font-semibold"
+                          : isToday ? "border border-gold/60 text-ink font-medium"
+                          : "text-ink"
+                        }`}>{day}</span>
+                        <span className={`w-1 h-1 rounded-full mt-0.5 ${has ? "bg-emerald-400" : "bg-transparent"}`} />
+                      </button>
+                    );
+                  })}
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* 날짜 필터 칩 */}
+          {filterDate && (
+            <div className="flex items-center justify-between mb-2 px-1">
+              <span className="text-caption text-ink-soft">{filterDate.replace(/-/g, ".")} 기록만 보는 중</span>
+              <button onClick={() => setFilterDate(null)} className="text-caption text-emerald-600 font-medium active:opacity-70">전체</button>
+            </div>
+          )}
+
+          {isLoading ? (
+            <div className="space-y-2">
+              {[1, 2, 3].map(i => <div key={i} className="h-14 bg-line rounded-lg animate-pulse" />)}
+            </div>
+          ) : groups.length === 0 ? (
+            <div className="flex flex-col items-center text-center py-10">
+              <Jarureu level={0.12} size={64} />
+              <p className="text-body font-medium text-ink mt-3">
+                {(entries as SavingsEntry[]).length === 0 ? "아직 장부가 비어 있어요" : "이 기간엔 기록이 없어요"}
+              </p>
+              {(entries as SavingsEntry[]).length === 0 && (
+                <>
+                  <p className="text-caption text-ink-soft mt-1">사진 한 장이면 자르르가 첫 수익을 찾아드려요</p>
+                  <button
+                    onClick={() => setShowAdd(true)}
+                    className="mt-4 inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-emerald-500 text-white text-caption font-medium active:scale-95 transition-transform"
+                  >
+                    <Camera size={14} /> 첫 기록 남기기
+                  </button>
+                </>
+              )}
+            </div>
+          ) : (
+            <div>
+              {groups.map(([date, items]) => {
+                const d = new Date(date + "T00:00:00");
+                const dayTotal = items.reduce((s, e) => s + e.profit, 0);
+                return (
+                  <div key={date} className="mb-1">
+                    {/* 날짜 그룹 헤더 — 장부의 뼈대 */}
+                    <div className="flex items-baseline justify-between pt-3 pb-1.5 px-1">
+                      <span className="text-caption font-medium text-ink-soft">
+                        {d.getDate()}일 <span className={d.getDay() === 0 ? "text-red-400" : d.getDay() === 6 ? "text-blue-400" : ""}>({KO_DAYS[d.getDay()]})</span>
+                        {date === todayFull && <span className="ml-1.5 text-micro text-emerald-600">오늘</span>}
+                      </span>
+                      <span className="text-caption font-mono text-emerald-600 tabular-nums">+₩{fmt(dayTotal)}</span>
+                    </div>
+                    <div className="bg-white border border-line rounded-card overflow-hidden">
+                      {items.map((entry, i) => (
+                        <button
+                          key={entry.id}
+                          onClick={() => setDetailEntry(entry)}
+                          className={`w-full flex items-center gap-3 px-3 py-2.5 text-left active:bg-cream transition-colors ${i > 0 ? "border-t border-line" : ""}`}
+                        >
+                          {entry.imageUrl
+                            ? <img src={entry.imageUrl} alt="" className="w-10 h-10 rounded-lg object-cover flex-shrink-0" />
+                            : <div className="w-10 h-10 rounded-lg bg-line flex-shrink-0" />}
+                          <div className="flex-1 min-w-0">
+                            <p className="text-body font-medium text-ink truncate">{entry.title}</p>
+                            {entry.memo
+                              ? <p className="text-caption text-ink-soft truncate italic">{entry.memo}</p>
+                              : <p className="text-caption text-ink-faint">{entry.category}</p>}
+                          </div>
+                          <div className="text-right flex-shrink-0">
+                            <p className="text-body font-mono font-semibold text-emerald-500 tabular-nums">+₩{fmt(entry.profit)}</p>
+                            <p className="text-micro text-ink-faint tabular-nums">
+                              <span className="line-through">₩{fmt(entry.originalAmount)}</span>
+                              <span className="mx-0.5">→</span>₩{fmt(entry.actualAmount)}
+                            </p>
+                          </div>
+                          <ChevronRight size={14} className="text-ink-faint flex-shrink-0" />
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
+              {/* 월 합계 */}
+              {!filterDate && !weekFilter && groups.length > 0 && (
+                <div className="flex justify-between items-center mt-4 px-1">
+                  <span className="text-caption text-ink-soft">{month + 1}월 합계 · {monthEntries.length}건</span>
+                  <span className="text-body font-mono font-semibold text-emerald-600 tabular-nums">+₩{fmt(monthTotal)}</span>
+                </div>
+              )}
+            </div>
+          )}
         </section>
       )}
 
-      {/* ── 앨범 ── */}
-      {mainTab === "album" && (
+      {/* ════════ 사진 뷰 (관리 인덱스) ════════ */}
+      {mainTab === "photos" && (
         <section className="mb-6">
-          <MiniCalendar entries={entries as SavingsEntry[]} view="album" />
+          {/* 월 요약 + 꾸미기 */}
+          <div className="flex items-end justify-between mb-3">
+            <div>
+              <p className="text-caption text-ink-soft">{monthEntries.length}건 기록</p>
+              <p className="font-mono text-title font-bold text-emerald-500 tabular-nums leading-tight">+₩{fmt(monthTotal)}</p>
+            </div>
+            <button
+              onClick={() => setShowKit(true)}
+              disabled={monthPhotos.length === 0}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-full border border-line text-caption text-ink-soft active:bg-line/60 disabled:opacity-40 transition-colors"
+            >
+              <Sparkles size={13} />
+              월 카드 꾸미기
+            </button>
+          </div>
+
+          {/* 사진 그리드 — 탭하면 그 기록의 상세(수정·삭제·공유) */}
+          {monthPhotos.length > 0 ? (
+            <div className="grid grid-cols-3 gap-1.5">
+              {monthPhotos.map((e) => (
+                <button key={e.id} onClick={() => setDetailEntry(e)} className="relative active:opacity-80 transition-opacity">
+                  <img src={e.imageUrl!} alt={e.title} loading="lazy" className="w-full aspect-square object-cover rounded-xl bg-line" />
+                  <span className="absolute bottom-1 right-1.5 text-micro font-mono font-semibold text-white tabular-nums" style={{ textShadow: "0 1px 3px rgba(0,0,0,0.6)" }}>
+                    +{fmt(e.profit)}
+                  </span>
+                </button>
+              ))}
+            </div>
+          ) : (
+            <div className="flex flex-col items-center text-center py-12 border border-line rounded-card bg-white">
+              <ImageOff size={20} className="text-ink-faint mb-2" />
+              <p className="text-caption text-ink-soft">이 달엔 사진 기록이 없어요</p>
+            </div>
+          )}
+
+          {/* 카테고리별 */}
+          {monthByCategory.length > 0 && (
+            <div className="space-y-1.5 mt-5">
+              {monthByCategory.map(([cat, profit]) => {
+                const pct = monthTotal > 0 ? Math.round((profit / monthTotal) * 100) : 0;
+                return (
+                  <div key={cat}>
+                    <div className="flex justify-between text-caption mb-0.5">
+                      <span className="text-ink-soft">{cat}</span>
+                      <span className="text-ink-soft tabular-nums">+₩{fmt(profit)} ({pct}%)</span>
+                    </div>
+                    <div className="h-1 bg-line rounded-full overflow-hidden">
+                      <div className="h-full bg-emerald-400 rounded-full transition-all" style={{ width: `${pct}%` }} />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </section>
       )}
 
@@ -636,7 +710,7 @@ export default function Ledger({ initialFocus = null }: { initialFocus?: "week" 
               </button>
             </div>
 
-            {/* P1 — 늘 지키는 것: 사진·AI 없이 탭 한 번으로 오늘 기록 (반복 절약의 지름길) */}
+            {/* P1 — 늘 지키는 것 */}
             {frequents.length > 0 && (
               <section className="mb-5">
                 <p className="text-caption font-mono text-ink-soft tracking-widest uppercase mb-2">늘 지키는 것 — 탭 한 번</p>
@@ -670,7 +744,6 @@ export default function Ledger({ initialFocus = null }: { initialFocus?: "week" 
                 <p className="text-body font-medium text-ink">사진을 올리면 자르르가 번 돈을 계산해요</p>
                 <p className="text-caption text-ink-soft mt-1">한 번에 여러 장 · 탭해서 선택</p>
               </div>
-              {/* 카메라 — 향후 앱 톤에 맞춘 자체 카메라로 교체할 단일 진입점(openCamera) */}
               <button
                 onClick={openCamera}
                 className="mt-2 w-full flex items-center justify-center gap-1.5 py-2.5 text-caption text-ink-soft border border-line rounded-lg active:border-emerald-300 active:text-emerald-600 transition-colors"
@@ -685,13 +758,11 @@ export default function Ledger({ initialFocus = null }: { initialFocus?: "week" 
                 <p className="text-caption font-mono text-ink-soft tracking-widest uppercase">분석 대기열 ({queue.length})</p>
                 {queue.map(item => (
                   <div key={item.id} className="border border-line rounded-card overflow-hidden">
-                    {/* 중복 의심 배지 */}
                     {item.dup && (
                       <div className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-50 border-b border-amber-100 text-micro text-amber-700">
                         <Copy size={12} /> 이미 추가한 사진과 같아 보여요
                       </div>
                     )}
-                    {/* 분석 중 스켈레톤 */}
                     {item.status === "analyzing" && (
                       <div className="flex items-center gap-3 p-3">
                         <div className="w-14 h-14 rounded-lg bg-line animate-pulse flex-shrink-0 overflow-hidden">
@@ -710,8 +781,6 @@ export default function Ledger({ initialFocus = null }: { initialFocus?: "week" 
                         </button>
                       </div>
                     )}
-
-                    {/* 오류 — 재분석 가능 */}
                     {item.status === "error" && (
                       <div className="flex items-center gap-3 p-3">
                         <div className="w-14 h-14 rounded-lg bg-red-50 flex-shrink-0 overflow-hidden">
@@ -732,8 +801,6 @@ export default function Ledger({ initialFocus = null }: { initialFocus?: "week" 
                         </button>
                       </div>
                     )}
-
-                    {/* 분석 완료 — 수정 가능한 폼 */}
                     {item.status === "ready" && (
                       <div className="p-3 space-y-3">
                         <div className="flex items-start gap-3">
@@ -768,7 +835,6 @@ export default function Ledger({ initialFocus = null }: { initialFocus?: "week" 
                           </button>
                         </div>
 
-                        {/* 리빌 히어로 — 객관적 숫자 중심 (SSOT §9-2: '지켜냄' 워딩 제거) */}
                         <div className="flex items-baseline justify-between rounded-card bg-emerald-50 px-3 py-2.5">
                           <span className="text-micro font-medium text-emerald-700/70">이번에 번 돈</span>
                           <span className="font-mono text-xl font-extrabold tabular-nums text-emerald-600">
@@ -778,7 +844,6 @@ export default function Ledger({ initialFocus = null }: { initialFocus?: "week" 
                           </span>
                         </div>
 
-                        {/* AI 원가추정 보조줄 */}
                         <div className="flex items-center gap-2 px-1 text-micro text-ink-soft">
                           <span className="font-mono uppercase tracking-wider text-ink-faint">AI 추정</span>
                           <span className="flex items-center gap-1">원가
@@ -794,7 +859,10 @@ export default function Ledger({ initialFocus = null }: { initialFocus?: "week" 
                           </span>
                         </div>
 
-                        {/* 내 썰(메모) */}
+                        {item.priorDate && (
+                          <p className="text-micro text-emerald-600/80">원가는 지난번 확정가 기준 ({item.priorDate.slice(5).replace("-", ".")})</p>
+                        )}
+
                         <input
                           value={item.memo}
                           onChange={e => updateQueueItem(item.id, { memo: e.target.value })}
@@ -802,12 +870,6 @@ export default function Ledger({ initialFocus = null }: { initialFocus?: "week" 
                           className="w-full text-caption border border-line rounded px-2 py-1.5 focus:outline-none focus:border-emerald-400"
                         />
 
-                        {/* P2 — 지난 확정가 적용 표시 */}
-                        {item.priorDate && (
-                          <p className="text-micro text-emerald-600/80">원가는 지난번 확정가 기준 ({item.priorDate.slice(5).replace("-", ".")})</p>
-                        )}
-
-                        {/* AI 근거 */}
                         {item.aiReason && (
                           <p className="text-micro text-ink-faint leading-relaxed">{item.aiReason}</p>
                         )}
@@ -899,25 +961,30 @@ export default function Ledger({ initialFocus = null }: { initialFocus?: "week" 
         </div>
       )}
 
-      {/* 스토리 카드 모달 */}
-      {storyEntry && (
-        <SavingsStoryCard
-          entry={storyEntry}
-          onClose={() => setStoryEntry(null)}
+      {/* 기록 상세 — 보기·수정·삭제·공유 */}
+      {detailEntry && (
+        <EntryDetailSheet
+          entry={detailEntry}
+          categoryNames={categoryNames}
+          onClose={() => setDetailEntry(null)}
+          onShare={(e) => { setDetailEntry(null); setStoryEntry(e); }}
         />
       )}
 
-      {/* 삭제 확인 다이얼로그 — window.confirm 대체 */}
-      {deleteTarget && (
-        <ConfirmDialog
-          title="기록을 삭제할까요?"
-          description={`"${deleteTarget.title}" 기록이 장부에서 사라져요.`}
-          confirmLabel="삭제"
-          onConfirm={() => {
-            deleteEntry.mutate({ id: deleteTarget.id });
-            setDeleteTarget(null);
-          }}
-          onCancel={() => setDeleteTarget(null)}
+      {/* 스토리 카드 모달 */}
+      {storyEntry && (
+        <SavingsStoryCard entry={storyEntry} onClose={() => setStoryEntry(null)} />
+      )}
+
+      {/* 월 카드 꾸미기 */}
+      {showKit && (
+        <AlbumKit
+          year={year}
+          month={month}
+          photos={monthPhotos}
+          count={monthEntries.length}
+          total={monthTotal}
+          onClose={() => setShowKit(false)}
         />
       )}
 

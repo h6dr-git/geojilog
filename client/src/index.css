@@ -185,7 +185,9 @@ body {
   from { opacity: 0; transform: translateY(6px); }
   to { opacity: 1; transform: translateY(0); }
 }
-.animate-tab-in { animation: tab-in 0.18s ease both; }
+/* 주의: fill 모드(both)를 쓰면 끝난 뒤에도 transform이 남아 스태킹 컨텍스트를 만들고,
+   탭 내부의 position:fixed 오버레이(시트·Wrapped 등)가 하단 탭바에 가려진다. fill 없이 사용. */
+.animate-tab-in { animation: tab-in 0.18s ease; }
 
 /* 자르르 말풍선 — 탭 반응 팝인 */
 @keyframes bubble-in {

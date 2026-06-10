@@ -11,11 +11,13 @@ export async function getSavingsEntries(userId: number) {
     .select()
     .from(savingsEntries)
     .where(eq(savingsEntries.userId, userId))
-    .orderBy(desc(savingsEntries.createdAt));
+    // 장부는 '기록된 날짜' 기준 — 입력 시각이 아니라 (어제 사진을 오늘 올려도 제자리에)
+    .orderBy(desc(savingsEntries.date), desc(savingsEntries.createdAt));
 }
 
-// P2(나만의 기준가) — 같은 제목(공백·대소문자 정규화)으로 사용자가 마지막에 확정한 기록 1건.
-// AI 추정보다 '내가 지난번 확정한 원가'를 우선 제안해 장부의 기준가 일관성을 지킨다.
+// P2(나만의 기준가) — 같은 제목(공백·대소문자 정규화)의 최근 확정 기록들로 기준가 제안.
+// 원가는 '최근 3건의 중간값' — 한 번 잘못 적은 값에 끌려가지 않게(강건화).
+// 실제 지출·날짜는 가장 최근 기록 기준. AI 추정보다 이 값을 우선 제안해 기준가 일관성을 지킨다.
 export async function getLatestEntryByTitle(userId: number, title: string) {
   const db = await getDb();
   if (!db) return null;
@@ -27,8 +29,11 @@ export async function getLatestEntryByTitle(userId: number, title: string) {
     .from(savingsEntries)
     .where(and(eq(savingsEntries.userId, userId), sql`lower(trim(${savingsEntries.title})) = ${norm}`))
     .orderBy(desc(savingsEntries.date), desc(savingsEntries.createdAt))
-    .limit(1);
-  return rows[0] ?? null;
+    .limit(3);
+  if (rows.length === 0) return null;
+  const originals = rows.map((r) => r.originalAmount).sort((a, b) => a - b);
+  const median = originals[Math.floor((originals.length - 1) / 2)];
+  return { ...rows[0], originalAmount: median };
 }
 
 export async function createSavingsEntry(data: InsertSavingsEntry) {
