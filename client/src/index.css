@@ -172,3 +172,17 @@
   /* 카드 모서리 (칩·버튼은 rounded-full / rounded-card 사용) */
   --radius-card: 1rem;           /* 16px */
 }
+
+/* ── 전역 배경·스크롤 — 앱 톤 통일(크림) + 오버스크롤 시 회색 노출 방지 ── */
+html,
+body {
+  background-color: var(--color-cream);
+  overscroll-behavior-y: none;
+}
+
+/* ── 탭 전환 마이크로 트랜지션 ── */
+@keyframes tab-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.animate-tab-in { animation: tab-in 0.18s ease both; }

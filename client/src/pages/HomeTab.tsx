@@ -63,7 +63,7 @@ export default function HomeTab({ onCapture, onOpenProfile, job, onOpenConfirm, 
 
   return (
     <div
-      className="min-h-screen max-w-lg mx-auto px-5 pb-28 flex flex-col"
+      className="min-h-dvh max-w-lg mx-auto px-5 pb-24 flex flex-col"
       style={{ background: "radial-gradient(130% 52% at 50% 0%, rgba(224,169,46,0.10) 0%, rgba(16,185,129,0.05) 26%, rgba(250,248,243,0) 58%), #FAF8F3" }}
     >
       <header className="pt-12 pb-2 flex items-center justify-between">

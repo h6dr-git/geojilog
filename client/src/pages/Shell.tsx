@@ -1,4 +1,5 @@
-// 앱 셸 — 온보딩(첫 방문) + 하단 탭(집무실/장부/회장님) + 가운데 사진 캡처를 앱 상단에서 관리.
+// 앱 셸 — 온보딩(첫 방문) + 하단 탭(집무실/장부/회장님) + 사진 캡처를 앱 상단에서 관리.
+// 탭바는 순수 탭 3개 — 캡처 진입점은 집무실 메인 버튼·장부 '기록 추가'.
 // 분석은 백그라운드(비차단). 탭을 옮겨다녀도 분석이 끊기지 않고, 끝나면 막지 않고 '확인하기'로만 알린다.
 import { useRef, useState, type ChangeEvent } from "react";
 import Ledger from "@/pages/Ledger";
@@ -30,6 +31,8 @@ function emptyData(imageUrl: string): Prefill {
 
 export default function Shell() {
   const [tab, setTab] = useState<MainNavTab>("home");
+  // 장부 딥링크 — 회장님 탭 '주간 결산' → 장부 달력의 주간 상세로 바로
+  const [ledgerFocus, setLedgerFocus] = useState<"week" | null>(null);
   const [job, setJob] = useState<CaptureJob | null>(null);
   const [confirmData, setConfirmData] = useState<Prefill | null>(null);
   const cameraRef = useRef<HTMLInputElement>(null);
@@ -117,6 +120,14 @@ export default function Shell() {
       draftId: d.id,
     });
   }
+  function changeTab(t: MainNavTab) {
+    setLedgerFocus(null); // 일반 탭 이동 시 딥링크 초기화
+    setTab(t);
+  }
+  function openWeeklyLedger() {
+    setLedgerFocus("week");
+    setTab("records");
+  }
   function onResolved() {
     setJob(null);
     setConfirmData(null);
@@ -143,23 +154,26 @@ export default function Shell() {
         <>
           <LoginFailNotice />
 
-          {tab === "home" && (
-            <HomeTab
-              onCapture={triggerCapture}
-              onOpenProfile={() => setTab("profile")}
-              job={job}
-              onOpenConfirm={openConfirmFromJob}
-              onCompleteDraft={completeDraft}
-            />
-          )}
-          {tab === "records" && <Ledger />}
-          {tab === "profile" && <Profile onGoRecords={() => setTab("records")} />}
+          {/* 탭 콘텐츠 — key로 가벼운 전환 트랜지션 */}
+          <main key={tab} className="animate-tab-in">
+            {tab === "home" && (
+              <HomeTab
+                onCapture={triggerCapture}
+                onOpenProfile={() => setTab("profile")}
+                job={job}
+                onOpenConfirm={openConfirmFromJob}
+                onCompleteDraft={completeDraft}
+              />
+            )}
+            {tab === "records" && <Ledger initialFocus={ledgerFocus} />}
+            {tab === "profile" && <Profile onOpenWeekly={openWeeklyLedger} />}
+          </main>
 
-          {/* 다른 탭에 있을 때 비차단 알림 칩 — 가운데 기록 버튼을 가리지 않게 위로 띄운다 */}
+          {/* 다른 탭에 있을 때 비차단 알림 칩 — 탭바 위로 띄운다 */}
           {job && tab !== "home" && (
             <button
               onClick={() => (job.status === "analyzing" ? setTab("home") : openConfirmFromJob())}
-              className="fixed left-1/2 -translate-x-1/2 bottom-[88px] z-40 flex items-center gap-2 px-4 py-2.5 rounded-full shadow-lg text-body font-medium bg-white border border-line active:scale-[0.98] transition-transform"
+              className="fixed left-1/2 -translate-x-1/2 bottom-[76px] z-40 flex items-center gap-2 px-4 py-2.5 rounded-full shadow-lg text-body font-medium bg-white border border-line active:scale-[0.98] transition-transform"
             >
               {job.status === "analyzing" ? (
                 <>
@@ -175,7 +189,7 @@ export default function Shell() {
             </button>
           )}
 
-          <BottomNav tab={tab} onChange={setTab} onCapture={triggerCapture} />
+          <BottomNav tab={tab} onChange={changeTab} />
 
           {confirmData && <QuickRecord data={confirmData} onClose={closeSheet} onSaved={onResolved} />}
         </>

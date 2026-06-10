@@ -1,21 +1,36 @@
+// 장부의 달력·앨범 뷰 — view prop으로 Ledger 세그먼트가 직접 제어한다(내부 토글 없음).
+// 앨범은 화면에선 크림 톤(라이트), 다크그린 카드는 '이미지로 저장' 캡처 전용(숨김 렌더).
 import { useState, useMemo, useRef } from "react";
-import { Loader2, Download, ChevronDown, X, ChevronLeft, ChevronRight } from "lucide-react";
+import { Loader2, Download, ChevronDown, X, ChevronLeft, ChevronRight, ImageOff } from "lucide-react";
 import { SavingsEntry, fmt, todayStr, KO_DAYS } from "@/lib/ledger";
 
 type DetailMode = "day" | "week";
-type CalView = "album" | "calendar";
+export type CalView = "album" | "calendar";
 
-export default function MiniCalendar({ entries }: { entries: SavingsEntry[] }) {
+// 해당 날짜가 속한 주의 월요일
+function mondayOf(d: Date): string {
+  const c = new Date(d);
+  c.setHours(0, 0, 0, 0);
+  c.setDate(c.getDate() - ((c.getDay() + 6) % 7));
+  return c.toISOString().split("T")[0];
+}
+
+export default function MiniCalendar({
+  entries,
+  view,
+  initialDetailMode = "day",
+}: {
+  entries: SavingsEntry[];
+  view: CalView;
+  initialDetailMode?: DetailMode;
+}) {
   const todayFull = todayStr();
-
-  // 앨범(포토덤프)을 기본으로, 달력은 토글
-  const [view, setView] = useState<CalView>("album");
 
   // Always-On: 오늘 날짜로 초기화, null 없음
   const [viewDate, setViewDate] = useState(() => new Date());
   const [selectedDate, setSelectedDate] = useState<string>(todayFull);
-  const [detailMode, setDetailMode] = useState<DetailMode>("day");
-  const [selectedWeekStart, setSelectedWeekStart] = useState<string>(todayFull);
+  const [detailMode, setDetailMode] = useState<DetailMode>(initialDetailMode);
+  const [selectedWeekStart, setSelectedWeekStart] = useState<string>(() => mondayOf(new Date()));
   const monthInputRef = useRef<HTMLInputElement>(null);
 
   const year = viewDate.getFullYear();
@@ -67,11 +82,11 @@ export default function MiniCalendar({ entries }: { entries: SavingsEntry[] }) {
   // 월간 앨범 — 사진 있는 기록만(포토덤프) + 이미지로 저장
   const monthPhotos = useMemo(() => monthEntries.filter(e => e.imageUrl), [monthEntries]);
   const monthTotal = useMemo(() => monthEntries.reduce((s, e) => s + e.profit, 0), [monthEntries]);
-  const albumRef = useRef<HTMLDivElement>(null);
+  const captureRef = useRef<HTMLDivElement>(null);
   const [savingAlbum, setSavingAlbum] = useState(false);
 
   const handleSaveAlbum = async () => {
-    if (!albumRef.current) return;
+    if (!captureRef.current) return;
     setSavingAlbum(true);
     try {
       // 캡처 전 폰트 로딩 보장 — 한글(Pretendard)이 폴백으로 박히는 것 방지
@@ -82,7 +97,7 @@ export default function MiniCalendar({ entries }: { entries: SavingsEntry[] }) {
         }
       } catch { /* 폰트 API 미지원 시 무시 */ }
       const html2canvas = (await import("html2canvas")).default;
-      const canvas = await html2canvas(albumRef.current, {
+      const canvas = await html2canvas(captureRef.current, {
         scale: 2, useCORS: true, backgroundColor: "#16201A", logging: false,
       });
       const a = document.createElement("a");
@@ -117,11 +132,7 @@ export default function MiniCalendar({ entries }: { entries: SavingsEntry[] }) {
     const firstDateOfRow = cells.find((c, i) => i >= rowStartIdx && c !== null);
     if (firstDateOfRow === null || firstDateOfRow === undefined) return;
     const dateStr = `${year}-${String(month + 1).padStart(2, "0")}-${String(firstDateOfRow).padStart(2, "0")}`;
-    const d = new Date(dateStr + "T00:00:00");
-    const dow = d.getDay(); // 0=Sun
-    const diffToMon = (dow + 6) % 7;
-    d.setDate(d.getDate() - diffToMon);
-    setSelectedWeekStart(d.toISOString().split("T")[0]);
+    setSelectedWeekStart(mondayOf(new Date(dateStr + "T00:00:00")));
     setDetailMode("week");
   };
 
@@ -146,33 +157,19 @@ export default function MiniCalendar({ entries }: { entries: SavingsEntry[] }) {
 
   return (
     <div>
-      {/* ── 뷰 토글: 앨범(포토덤프) | 달력 ── */}
-      <div className="flex gap-1 mb-4 bg-cream rounded-full p-1">
-        {(["album", "calendar"] as CalView[]).map(v => (
-          <button
-            key={v}
-            onClick={() => setView(v)}
-            className={`flex-1 py-1.5 rounded-full text-caption font-medium transition-colors ${
-              view === v ? "bg-white text-ink shadow-sm" : "text-ink-soft hover:text-ink"
-            }`}
-          >
-            {v === "album" ? "앨범" : "달력"}
-          </button>
-        ))}
-      </div>
-
       {/* ── 월 네비게이션 (공통) ── */}
       <div className="flex items-center justify-between mb-4">
         <button
           onClick={prevMonth}
-          className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg text-ink-soft hover:bg-cream active:scale-95 transition-all"
+          aria-label="이전 달"
+          className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg text-ink-soft active:bg-line/60 active:scale-95 transition-all"
         >
           <ChevronLeft size={16} />
         </button>
 
         <button
           onClick={() => monthInputRef.current?.showPicker?.() ?? monthInputRef.current?.click()}
-          className="text-body font-medium text-ink hover:text-emerald-600 transition-colors flex items-center gap-1"
+          className="text-body font-medium text-ink active:text-emerald-600 transition-colors flex items-center gap-1"
         >
           {year}년 {month + 1}월
           <ChevronDown size={12} className="text-ink-soft" />
@@ -180,7 +177,8 @@ export default function MiniCalendar({ entries }: { entries: SavingsEntry[] }) {
 
         <button
           onClick={nextMonth}
-          className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg text-ink-soft hover:bg-cream active:scale-95 transition-all"
+          aria-label="다음 달"
+          className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg text-ink-soft active:bg-line/60 active:scale-95 transition-all"
         >
           <ChevronRight size={16} />
         </button>
@@ -195,56 +193,50 @@ export default function MiniCalendar({ entries }: { entries: SavingsEntry[] }) {
         />
       </div>
 
-      {/* ════════ 앨범 뷰 (포토덤프 — 기본) ════════ */}
+      {/* ════════ 앨범 뷰 (포토덤프 — 화면은 크림 톤) ════════ */}
       {view === "album" && (
         <>
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-caption font-mono text-ink-soft tracking-widest uppercase">
-              {year}.{String(month + 1).padStart(2, "0")} 앨범
-            </span>
+          {/* 월 요약 + 이미지 저장 */}
+          <div className="flex items-end justify-between mb-3">
+            <div>
+              <p className="text-caption text-ink-soft">{monthEntries.length}건 지켜냄</p>
+              <p className="font-mono text-title font-bold text-emerald-500 tabular-nums leading-tight">
+                +₩{fmt(monthTotal)}
+              </p>
+            </div>
             <button
               onClick={handleSaveAlbum}
               disabled={savingAlbum || monthPhotos.length === 0}
-              className="flex items-center gap-1 text-caption text-emerald-600 hover:text-emerald-700 disabled:opacity-40 transition-colors"
+              className="flex items-center gap-1.5 px-3 py-2 rounded-full border border-line text-caption text-ink-soft active:bg-line/60 disabled:opacity-40 transition-colors"
             >
-              {savingAlbum ? <Loader2 size={12} className="animate-spin" /> : <Download size={12} />}
+              {savingAlbum ? <Loader2 size={13} className="animate-spin" /> : <Download size={13} />}
               이미지로 저장
             </button>
           </div>
 
-          {/* 앨범 카드 (다크그린, 통째로 이미지 저장) */}
-          <div ref={albumRef} style={{ backgroundColor: "#16201A", padding: "18px", borderRadius: "16px" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: "14px" }}>
-              <div>
-                <div style={{ fontSize: "9px", letterSpacing: "3px", color: "#7E8C82", textTransform: "uppercase", marginBottom: "3px" }}>거지로그</div>
-                <div style={{ fontSize: "17px", fontWeight: 700, color: "#F4EFE3" }}>{year}.{String(month + 1).padStart(2, "0")} 앨범</div>
-              </div>
-              <div style={{ textAlign: "right" }}>
-                <div style={{ fontSize: "9px", color: "#7E8C82", marginBottom: "2px" }}>{monthEntries.length}건 지켜냄</div>
-                <div style={{ fontSize: "20px", fontWeight: 800, color: "#10B981", fontFamily: "'JetBrains Mono', ui-monospace, monospace" }}>+₩{fmt(monthTotal)}</div>
-              </div>
+          {/* 사진 그리드 — 라이트 톤 */}
+          {monthPhotos.length > 0 ? (
+            <div className="grid grid-cols-3 gap-1.5">
+              {monthPhotos.map(e => (
+                <img
+                  key={e.id}
+                  src={e.imageUrl!}
+                  alt={e.title}
+                  loading="lazy"
+                  className="w-full aspect-square object-cover rounded-xl bg-line"
+                />
+              ))}
             </div>
-            {monthPhotos.length > 0 ? (
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "4px" }}>
-                {monthPhotos.map(e => (
-                  <img
-                    key={e.id}
-                    src={e.imageUrl!}
-                    crossOrigin="anonymous"
-                    alt=""
-                    style={{ width: "100%", aspectRatio: "1 / 1", objectFit: "cover", borderRadius: "8px", display: "block" }}
-                  />
-                ))}
-              </div>
-            ) : (
-              <div style={{ fontSize: "12px", color: "#7E8C82", textAlign: "center", padding: "24px 0" }}>이 달엔 사진 기록이 없어요</div>
-            )}
-            <div style={{ textAlign: "center", fontSize: "8px", color: "#5E6A60", letterSpacing: "2px", marginTop: "14px" }}>GEOJILOG · {year}{String(month + 1).padStart(2, "0")}</div>
-          </div>
+          ) : (
+            <div className="flex flex-col items-center text-center py-12 border border-line rounded-card bg-white">
+              <ImageOff size={20} className="text-ink-faint mb-2" />
+              <p className="text-caption text-ink-soft">이 달엔 사진 기록이 없어요</p>
+            </div>
+          )}
 
           {/* 카테고리별 */}
           {monthByCategory.length > 0 && (
-            <div className="space-y-1.5 mt-4">
+            <div className="space-y-1.5 mt-5">
               {monthByCategory.map(([cat, profit]) => {
                 const total = monthTotal;
                 const pct = total > 0 ? Math.round((profit / total) * 100) : 0;
@@ -265,6 +257,36 @@ export default function MiniCalendar({ entries }: { entries: SavingsEntry[] }) {
               })}
             </div>
           )}
+
+          {/* 캡처 전용 다크 공유카드 — 화면 밖 숨김 렌더 (이미지로 저장 시에만 사용) */}
+          <div aria-hidden="true" style={{ position: "fixed", left: "-10000px", top: 0, width: "420px", pointerEvents: "none" }}>
+            <div ref={captureRef} style={{ backgroundColor: "#16201A", padding: "18px", borderRadius: "16px" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: "14px" }}>
+                <div>
+                  <div style={{ fontSize: "9px", letterSpacing: "3px", color: "#7E8C82", textTransform: "uppercase", marginBottom: "3px" }}>거지로그</div>
+                  <div style={{ fontSize: "17px", fontWeight: 700, color: "#F4EFE3" }}>{year}.{String(month + 1).padStart(2, "0")} 앨범</div>
+                </div>
+                <div style={{ textAlign: "right" }}>
+                  <div style={{ fontSize: "9px", color: "#7E8C82", marginBottom: "2px" }}>{monthEntries.length}건 지켜냄</div>
+                  <div style={{ fontSize: "20px", fontWeight: 800, color: "#10B981", fontFamily: "'JetBrains Mono', ui-monospace, monospace" }}>+₩{fmt(monthTotal)}</div>
+                </div>
+              </div>
+              {monthPhotos.length > 0 && (
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "4px" }}>
+                  {monthPhotos.map(e => (
+                    <img
+                      key={e.id}
+                      src={e.imageUrl!}
+                      crossOrigin="anonymous"
+                      alt=""
+                      style={{ width: "100%", aspectRatio: "1 / 1", objectFit: "cover", borderRadius: "8px", display: "block" }}
+                    />
+                  ))}
+                </div>
+              )}
+              <div style={{ textAlign: "center", fontSize: "8px", color: "#5E6A60", letterSpacing: "2px", marginTop: "14px" }}>GEOJILOG · {year}{String(month + 1).padStart(2, "0")}</div>
+            </div>
+          </div>
         </>
       )}
 
@@ -299,7 +321,7 @@ export default function MiniCalendar({ entries }: { entries: SavingsEntry[] }) {
                     <button
                       key={dateStr}
                       onClick={() => handleDayClick(dateStr)}
-                      className="flex flex-col items-center py-1.5 min-h-[44px] w-full rounded-lg transition-colors hover:bg-cream active:bg-cream"
+                      className="flex flex-col items-center py-1.5 min-h-[44px] w-full rounded-lg transition-colors active:bg-line/50"
                     >
                       <span className={`text-caption w-6 h-6 flex items-center justify-center rounded-full transition-all ${
                         isSelected
@@ -329,13 +351,10 @@ export default function MiniCalendar({ entries }: { entries: SavingsEntry[] }) {
                       const firstDay_ = week.find(d => d !== null);
                       if (!firstDay_) return false;
                       const ds = `${year}-${String(month + 1).padStart(2, "0")}-${String(firstDay_).padStart(2, "0")}`;
-                      const d = new Date(ds + "T00:00:00");
-                      const diff = (d.getDay() + 6) % 7;
-                      d.setDate(d.getDate() - diff);
-                      return d.toISOString().split("T")[0] === selectedWeekStart;
+                      return mondayOf(new Date(ds + "T00:00:00")) === selectedWeekStart;
                     })()
                       ? "text-emerald-500"
-                      : "text-ink-faint hover:text-ink-soft"
+                      : "text-ink-faint active:text-ink-soft"
                   }`}
                   title="주간 결산"
                 >
@@ -402,7 +421,7 @@ export default function MiniCalendar({ entries }: { entries: SavingsEntry[] }) {
                     <p className="text-caption font-mono text-ink-soft tracking-widest uppercase">
                       {selectedWeekStart.slice(5).replace("-", ".")} ~ {endDate.slice(5).replace("-", ".")} 주간
                     </p>
-                    <button onClick={() => setDetailMode("day")} className="p-1 text-ink-faint hover:text-ink-soft">
+                    <button onClick={() => setDetailMode("day")} className="p-1 text-ink-faint active:text-ink-soft">
                       <X size={14} />
                     </button>
                   </div>

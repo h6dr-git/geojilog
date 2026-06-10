@@ -6,6 +6,7 @@ import { addDraft, removeDraft } from "@/lib/drafts";
 import { won } from "@/lib/format";
 import { toast } from "sonner";
 import { X, Loader2, Trash2 } from "lucide-react";
+import ConfirmDialog from "@/components/ConfirmDialog";
 import type { Prefill } from "@/lib/capture";
 
 const DEFAULT_CATEGORIES = ["식비", "카페", "교통", "쇼핑", "문화/여가", "기타"];
@@ -31,6 +32,7 @@ export default function QuickRecord({ data, onClose, onSaved }: Props) {
   const [original, setOriginal] = useState(data.originalAmount != null ? String(data.originalAmount) : "");
   const [actual, setActual] = useState(data.actualAmount != null ? String(data.actualAmount) : "");
   const [saving, setSaving] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const aiReason = data.aiReason ?? "";
   const date = data.date ?? todayStr();
 
@@ -204,13 +206,7 @@ export default function QuickRecord({ data, onClose, onSaved }: Props) {
         {/* 나중에 / 미완성 삭제 */}
         {isCompleting ? (
           <button
-            onClick={() => {
-              if (data.draftId && confirm("이 미완성 기록을 삭제할까요?")) {
-                removeDraft(data.draftId);
-                toast.success("삭제됐어요");
-                onClose();
-              }
-            }}
+            onClick={() => setConfirmDelete(true)}
             className="mt-3 w-full text-caption text-ink-soft flex items-center justify-center gap-1 py-1.5"
           >
             <Trash2 size={13} /> 이 미완성 삭제
@@ -221,6 +217,22 @@ export default function QuickRecord({ data, onClose, onSaved }: Props) {
           </button>
         )}
       </div>
+
+      {/* 미완성 삭제 확인 — window.confirm 대체 */}
+      {confirmDelete && (
+        <ConfirmDialog
+          title="미완성 기록을 삭제할까요?"
+          description="보관 중인 사진과 입력값이 사라져요."
+          confirmLabel="삭제"
+          onConfirm={() => {
+            if (data.draftId) removeDraft(data.draftId);
+            toast.success("삭제됐어요");
+            setConfirmDelete(false);
+            onClose();
+          }}
+          onCancel={() => setConfirmDelete(false)}
+        />
+      )}
     </div>
   );
 }

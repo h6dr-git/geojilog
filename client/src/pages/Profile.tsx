@@ -1,4 +1,5 @@
-// 회장님(프로필) — 사적 서재. (P0 토큰 + P1: stat 2칸 위계·카드 padding·여백 정돈)
+// 회장님(프로필) — 사적 서재.
+// 주간 결산 카드 → 장부 달력의 '주간 상세'로 딥링크, 데이터 내보내기 → 전용 시트(제자리에서 바로).
 import { useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { APP_NAME, CHARACTER_NAME, josa } from "@/lib/brand";
@@ -6,6 +7,8 @@ import { won } from "@/lib/format";
 import { useAuth } from "@/hooks/useAuth";
 import Jarureu from "@/components/Jarureu";
 import { Download, ChevronRight, LogOut, Pencil, Check, X } from "lucide-react";
+import ExportSheet from "@/components/ExportSheet";
+import type { SavingsEntry } from "@/lib/ledger";
 
 type Entry = { date: string; profit: number };
 
@@ -29,7 +32,7 @@ function Stat({ label, value }: { label: string; value: string }) {
   );
 }
 
-export default function Profile({ onGoRecords }: { onGoRecords: () => void }) {
+export default function Profile({ onOpenWeekly }: { onOpenWeekly: () => void }) {
   const { isAuthenticated, user, logout } = useAuth();
   const utils = trpc.useUtils();
   const updateName = trpc.user.updateName.useMutation({
@@ -51,6 +54,7 @@ export default function Profile({ onGoRecords }: { onGoRecords: () => void }) {
 
   const [editing, setEditing] = useState(false);
   const [draftName, setDraftName] = useState("");
+  const [showExport, setShowExport] = useState(false);
 
   function startEdit() {
     setDraftName(displayName);
@@ -66,7 +70,7 @@ export default function Profile({ onGoRecords }: { onGoRecords: () => void }) {
   }
 
   return (
-    <div className="min-h-screen max-w-lg mx-auto px-5 pt-12 pb-28 bg-cream">
+    <div className="min-h-dvh max-w-lg mx-auto px-5 pt-12 pb-24 bg-cream">
       {/* 회장님 헤더 — 자르르 + 닉네임(✎) + 로그인 상태 */}
       <header className="text-center mb-7">
         <div className="flex justify-center mb-3">
@@ -106,8 +110,8 @@ export default function Profile({ onGoRecords }: { onGoRecords: () => void }) {
         </p>
       </header>
 
-      {/* 김집사 주간 결산 — 이번 주 +수익 (사적 영역이라 숫자 노출 OK). 탭하면 장부로. */}
-      <button onClick={onGoRecords} className="w-full text-left bg-butler border border-butler-line rounded-card p-5 mb-3 active:opacity-90 transition-opacity">
+      {/* 김집사 주간 결산 — 탭하면 장부 달력의 '이번 주 상세'로 바로 (애매한 탭 전환 X) */}
+      <button onClick={onOpenWeekly} className="w-full text-left bg-butler border border-butler-line rounded-card p-5 mb-3 active:scale-[0.99] active:opacity-90 transition-all">
         <div className="flex items-center gap-2 mb-2.5">
           <span className="w-7 h-7 rounded-lg flex items-center justify-center text-caption font-medium shrink-0" style={{ background: "#eadfc6", color: "#a9863f" }}>집</span>
           <p className="text-micro text-gold tracking-wide">김집사의 주간 결산</p>
@@ -144,13 +148,15 @@ export default function Profile({ onGoRecords }: { onGoRecords: () => void }) {
         </button>
       )}
 
-      {/* 데이터 내보내기 */}
-      <button onClick={onGoRecords} className="w-full flex items-center justify-between bg-white border border-line rounded-card px-4 py-3.5 active:bg-cream transition-colors">
+      {/* 데이터 내보내기 — 제자리에서 바로 시트로 */}
+      <button onClick={() => setShowExport(true)} className="w-full flex items-center justify-between bg-white border border-line rounded-card px-4 py-3.5 active:bg-cream transition-colors">
         <span className="flex items-center gap-2.5 text-body text-ink">
           <Download size={17} className="text-emerald-500" /> 데이터 내보내기
         </span>
         <ChevronRight size={16} className="text-ink-faint" />
       </button>
+
+      {showExport && <ExportSheet entries={entries as SavingsEntry[]} onClose={() => setShowExport(false)} />}
 
       <p className="text-center text-micro text-ink-faint mt-10 font-mono tracking-wider">
         {APP_NAME} · {josa(CHARACTER_NAME, "과", "와")} 함께
