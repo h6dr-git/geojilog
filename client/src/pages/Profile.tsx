@@ -40,6 +40,8 @@ export default function Profile({ onOpenWeekly }: { onOpenWeekly: () => void }) 
     onSettled: () => utils.auth.me.invalidate(),
   });
   const { data: entries = [] } = trpc.savings.list.useQuery(undefined, { enabled: isAuthenticated });
+  const { data: authConfig } = trpc.auth.config.useQuery();
+  const kakaoEnabled = authConfig?.kakaoEnabled ?? false;
 
   const list = entries as Entry[];
   const total = list.reduce((s, e) => s + (e.profit || 0), 0);
@@ -136,7 +138,7 @@ export default function Profile({ onOpenWeekly }: { onOpenWeekly: () => void }) 
       </div>
 
       {/* 계정 — 게스트면 카카오 로그인 유도, 로그인됨이면 로그아웃 */}
-      {!isKakao ? (
+      {!isKakao && kakaoEnabled ? (
         <a href="/api/auth/kakao" className="w-full flex items-center justify-between rounded-card px-4 py-3.5 mb-2.5 bg-[#FEE500] active:opacity-90 transition-opacity">
           <span className="flex flex-col text-left">
             <span className="text-body font-semibold text-[#191600]">카카오로 로그인</span>
@@ -144,14 +146,14 @@ export default function Profile({ onOpenWeekly }: { onOpenWeekly: () => void }) 
           </span>
           <ChevronRight size={16} className="text-[#191600]/40" />
         </a>
-      ) : (
+      ) : isKakao ? (
         <button onClick={() => logout()} className="w-full flex items-center justify-between bg-white border border-line rounded-card px-4 py-3.5 mb-2.5 active:bg-cream transition-colors">
           <span className="flex items-center gap-2.5 text-body text-ink">
             <LogOut size={17} className="text-ink-soft" /> 로그아웃
           </span>
           <ChevronRight size={16} className="text-ink-faint" />
         </button>
-      )}
+      ) : null}
 
       {/* 데이터 내보내기 — 제자리에서 바로 시트로 */}
       <button onClick={() => setShowExport(true)} className="w-full flex items-center justify-between bg-white border border-line rounded-card px-4 py-3.5 active:bg-cream transition-colors">

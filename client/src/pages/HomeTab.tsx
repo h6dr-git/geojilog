@@ -55,6 +55,26 @@ export default function HomeTab({ onCapture, onOpenProfile, job, onOpenConfirm, 
     return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
   })();
   const fedToday = (entries as Entry[]).some((e) => e.date === today);
+
+  // 이번 주(월~일) 기록 점 7개 — 돈 액수 없는 상태 표시 (집무실 안 A · 스트릭은 보류)
+  const weekDots = (() => {
+    const t = new Date();
+    t.setHours(0, 0, 0, 0);
+    const mon = new Date(t);
+    mon.setDate(mon.getDate() - ((mon.getDay() + 6) % 7));
+    const p2 = (n: number) => String(n).padStart(2, "0");
+    return Array.from({ length: 7 }, (_, i) => {
+      const d = new Date(mon);
+      d.setDate(mon.getDate() + i);
+      const ds = `${d.getFullYear()}-${p2(d.getMonth() + 1)}-${p2(d.getDate())}`;
+      return {
+        ds,
+        has: (entries as Entry[]).some((e) => e.date === ds),
+        isToday: d.getTime() === t.getTime(),
+        future: d.getTime() > t.getTime(),
+      };
+    });
+  })();
   const [jarLine, setJarLine] = useState<string | null>(null);
   const jarTimer = useRef<number | undefined>(undefined);
   const lastLine = useRef<string | null>(null);
@@ -132,7 +152,7 @@ export default function HomeTab({ onCapture, onOpenProfile, job, onOpenConfirm, 
           className="mt-7 w-full text-white font-semibold py-4 rounded-card flex items-center justify-center gap-2 active:scale-[0.98] transition-transform"
           style={{ background: "linear-gradient(180deg, #34d399 0%, #10b981 100%)", boxShadow: "0 10px 22px -8px rgba(16,185,129,0.55)" }}
         >
-          <Camera size={19} /> 사진으로 한 끼 기록하기
+          <Camera size={19} /> 사진으로 절약 기록하기
         </button>
       )}
 
@@ -146,6 +166,29 @@ export default function HomeTab({ onCapture, onOpenProfile, job, onOpenConfirm, 
           <ChevronRight size={16} className="text-amber-400 shrink-0" />
         </button>
       )}
+
+      {/* 오늘의 장부 상태 — 안 A: 액수 없는 상태창 (민감정보 0 유지) */}
+      <div className="mt-2.5 flex items-center justify-between bg-white border border-line rounded-card px-4 py-3">
+        <p className="text-caption text-ink-soft flex items-center gap-1.5">
+          {fedToday ? (
+            <>
+              <Check size={13} className="text-emerald-500" /> 오늘 절약 기록 완료
+            </>
+          ) : (
+            "오늘은 아직 기록 전"
+          )}
+        </p>
+        <div className="flex items-center gap-1.5" aria-label="이번 주 기록 현황">
+          {weekDots.map((d) => (
+            <span
+              key={d.ds}
+              className={`rounded-full transition-colors ${
+                d.isToday ? "w-2 h-2 ring-2 ring-emerald-200" : "w-1.5 h-1.5"
+              } ${d.has ? "bg-emerald-400" : d.future ? "bg-line/50" : "bg-line"}`}
+            />
+          ))}
+        </div>
+      </div>
 
       {/* 도사 한 마디 */}
       <div className="mt-10">
