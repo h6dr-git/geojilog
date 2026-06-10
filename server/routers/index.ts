@@ -5,6 +5,7 @@ import { savingsRouter } from "./savings";
 import { categoriesRouter } from "./categories";
 import { aiRouter } from "./ai";
 import { adminRouter } from "./admin";
+import { pushRouter } from "./push";
 
 export const appRouter = router({
   auth: authRouter,
@@ -13,6 +14,7 @@ export const appRouter = router({
   categories: categoriesRouter,
   ai: aiRouter,
   admin: adminRouter,
+  push: pushRouter,
 });
 
 export type AppRouter = typeof appRouter;

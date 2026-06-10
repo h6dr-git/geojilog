@@ -7,7 +7,9 @@ import { CHARACTER_NAME, josa } from "@/lib/brand";
 import Jarureu from "@/components/Jarureu";
 import ExportSheet from "@/components/ExportSheet";
 import type { SavingsEntry } from "@/lib/ledger";
-import { X, Pencil, Check, LogOut, Download, ChevronRight } from "lucide-react";
+import { useEffect } from "react";
+import { toast } from "sonner";
+import { X, Pencil, Check, LogOut, Download, ChevronRight, Bell, BellOff, Loader2 } from "lucide-react";
 
 export default function AccountSheet({ onClose }: { onClose: () => void }) {
   const { isAuthenticated, user, logout } = useAuth();
@@ -23,6 +25,77 @@ export default function AccountSheet({ onClose }: { onClose: () => void }) {
   const [editing, setEditing] = useState(false);
   const [draftName, setDraftName] = useState("");
   const [showExport, setShowExport] = useState(false);
+
+  // ── 웹 푸시 — 김집사의 저녁 보고 (금액 없는 알림) ──
+  const { data: pushConfig } = trpc.push.config.useQuery();
+  const subscribePush = trpc.push.subscribe.useMutation();
+  const unsubscribePush = trpc.push.unsubscribe.useMutation();
+  const [pushState, setPushState] = useState<"unsupported" | "off" | "on" | "busy">("busy");
+
+  useEffect(() => {
+    (async () => {
+      if (!("serviceWorker" in navigator) || !("PushManager" in window) || !pushConfig?.enabled) {
+        setPushState("unsupported");
+        return;
+      }
+      try {
+        const reg = await navigator.serviceWorker.ready;
+        const sub = await reg.pushManager.getSubscription();
+        setPushState(sub ? "on" : "off");
+      } catch {
+        setPushState("unsupported");
+      }
+    })();
+  }, [pushConfig?.enabled]);
+
+  function urlBase64ToUint8Array(base64: string): Uint8Array<ArrayBuffer> {
+    const padding = "=".repeat((4 - (base64.length % 4)) % 4);
+    const b64 = (base64 + padding).replace(/-/g, "+").replace(/_/g, "/");
+    const raw = atob(b64);
+    const out = new Uint8Array(new ArrayBuffer(raw.length));
+    for (let i = 0; i < raw.length; i += 1) out[i] = raw.charCodeAt(i);
+    return out;
+  }
+
+  async function togglePush() {
+    if (pushState === "busy" || pushState === "unsupported" || !pushConfig?.publicKey) return;
+    const prev = pushState;
+    setPushState("busy");
+    try {
+      const reg = await navigator.serviceWorker.ready;
+      if (prev === "on") {
+        const sub = await reg.pushManager.getSubscription();
+        if (sub) {
+          await unsubscribePush.mutateAsync({ endpoint: sub.endpoint });
+          await sub.unsubscribe();
+        }
+        setPushState("off");
+        toast.success("저녁 보고 알림을 껐습니다");
+      } else {
+        const perm = await Notification.requestPermission();
+        if (perm !== "granted") {
+          setPushState("off");
+          toast.error("브라우저 알림 권한이 필요합니다");
+          return;
+        }
+        const sub = await reg.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: urlBase64ToUint8Array(pushConfig.publicKey),
+        });
+        const json = sub.toJSON();
+        await subscribePush.mutateAsync({
+          endpoint: sub.endpoint,
+          p256dh: json.keys?.p256dh ?? "",
+          auth: json.keys?.auth ?? "",
+        });
+        setPushState("on");
+        toast.success("매일 저녁, 김집사가 보고를 올립니다");
+      }
+    } catch {
+      setPushState(prev);
+      toast.error("알림 설정에 실패했습니다");
+    }
+  }
 
   function startEdit() {
     setDraftName(displayName);
@@ -110,6 +183,29 @@ export default function AccountSheet({ onClose }: { onClose: () => void }) {
               <LogOut size={17} className="text-ink-soft" /> 로그아웃
             </span>
             <ChevronRight size={16} className="text-ink-faint" />
+          </button>
+        )}
+
+        {/* 저녁 보고 알림 — 푸시 미지원/미설정 환경에선 숨김 */}
+        {pushState !== "unsupported" && (
+          <button
+            onClick={togglePush}
+            disabled={pushState === "busy"}
+            className="w-full flex items-center justify-between bg-white border border-line rounded-card px-4 py-3.5 mb-2.5 active:bg-cream disabled:opacity-60 transition-colors"
+          >
+            <span className="flex items-center gap-2.5 text-body text-ink">
+              {pushState === "busy" ? (
+                <Loader2 size={17} className="animate-spin text-ink-soft" />
+              ) : pushState === "on" ? (
+                <Bell size={17} className="text-gold" />
+              ) : (
+                <BellOff size={17} className="text-ink-soft" />
+              )}
+              김집사의 저녁 보고
+            </span>
+            <span className={`text-caption font-medium ${pushState === "on" ? "text-emerald-600" : "text-ink-faint"}`}>
+              {pushState === "on" ? "받는 중" : pushState === "busy" ? "" : "꺼짐"}
+            </span>
           </button>
         )}
 

@@ -53,6 +53,15 @@ CREATE TABLE IF NOT EXISTS usage_events (
   createdAt INTEGER NOT NULL DEFAULT (unixepoch())
 );
 CREATE INDEX IF NOT EXISTS idx_usage_user_time ON usage_events(userId, createdAt);
+CREATE TABLE IF NOT EXISTS push_subscriptions (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  userId INTEGER NOT NULL,
+  endpoint TEXT NOT NULL UNIQUE,
+  p256dh TEXT NOT NULL,
+  auth TEXT NOT NULL,
+  createdAt INTEGER NOT NULL DEFAULT (unixepoch())
+);
+CREATE INDEX IF NOT EXISTS idx_push_user ON push_subscriptions(userId);
 `;
 
 let _db: ReturnType<typeof drizzle> | null = null;

@@ -58,3 +58,12 @@ createRoot(document.getElementById("root")!).render(
     </QueryClientProvider>
   </trpc.Provider>
 );
+
+// 웹 푸시용 서비스워커 — 지원 환경에서만 조용히 등록
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("/sw.js").catch(() => {
+      /* 미지원/실패 시 무시 — 푸시 없이도 앱은 동일하게 동작 */
+    });
+  });
+}

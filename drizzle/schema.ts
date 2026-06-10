@@ -88,3 +88,19 @@ export const usageEvents = sqliteTable("usage_events", {
 
 export type UsageEvent = typeof usageEvents.$inferSelect;
 export type InsertUsageEvent = typeof usageEvents.$inferInsert;
+
+// ── 웹 푸시 구독 (기기 단위) ──────────────────────────────────────
+// endpoint가 기기·브라우저 식별자. 만료/해지(410) 시 서버가 정리한다.
+export const pushSubscriptions = sqliteTable("push_subscriptions", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  userId: integer("userId").notNull(),
+  endpoint: text("endpoint").notNull().unique(),
+  p256dh: text("p256dh").notNull(),
+  auth: text("auth").notNull(),
+  createdAt: integer("createdAt")
+    .notNull()
+    .default(sql`(unixepoch())`),
+});
+
+export type PushSubscription = typeof pushSubscriptions.$inferSelect;
+export type InsertPushSubscription = typeof pushSubscriptions.$inferInsert;

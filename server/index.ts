@@ -9,6 +9,7 @@ import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
 import { getUserById } from "./db";
 import { registerKakaoAuth } from "./kakao";
+import { startPushScheduler } from "./push";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -87,6 +88,7 @@ async function startServer() {
     console.log(`Port ${preferredPort} is busy, using port ${port} instead`);
   }
 
+  startPushScheduler();
   server.listen(port, () => {
     console.log(`Server running on http://localhost:${port}/`);
   });
