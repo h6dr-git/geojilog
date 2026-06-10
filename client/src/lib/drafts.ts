@@ -11,6 +11,7 @@ export type Draft = {
   originalAmount: number | null;
   actualAmount: number | null;
   aiReason?: string;
+  memo?: string;
   date: string; // YYYY-MM-DD
   createdAt: number;
 };

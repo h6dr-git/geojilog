@@ -7,6 +7,7 @@ export type Prefill = {
   actualAmount: number | null;
   aiReason?: string;
   date?: string;
+  memo?: string;
   /** 있으면 저장된 미완성을 완성하는 중 */
   draftId?: string;
 };

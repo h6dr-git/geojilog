@@ -12,6 +12,7 @@ import SaveReveal from "@/components/SaveReveal";
 import QuickRecord from "@/components/QuickRecord";
 import { trpc } from "@/lib/trpc";
 import type { CaptureJob, Prefill } from "@/lib/capture";
+import { getExifDate } from "@/lib/exif";
 import type { Draft } from "@/lib/drafts";
 import { Loader2, Check } from "lucide-react";
 
@@ -26,8 +27,8 @@ function fileToBase64(file: File): Promise<string> {
   });
 }
 
-function emptyData(imageUrl: string): Prefill {
-  return { imageUrl, title: "", category: "식비", originalAmount: null, actualAmount: null };
+function emptyData(imageUrl: string, date?: string): Prefill {
+  return { imageUrl, title: "", category: "식비", originalAmount: null, actualAmount: null, date };
 }
 
 export default function Shell() {
@@ -83,11 +84,14 @@ export default function Shell() {
     setJob({ status: "analyzing", preview });
     setTab("home"); // 촬영 직후 집무실(홈)으로 — 자르르가 분석하는 동안 안전한 로비에서 대기
 
+    // 지난 사진이면 촬영 날짜를 그대로 쓴다 (장부 업로드 경로와 동일 — EXIF 일관성 버그 수정)
+    const exifDate = await getExifDate(file).catch(() => null);
+
     let base64 = "";
     try {
       base64 = await fileToBase64(file);
     } catch {
-      setJob({ status: "error", preview, data: emptyData("") });
+      setJob({ status: "error", preview, data: emptyData("", exifDate ?? undefined) });
       return;
     }
     try {
@@ -102,6 +106,7 @@ export default function Shell() {
           originalAmount: r.estimatedOriginalAmount,
           actualAmount: r.estimatedActualAmount,
           aiReason: r.reason,
+          date: exifDate ?? undefined,
         },
       });
     } catch {
@@ -112,7 +117,7 @@ export default function Shell() {
       } catch {
         /* 사진 저장도 실패 */
       }
-      setJob({ status: "error", preview, data: emptyData(imageUrl) });
+      setJob({ status: "error", preview, data: emptyData(imageUrl, exifDate ?? undefined) });
     }
   }
 
@@ -127,6 +132,7 @@ export default function Shell() {
       originalAmount: d.originalAmount,
       actualAmount: d.actualAmount,
       aiReason: d.aiReason,
+      memo: d.memo,
       date: d.date,
       draftId: d.id,
     });

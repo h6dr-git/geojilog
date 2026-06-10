@@ -46,6 +46,36 @@ export function butlerWeeklyComment(count: number, profit: number): string {
   return `${count}끼를 지켜내셨습니다. 작은 수라도 장부는 기억합니다.`;
 }
 
+// 김집사의 집무 메모 — 앱 사용 팁 (오늘의 쪽지 로테이션용, 기능 발견율↑)
+export const BUTLER_TIPS = [
+  "사진 여러 장을 한 번에 올리실 수 있습니다. 장부의 '기록 추가'를 이용해 보시지요.",
+  "지난 사진을 올리셔도 됩니다 — 날짜는 자르르가 알아서 읽습니다.",
+  "장부 앨범의 '꾸미기'로 이달의 카드를 취향껏 바꾸실 수 있습니다.",
+  "AI 추정 금액은 참고용입니다. 탭해서 언제든 고치실 수 있습니다.",
+  "회장님 탭의 주간 결산에서 한 주의 운용을 돌아보실 수 있습니다.",
+  "기록마다 '내 썰 한 줄'을 남기면, 나만 보는 일기가 됩니다.",
+];
+
+// 자르르의 낙서 — 한 줄 (오늘의 쪽지 로테이션용)
+export const JARUREU_NOTES = [
+  "오늘도 채워줘!! 기다리고 있을게~",
+  "어제 그 기록 맛있었어… 또 줘!",
+  "단지는 비어도 다시 차오른다! 자르르~",
+  "결제 알림음은 무서워… 사진 찍는 소리는 좋아!",
+];
+
+// 오늘의 쪽지 — 화자 하루 로테이션 (도사 → 김집사 → 자르르)
+export type DeskNote = { speaker: "dosa" | "butler" | "jarureu"; text: string };
+export function deskNoteOfDay(): DeskNote {
+  const now = new Date();
+  const start = new Date(now.getFullYear(), 0, 0);
+  const day = Math.floor((now.getTime() - start.getTime()) / 86400000);
+  const r = day % 3;
+  if (r === 0) return { speaker: "dosa", text: DOSA_LINES[day % DOSA_LINES.length] };
+  if (r === 1) return { speaker: "butler", text: BUTLER_TIPS[Math.floor(day / 3) % BUTLER_TIPS.length] };
+  return { speaker: "jarureu", text: JARUREU_NOTES[Math.floor(day / 3) % JARUREU_NOTES.length] };
+}
+
 // 자르르 — 집무실에서 탭했을 때 (안전 로비 — 숫자 노출 금지)
 export const JARUREU_FED_LINES = [
   "오늘도 아꼈다!! 배부르다아~",
@@ -58,7 +88,20 @@ export const JARUREU_HUNGRY_LINES = [
   "배고프다아… 한 끼만 아껴줘…",
   "기록 한 번이면 힘날 것 같아!",
 ];
-export function jarureuLine(fedToday: boolean, exclude?: string | null): string {
+// 희귀 대사 — 낮은 확률(8%). 떴을 때 '희귀'임이 보이도록 UI에서 골드 처리(J안).
+export const JARUREU_RARE_LINES = [
+  "사실 나… 전설의 장부에서 태어났어.",
+  "그분이 그랬대. 천원 아침이 첫 투자였다고.",
+  "내 금땜 자국? 깨진 데를 금으로 때운 거야. 멋있지!!",
+  "쉿— 김집사 정장, 그분이 처음 번 돈으로 사준 거래.",
+];
+
+export type JarureuSay = { text: string; rare: boolean };
+export function jarureuLine(fedToday: boolean, exclude?: string | null): JarureuSay {
+  if (Math.random() < 0.08) {
+    const pool = JARUREU_RARE_LINES.filter((l) => l !== exclude);
+    return { text: pool[Math.floor(Math.random() * pool.length)], rare: true };
+  }
   const pool = (fedToday ? JARUREU_FED_LINES : JARUREU_HUNGRY_LINES).filter((l) => l !== exclude);
-  return pool[Math.floor(Math.random() * pool.length)];
+  return { text: pool[Math.floor(Math.random() * pool.length)], rare: false };
 }

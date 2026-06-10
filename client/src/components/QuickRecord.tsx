@@ -32,6 +32,7 @@ export default function QuickRecord({ data, onClose, onSaved }: Props) {
   const [category, setCategory] = useState(data.category || "식비");
   const [original, setOriginal] = useState(data.originalAmount != null ? String(data.originalAmount) : "");
   const [actual, setActual] = useState(data.actualAmount != null ? String(data.actualAmount) : "");
+  const [memo, setMemo] = useState(data.memo ?? "");
   const [saving, setSaving] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const aiReason = data.aiReason ?? "";
@@ -65,6 +66,7 @@ export default function QuickRecord({ data, onClose, onSaved }: Props) {
         aiEstimated: isCompleting ? "no" : "yes",
         aiReason: aiReason || undefined,
         imageUrl: data.imageUrl || undefined,
+        memo: memo.trim() || undefined,
       });
       if (data.draftId) removeDraft(data.draftId);
       if (profit > 0) celebrateSave({ profit, title: title.trim() });
@@ -87,6 +89,7 @@ export default function QuickRecord({ data, onClose, onSaved }: Props) {
       originalAmount: original ? o : null,
       actualAmount: actual ? a : null,
       aiReason: aiReason || undefined,
+      memo: memo.trim() || undefined,
       date,
     });
     toast.success("사진 저장됨 — 나중에 금액만 채우면 돼요");
@@ -125,13 +128,14 @@ export default function QuickRecord({ data, onClose, onSaved }: Props) {
           )}
         </div>
 
-        {/* 절약 수익 */}
+        {/* 수익 + 기록 날짜 (지난 사진이면 EXIF로 읽은 날짜) */}
         <div className="text-center mb-4">
           <p className="text-micro text-ink-soft mb-0.5">이번에 번 돈</p>
           <p className={`font-mono text-hero font-bold tabular-nums ${profit >= 0 ? "text-emerald-500" : "text-red-400"}`}>
             {profit >= 0 ? "+" : "−"}
             {won(Math.abs(profit))}
           </p>
+          <p className="text-micro text-ink-faint mt-1 font-mono">{date.replace(/-/g, ".")} 기록</p>
         </div>
 
         {/* 항목명 */}
@@ -188,6 +192,15 @@ export default function QuickRecord({ data, onClose, onSaved }: Props) {
             </div>
           </div>
         </div>
+
+        {/* 내 썰(메모) — 컨펌 단계에서 바로 적게 (편집까지 안 가도 됨) */}
+        <label className="text-micro text-ink-soft block mb-1">내 썰 한 줄 (선택)</label>
+        <input
+          value={memo}
+          onChange={(e) => setMemo(e.target.value)}
+          placeholder="나만 보는 한 줄 일기"
+          className="w-full border border-line rounded-card px-3 py-2.5 text-body mb-3 focus:outline-none focus:border-emerald-400"
+        />
 
         {/* AI 근거 */}
         {aiReason && (
