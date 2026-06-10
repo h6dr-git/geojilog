@@ -193,6 +193,17 @@ export default function QuickRecord({ data, onClose, onSaved }: Props) {
           </div>
         </div>
 
+        {/* P2 — 지난 확정가 적용 안내 */}
+        {data.priorOriginalAmount != null && (
+          <p className="text-micro text-ink-faint mb-3 -mt-0.5">
+            원가는 지난번 확정가 {won(data.priorOriginalAmount)} 기준
+            {data.priorDate ? ` (${data.priorDate.slice(5).replace("-", ".")})` : ""}
+            {data.aiOriginalAmount != null && data.aiOriginalAmount !== data.priorOriginalAmount
+              ? ` · AI 추정은 ${won(data.aiOriginalAmount)}`
+              : ""}
+          </p>
+        )}
+
         {/* 내 썰(메모) — 컨펌 단계에서 바로 적게 (편집까지 안 가도 됨) */}
         <label className="text-micro text-ink-soft block mb-1">내 썰 한 줄 (선택)</label>
         <input

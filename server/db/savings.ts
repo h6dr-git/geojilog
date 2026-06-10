@@ -14,6 +14,23 @@ export async function getSavingsEntries(userId: number) {
     .orderBy(desc(savingsEntries.createdAt));
 }
 
+// P2(나만의 기준가) — 같은 제목(공백·대소문자 정규화)으로 사용자가 마지막에 확정한 기록 1건.
+// AI 추정보다 '내가 지난번 확정한 원가'를 우선 제안해 장부의 기준가 일관성을 지킨다.
+export async function getLatestEntryByTitle(userId: number, title: string) {
+  const db = await getDb();
+  if (!db) return null;
+  const { and, sql } = await import("drizzle-orm");
+  const norm = title.trim().toLowerCase();
+  if (!norm) return null;
+  const rows = await db
+    .select()
+    .from(savingsEntries)
+    .where(and(eq(savingsEntries.userId, userId), sql`lower(trim(${savingsEntries.title})) = ${norm}`))
+    .orderBy(desc(savingsEntries.date), desc(savingsEntries.createdAt))
+    .limit(1);
+  return rows[0] ?? null;
+}
+
 export async function createSavingsEntry(data: InsertSavingsEntry) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");

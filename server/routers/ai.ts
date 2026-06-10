@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { protectedProcedure, router } from "../trpc";
-import { countAiCallsToday, logUsageEvent } from "../db";
+import { countAiCallsToday, logUsageEvent, getLatestEntryByTitle } from "../db";
 import { invokeLLM } from "../llm";
 import { storagePut, storageGetSignedUrl } from "../storage";
 import { IMAGE_ANALYSIS_SYSTEM_PROMPT, SMS_PARSE_SYSTEM_PROMPT } from "../prompts";
@@ -95,7 +95,13 @@ export const aiRouter = router({
           cropBox: { x: number; y: number };
         };
         await logUsageEvent(ctx.user.id, "ai_analyze_image");
-        return { ...parsed, imageUrl: `/manus-storage/${key}` };
+        // P2(나만의 기준가) — 같은 제목으로 과거 확정한 금액이 있으면 함께 반환(클라가 우선 제안)
+        let prior: { originalAmount: number; actualAmount: number; date: string } | null = null;
+        try {
+          const prev = await getLatestEntryByTitle(ctx.user.id, parsed.title);
+          if (prev) prior = { originalAmount: prev.originalAmount, actualAmount: prev.actualAmount, date: prev.date };
+        } catch { /* 조회 실패해도 분석 결과는 정상 반환 */ }
+        return { ...parsed, imageUrl: `/manus-storage/${key}`, prior };
       }),
 
     uploadImage: protectedProcedure

@@ -103,10 +103,14 @@ export default function Shell() {
           imageUrl: r.imageUrl,
           title: r.title,
           category: r.category,
-          originalAmount: r.estimatedOriginalAmount,
+          // P2 — 내가 지난번 확정한 원가를 AI 추정보다 우선 제안 (기준가 일관성)
+          originalAmount: r.prior?.originalAmount ?? r.estimatedOriginalAmount,
           actualAmount: r.estimatedActualAmount,
           aiReason: r.reason,
           date: exifDate ?? undefined,
+          priorOriginalAmount: r.prior?.originalAmount,
+          priorDate: r.prior?.date,
+          aiOriginalAmount: r.estimatedOriginalAmount,
         },
       });
     } catch {

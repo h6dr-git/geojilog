@@ -11,7 +11,7 @@ import { smartCropToSquare } from "@/lib/smartCrop";
 import {
   Upload, Camera, PenLine, Loader2,
   Copy, Trash2, ChevronDown, ChevronUp, ChevronRight,
-  Pencil, X, Share2, RotateCw, Plus,
+  Pencil, X, Share2, RotateCw, Plus, Repeat,
 } from "lucide-react";
 import SavingsStoryCard from "@/components/SavingsStoryCard";
 import MiniCalendar from "@/components/MiniCalendar";
@@ -41,6 +41,7 @@ interface QueueItem {
   date: string;
   memo: string;
   imageUrl?: string;
+  priorDate?: string; // P2 — 지난 확정가가 적용된 경우
   // 데이터 해자: AI 추정 원본값 보관
   aiOriginalAmount?: number;
   aiActualAmount?: number;
@@ -66,6 +67,56 @@ export default function Ledger({ initialFocus = null }: { initialFocus?: "week" 
     () => (categories.length > 0 ? categories.map((c: { name: string }) => c.name) : ["식비", "카페", "교통", "쇼핑", "문화/여가", "기타"]),
     [categories]
   );
+
+  // ── P1: 늘 지키는 것 — 제목 기준 2회 이상 기록된 항목 상위 4개 (최근 금액으로 원탭 재기록) ──
+  const frequents = useMemo(() => {
+    type Freq = { title: string; category: string; originalAmount: number; actualAmount: number; count: number; lastDate: string };
+    const map = new Map<string, Freq>();
+    for (const e of entries as SavingsEntry[]) {
+      const key = e.title.trim().toLowerCase();
+      if (!key) continue;
+      const cur = map.get(key);
+      if (cur) {
+        cur.count += 1;
+        if (e.date > cur.lastDate) {
+          cur.lastDate = e.date;
+          cur.title = e.title;
+          cur.category = e.category;
+          cur.originalAmount = e.originalAmount;
+          cur.actualAmount = e.actualAmount;
+        }
+      } else {
+        map.set(key, { title: e.title, category: e.category, originalAmount: e.originalAmount, actualAmount: e.actualAmount, count: 1, lastDate: e.date });
+      }
+    }
+    return Array.from(map.values())
+      .filter((v) => v.count >= 2)
+      .sort((a, b) => b.count - a.count || b.lastDate.localeCompare(a.lastDate))
+      .slice(0, 4);
+  }, [entries]);
+
+  const [repeating, setRepeating] = useState(false);
+  const handleQuickRepeat = async (f: { title: string; category: string; originalAmount: number; actualAmount: number }) => {
+    if (repeating) return;
+    setRepeating(true);
+    try {
+      await createEntry.mutateAsync({
+        date: todayStr(),
+        title: f.title,
+        category: f.category,
+        originalAmount: f.originalAmount,
+        actualAmount: f.actualAmount,
+        aiEstimated: "no",
+      });
+      const saved = f.originalAmount - f.actualAmount;
+      if (saved > 0) celebrateSave({ profit: saved, title: f.title });
+      else toast.success("기록됐습니다", { description: f.title });
+    } catch {
+      toast.error("등록에 실패했습니다");
+    } finally {
+      setRepeating(false);
+    }
+  };
 
   // ── 세그먼트 (회장님 탭 '주간 결산' 딥링크 → 달력의 주간 상세) ──
   const [mainTab, setMainTab] = useState<MainTab>(initialFocus === "week" ? "calendar" : "list");
@@ -140,7 +191,9 @@ export default function Ledger({ initialFocus = null }: { initialFocus?: "week" 
       status: "ready" as const,
       title: autoTitle,
       category: result.category,
-      originalAmount: String(result.estimatedOriginalAmount),
+      // P2 — 지난 확정가 우선 (기준가 일관성)
+      originalAmount: String(result.prior?.originalAmount ?? result.estimatedOriginalAmount),
+      priorDate: result.prior?.date,
       actualAmount: String(result.estimatedActualAmount),
       aiReason: result.reason,
       date,
@@ -583,6 +636,28 @@ export default function Ledger({ initialFocus = null }: { initialFocus?: "week" 
               </button>
             </div>
 
+            {/* P1 — 늘 지키는 것: 사진·AI 없이 탭 한 번으로 오늘 기록 (반복 절약의 지름길) */}
+            {frequents.length > 0 && (
+              <section className="mb-5">
+                <p className="text-caption font-mono text-ink-soft tracking-widest uppercase mb-2">늘 지키는 것 — 탭 한 번</p>
+                <div className="flex gap-2 flex-wrap">
+                  {frequents.map((f) => (
+                    <button
+                      key={f.title}
+                      onClick={() => handleQuickRepeat(f)}
+                      disabled={repeating}
+                      className="flex items-center gap-1.5 pl-3 pr-3.5 py-2 rounded-full border border-emerald-200 bg-emerald-50 text-caption text-emerald-700 font-medium active:scale-95 disabled:opacity-50 transition-transform"
+                    >
+                      <Repeat size={12} />
+                      <span className="max-w-[8rem] truncate">{f.title}</span>
+                      <span className="font-mono tabular-nums">+₩{fmt(Math.max(0, f.originalAmount - f.actualAmount))}</span>
+                    </button>
+                  ))}
+                </div>
+                <p className="text-micro text-ink-faint mt-1.5">오늘 날짜·지난 금액으로 바로 기록돼요. 금액이 다르면 목록에서 수정.</p>
+              </section>
+            )}
+
             {/* 사진 업로드 영역 */}
             <section className="mb-5">
               <div
@@ -726,6 +801,11 @@ export default function Ledger({ initialFocus = null }: { initialFocus?: "week" 
                           placeholder="내 썰 한 줄 (선택)"
                           className="w-full text-caption border border-line rounded px-2 py-1.5 focus:outline-none focus:border-emerald-400"
                         />
+
+                        {/* P2 — 지난 확정가 적용 표시 */}
+                        {item.priorDate && (
+                          <p className="text-micro text-emerald-600/80">원가는 지난번 확정가 기준 ({item.priorDate.slice(5).replace("-", ".")})</p>
+                        )}
 
                         {/* AI 근거 */}
                         {item.aiReason && (

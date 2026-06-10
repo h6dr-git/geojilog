@@ -8,6 +8,10 @@ export type Prefill = {
   aiReason?: string;
   date?: string;
   memo?: string;
+  /** P2 나만의 기준가 — 지난 확정가가 적용됐을 때 */
+  priorOriginalAmount?: number;
+  priorDate?: string;
+  aiOriginalAmount?: number;
   /** 있으면 저장된 미완성을 완성하는 중 */
   draftId?: string;
 };
