@@ -64,6 +64,16 @@ export default function Shell() {
     triggerCapture(); // 가입 없이 바로 첫 기록으로
   }
 
+  // 온보딩에서 카카오 로그인 선택 — 온보딩 1회 처리 후 카카오로 이동
+  function kakaoFromOnboarding() {
+    try {
+      localStorage.setItem(ONBOARDED_KEY, "1");
+    } catch {
+      /* 무시 */
+    }
+    window.location.href = "/api/auth/kakao";
+  }
+
   async function onPick(e: ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0] ?? null;
     e.target.value = "";
@@ -150,7 +160,7 @@ export default function Shell() {
       />
 
       {showOnboarding ? (
-        <Onboarding onStart={finishOnboarding} />
+        <Onboarding onStart={finishOnboarding} onKakao={kakaoFromOnboarding} />
       ) : (
         <>
           <LoginFailNotice />

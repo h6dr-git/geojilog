@@ -174,7 +174,7 @@ export default function MiniCalendar({
           {/* 월 요약 + 이미지 저장 */}
           <div className="flex items-end justify-between mb-3">
             <div>
-              <p className="text-caption text-ink-soft">{monthEntries.length}건 지켜냄</p>
+              <p className="text-caption text-ink-soft">{monthEntries.length}건 기록</p>
               <p className="font-mono text-title font-bold text-emerald-500 tabular-nums leading-tight">
                 +₩{fmt(monthTotal)}
               </p>

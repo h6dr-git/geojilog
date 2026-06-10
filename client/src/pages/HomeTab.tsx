@@ -57,8 +57,11 @@ export default function HomeTab({ onCapture, onOpenProfile, job, onOpenConfirm, 
   const fedToday = (entries as Entry[]).some((e) => e.date === today);
   const [jarLine, setJarLine] = useState<string | null>(null);
   const jarTimer = useRef<number | undefined>(undefined);
+  const lastLine = useRef<string | null>(null);
   function pokeJarureu() {
-    setJarLine(jarureuLine(fedToday));
+    const line = jarureuLine(fedToday, lastLine.current); // 연속 같은 대사 방지
+    lastLine.current = line;
+    setJarLine(line);
     window.clearTimeout(jarTimer.current);
     jarTimer.current = window.setTimeout(() => setJarLine(null), 3200);
   }
@@ -89,7 +92,7 @@ export default function HomeTab({ onCapture, onOpenProfile, job, onOpenConfirm, 
             >
               {jarLine ? "자" : "집"}
             </span>
-            <p className="text-body text-ink/85 leading-relaxed text-left">
+            <p key={jarLine ?? "butler"} className="text-body text-ink/85 leading-relaxed text-left animate-bubble-in">
               {jarLine ?? (analyzingJob ? `${josa(CHARACTER_NAME, "이", "가")} 사진을 살펴보는 중이에요…` : butlerGreeting())}
             </p>
           </div>

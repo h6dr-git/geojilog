@@ -94,13 +94,6 @@ export default function SaveReveal() {
         +₩{n.toLocaleString("ko-KR")}
       </p>
 
-      <span
-        className="mt-3 px-3 py-1 rounded-full text-caption font-semibold"
-        style={{ background: "rgba(52,211,153,0.14)", color: "#6ee7b7", animation: "rvRise .35s ease .22s both" }}
-      >
-        지켜냄
-      </span>
-
       {detail.title && (
         <p className="mt-4 text-caption" style={{ color: "#9aa89e", animation: "rvRise .35s ease .28s both" }}>
           {detail.title}

@@ -5,7 +5,7 @@ import Jarureu from "@/components/Jarureu";
 import { APP_NAME } from "@/lib/brand";
 import { Camera } from "lucide-react";
 
-export default function Onboarding({ onStart }: { onStart: () => void }) {
+export default function Onboarding({ onStart, onKakao }: { onStart: () => void; onKakao: () => void }) {
   return (
     <div className="fixed inset-0 z-50 flex flex-col items-center justify-center px-8 text-center bg-forest">
       {/* 앱 이름 — 자간 넓은 모노 */}
@@ -29,7 +29,15 @@ export default function Onboarding({ onStart }: { onStart: () => void }) {
       >
         <Camera size={18} /> 내 첫 절약, 찾으러 가기
       </button>
-      <p className="mt-4 text-caption text-[#6f8a7a]">가입 없이 바로 시작 · 1분이면 첫 수익</p>
+      <p className="mt-3 text-caption text-[#6f8a7a]">가입 없이 바로 시작 · 1분이면 첫 수익</p>
+
+      {/* 이미 쓰던 사람·바로 가입하고 싶은 사람용 — 카카오 로그인 병행 (SSOT §9-3) */}
+      <button
+        onClick={onKakao}
+        className="mt-4 w-full max-w-[18rem] bg-[#FEE500] text-[#191600] font-medium py-3.5 rounded-card flex items-center justify-center gap-2 active:scale-[0.99] transition-transform"
+      >
+        카카오로 로그인
+      </button>
     </div>
   );
 }

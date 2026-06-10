@@ -174,7 +174,7 @@ export default function AlbumKit({
               <div style={{ fontSize: "17px", fontWeight: 700, color: theme.title }}>{year}.{mm} 앨범</div>
             </div>
             <div style={{ textAlign: "right" }}>
-              <div style={{ fontSize: "9px", color: theme.label, marginBottom: "2px" }}>{count}건 지켜냄</div>
+              <div style={{ fontSize: "9px", color: theme.label, marginBottom: "2px" }}>{count}건 기록</div>
               <div style={{ fontSize: "20px", fontWeight: 800, color: theme.accent, fontFamily: "'JetBrains Mono', ui-monospace, monospace" }}>+₩{fmt(total)}</div>
             </div>
           </div>

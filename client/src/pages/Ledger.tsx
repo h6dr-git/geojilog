@@ -9,13 +9,12 @@ import { toast } from "sonner";
 import { getExifDate } from "@/lib/exif";
 import { smartCropToSquare } from "@/lib/smartCrop";
 import {
-  Upload, Camera, PenLine, Loader2, Download,
+  Upload, Camera, PenLine, Loader2,
   Copy, Trash2, ChevronDown, ChevronUp, ChevronRight,
   Pencil, X, Share2, RotateCw, Plus,
 } from "lucide-react";
 import SavingsStoryCard from "@/components/SavingsStoryCard";
 import MiniCalendar from "@/components/MiniCalendar";
-import ExportSheet from "@/components/ExportSheet";
 import ConfirmDialog from "@/components/ConfirmDialog";
 import Jarureu from "@/components/Jarureu";
 import { SavingsEntry, fmt, todayStr, makeDefaultTitle } from "@/lib/ledger";
@@ -97,9 +96,8 @@ export default function Ledger({ initialFocus = null }: { initialFocus?: "week" 
     actualAmount: string; memo: string; date: string;
   } | null>(null);
 
-  // ── 스토리 공유 / 내보내기 / 삭제 확인 ──
+  // ── 스토리 공유 / 삭제 확인 ── (내보내기는 회장님 탭으로 일원화 — SSOT §9-4)
   const [storyEntry, setStoryEntry] = useState<SavingsEntry | null>(null);
-  const [showExport, setShowExport] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<SavingsEntry | null>(null);
 
   // ── AI 이미지 처리 ──
@@ -538,18 +536,6 @@ export default function Ledger({ initialFocus = null }: { initialFocus?: "week" 
             )}
           </section>
 
-          {/* 데이터 내보내기 — 시트로 */}
-          {(entries as SavingsEntry[]).length > 0 && (
-            <button
-              onClick={() => setShowExport(true)}
-              className="w-full flex items-center justify-between bg-white border border-line rounded-card px-4 py-3.5 mb-6 active:bg-line/40 transition-colors"
-            >
-              <span className="flex items-center gap-2.5 text-body text-ink">
-                <Download size={16} className="text-emerald-500" /> 데이터 내보내기
-              </span>
-              <ChevronRight size={16} className="text-ink-faint" />
-            </button>
-          )}
         </>
       )}
 
@@ -707,14 +693,13 @@ export default function Ledger({ initialFocus = null }: { initialFocus?: "week" 
                           </button>
                         </div>
 
-                        {/* 리빌 히어로 — 도파민은 "지켜냄" */}
+                        {/* 리빌 히어로 — 객관적 숫자 중심 (SSOT §9-2: '지켜냄' 워딩 제거) */}
                         <div className="flex items-baseline justify-between rounded-card bg-emerald-50 px-3 py-2.5">
-                          <span className="text-micro font-medium text-emerald-700/70">이번에 지켜낸 돈</span>
+                          <span className="text-micro font-medium text-emerald-700/70">절약액</span>
                           <span className="font-mono text-xl font-extrabold tabular-nums text-emerald-600">
                             {item.originalAmount && item.actualAmount
                               ? `+₩${fmt(Math.max(0, Number(item.originalAmount) - Number(item.actualAmount)))}`
                               : "—"}
-                            <span className="ml-1 text-caption font-semibold text-emerald-600/80">지켜냄</span>
                           </span>
                         </div>
 
@@ -840,11 +825,6 @@ export default function Ledger({ initialFocus = null }: { initialFocus?: "week" 
           entry={storyEntry}
           onClose={() => setStoryEntry(null)}
         />
-      )}
-
-      {/* 내보내기 시트 */}
-      {showExport && (
-        <ExportSheet entries={entries as SavingsEntry[]} onClose={() => setShowExport(false)} />
       )}
 
       {/* 삭제 확인 다이얼로그 — window.confirm 대체 */}

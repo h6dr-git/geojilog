@@ -129,11 +129,11 @@ export default function WeeklyWrapped({
             <p className="text-micro tracking-[0.3em] font-mono mb-2" style={{ color: "#7E8C82" }}>WEEKLY REPORT</p>
             <p className="text-body" style={{ color: "#d8cfae" }}>김집사의 주간 결산</p>
             <p className="text-caption mt-1 font-mono" style={{ color: "#5E6A60" }}>{mmdd(start)} – {mmdd(end)}</p>
-            <p className="mt-8 text-micro" style={{ color: "#7E8C82" }}>이번 주 지켜낸 돈</p>
+            <p className="mt-8 text-micro" style={{ color: "#7E8C82" }}>이번 주 절약액</p>
             <p className="font-mono font-extrabold tabular-nums leading-none mt-2" style={{ fontSize: "52px", color: "#34d399" }}>
               +₩{n.toLocaleString("ko-KR")}
             </p>
-            <p className="mt-5 text-caption" style={{ color: "#9aa89e" }}>{week.length}끼를 지켜냈습니다</p>
+            <p className="mt-5 text-caption" style={{ color: "#9aa89e" }}>{week.length}끼 기록</p>
           </div>
         )}
 
@@ -179,7 +179,7 @@ export default function WeeklyWrapped({
               <div style={{ fontSize: "9px", letterSpacing: "3px", color: "#7E8C82", textTransform: "uppercase", marginBottom: "4px", textAlign: "left" }}>거지로그 주간 결산</div>
               <div style={{ fontSize: "11px", color: "#5E6A60", textAlign: "left", fontFamily: "'JetBrains Mono', ui-monospace, monospace" }}>{mmdd(start)} – {mmdd(end)}</div>
               <div style={{ fontSize: "34px", fontWeight: 800, color: "#10B981", fontFamily: "'JetBrains Mono', ui-monospace, monospace", textAlign: "left", marginTop: "10px" }}>+₩{fmt(profit)}</div>
-              <div style={{ fontSize: "11px", color: "#9aa89e", textAlign: "left", marginTop: "2px" }}>{week.length}끼 지켜냄{best ? ` · 최고의 한 수 ${best.title}` : ""}</div>
+              <div style={{ fontSize: "11px", color: "#9aa89e", textAlign: "left", marginTop: "2px" }}>{week.length}끼 기록{best ? ` · 최고의 한 수 ${best.title}` : ""}</div>
               <div style={{ borderTop: "1px solid rgba(255,255,255,0.1)", margin: "14px 0" }} />
               <div style={{ fontSize: "12px", color: "#d8cfae", textAlign: "left", lineHeight: 1.6 }}>{butler}</div>
               <div style={{ fontSize: "11px", color: "#8C7B5A", textAlign: "left", marginTop: "10px", fontStyle: "italic", lineHeight: 1.6 }}>“{dosa}” — 무일푼 도사</div>

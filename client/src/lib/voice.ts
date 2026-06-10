@@ -53,7 +53,7 @@ export const JARUREU_HUNGRY_LINES = [
   "배고프다아… 한 끼만 아껴줘…",
   "기록 한 번이면 힘날 것 같아!",
 ];
-export function jarureuLine(fedToday: boolean): string {
-  const pool = fedToday ? JARUREU_FED_LINES : JARUREU_HUNGRY_LINES;
+export function jarureuLine(fedToday: boolean, exclude?: string | null): string {
+  const pool = (fedToday ? JARUREU_FED_LINES : JARUREU_HUNGRY_LINES).filter((l) => l !== exclude);
   return pool[Math.floor(Math.random() * pool.length)];
 }
