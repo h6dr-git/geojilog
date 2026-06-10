@@ -10,6 +10,7 @@ import type { CaptureJob } from "@/lib/capture";
 import { deskNote, jarureuLine, type JarureuSay } from "@/lib/voice";
 import JarureuShelf, { shelfScore, unlockedItems } from "@/components/JarureuShelf";
 import SpeakerBadge from "@/components/SpeakerBadge";
+import AccountSheet from "@/components/AccountSheet";
 import { useEffect, useRef, useState } from "react";
 import { Camera, ChevronRight, Check } from "lucide-react";
 
@@ -47,14 +48,15 @@ function butlerGreeting(): string {
 
 type Props = {
   onCapture: () => void;
-  onOpenProfile: () => void;
   onGoRecords: () => void;
   job: CaptureJob | null;
   onOpenConfirm: () => void;
   onCompleteDraft: (d: Draft) => void;
 };
 
-export default function HomeTab({ onCapture, onOpenProfile, onGoRecords, job, onOpenConfirm, onCompleteDraft }: Props) {
+export default function HomeTab({ onCapture, onGoRecords, job, onOpenConfirm, onCompleteDraft }: Props) {
+  // 계정 시트 — 프로필 칩에서 (구조 재편: 계정 기능은 탭이 아니라 칩 뒤로)
+  const [showAccount, setShowAccount] = useState(false);
   const { isAuthenticated } = useAuth();
   const { data: entries = [] } = trpc.savings.list.useQuery(undefined, { enabled: isAuthenticated });
   const level = Math.min(1, recentWeekProfit(entries as Entry[]) / WEEKLY_GOAL);
@@ -146,7 +148,7 @@ export default function HomeTab({ onCapture, onOpenProfile, onGoRecords, job, on
     >
       <header className="pt-12 pb-2 flex items-center justify-between">
         <p className="text-caption font-mono text-ink-soft tracking-wider">{APP_NAME}</p>
-        <LoginChip onClick={onOpenProfile} />
+        <LoginChip onClick={() => setShowAccount(true)} />
       </header>
 
       {/* 자르르 주인공 + 김집사 말풍선 인사 */}
@@ -301,6 +303,8 @@ export default function HomeTab({ onCapture, onOpenProfile, onGoRecords, job, on
         );
       })()}
 
+
+      {showAccount && <AccountSheet onClose={() => setShowAccount(false)} />}
     </div>
   );
 }

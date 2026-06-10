@@ -1,17 +1,14 @@
-// 회장님(프로필) — 사적 서재.
-// 주간 결산 카드 → 장부 달력의 '주간 상세'로 딥링크, 데이터 내보내기 → 전용 시트(제자리에서 바로).
-import { useState } from "react";
+// 서재 — 회장님의 사적 콘텐츠 허브. (구 '회장님' 탭, 2026-06-10 구조 재편)
+// 역할: 내 기록으로 만들어진 볼거리(주간 결산·월간 결산·이달의 카드·누적)를 꺼내 보는 곳.
+// 계정 기능(닉네임·로그인·내보내기)은 집무실 프로필 칩 → 계정 시트로 이동.
+import { useMemo, useState } from "react";
 import { trpc } from "@/lib/trpc";
-import { APP_NAME, CHARACTER_NAME, josa } from "@/lib/brand";
 import { won } from "@/lib/format";
 import { useAuth } from "@/hooks/useAuth";
-import Jarureu from "@/components/Jarureu";
-import { Download, ChevronRight, LogOut, Pencil, Check, X } from "lucide-react";
-import ExportSheet from "@/components/ExportSheet";
 import WeeklyWrapped from "@/components/WeeklyWrapped";
-import type { SavingsEntry } from "@/lib/ledger";
-
-type Entry = { date: string; profit: number };
+import AlbumKit from "@/components/AlbumKit";
+import { SavingsEntry, fmt } from "@/lib/ledger";
+import { ChevronRight, Sparkles } from "lucide-react";
 
 function startOfRecentWeek(): Date {
   const d = new Date();
@@ -34,87 +31,44 @@ function Stat({ label, value }: { label: string; value: string }) {
 }
 
 export default function Profile({ onOpenWeekly }: { onOpenWeekly: () => void }) {
-  const { isAuthenticated, user, logout } = useAuth();
-  const utils = trpc.useUtils();
-  const updateName = trpc.user.updateName.useMutation({
-    onSettled: () => utils.auth.me.invalidate(),
-  });
+  const { isAuthenticated } = useAuth();
   const { data: entries = [] } = trpc.savings.list.useQuery(undefined, { enabled: isAuthenticated });
-  const { data: authConfig } = trpc.auth.config.useQuery();
-  const kakaoEnabled = authConfig?.kakaoEnabled ?? false;
 
-  const list = entries as Entry[];
+  const list = entries as SavingsEntry[];
   const total = list.reduce((s, e) => s + (e.profit || 0), 0);
   const count = list.length;
 
+  // 주간 (최근 7일)
   const weekStart = startOfRecentWeek();
   const weekList = list.filter((e) => new Date(e.date + "T00:00:00") >= weekStart);
   const weekProfit = weekList.reduce((s, e) => s + (e.profit || 0), 0);
   const weekCount = weekList.length;
 
-  const isKakao = user?.loginMethod === "kakao";
-  const displayName = user?.name || "회장님";
+  // 이번 달 (월간 결산 콘텐츠 — 구 사진 뷰에서 이사)
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = now.getMonth();
+  const ym = `${year}-${String(month + 1).padStart(2, "0")}`;
+  const monthList = useMemo(() => list.filter((e) => e.date.startsWith(ym)), [list, ym]);
+  const monthTotal = monthList.reduce((s, e) => s + e.profit, 0);
+  const monthPhotos = useMemo(() => monthList.filter((e) => e.imageUrl), [monthList]);
+  const monthByCategory = useMemo(() => {
+    const map: Record<string, number> = {};
+    monthList.forEach((e) => { map[e.category] = (map[e.category] ?? 0) + e.profit; });
+    return Object.entries(map).sort((a, b) => b[1] - a[1]);
+  }, [monthList]);
 
-  const [editing, setEditing] = useState(false);
-  const [draftName, setDraftName] = useState("");
-  const [showExport, setShowExport] = useState(false);
   const [showWrapped, setShowWrapped] = useState(false);
-
-  function startEdit() {
-    setDraftName(displayName);
-    setEditing(true);
-  }
-  function saveName() {
-    const name = draftName.trim().slice(0, 20);
-    if (name && name !== displayName) {
-      utils.auth.me.setData(undefined, (prev) => (prev ? { ...prev, name } : prev));
-      updateName.mutate({ name });
-    }
-    setEditing(false);
-  }
+  const [showKit, setShowKit] = useState(false);
 
   return (
     <div className="min-h-dvh max-w-lg mx-auto px-5 pt-12 pb-24 bg-cream">
-      {/* 회장님 헤더 — 자르르 + 닉네임(✎) + 로그인 상태 */}
-      <header className="text-center mb-7">
-        <div className="flex justify-center mb-3">
-          <Jarureu level={Math.min(1, total / 50000)} size={92} />
-        </div>
-
-        {editing ? (
-          <div className="flex items-center justify-center gap-1.5">
-            <input
-              autoFocus
-              value={draftName}
-              onChange={(e) => setDraftName(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") saveName();
-                if (e.key === "Escape") setEditing(false);
-              }}
-              maxLength={20}
-              placeholder="회장님"
-              className="w-40 text-center text-title font-semibold text-ink bg-white border border-gold/50 rounded-lg px-2 py-1 outline-none focus:border-gold"
-            />
-            <button onClick={saveName} aria-label="저장" className="w-8 h-8 rounded-lg bg-emerald-500 text-white flex items-center justify-center active:scale-95 transition-transform">
-              <Check size={16} />
-            </button>
-            <button onClick={() => setEditing(false)} aria-label="취소" className="w-8 h-8 rounded-lg bg-line text-ink-soft flex items-center justify-center active:scale-95 transition-transform">
-              <X size={16} />
-            </button>
-          </div>
-        ) : (
-          <button onClick={startEdit} className="inline-flex items-center gap-1.5" aria-label="닉네임 수정">
-            <span className="text-title font-semibold text-ink">{displayName}</span>
-            <Pencil size={14} className="text-gold" />
-          </button>
-        )}
-
-        <p className="text-caption text-ink-soft mt-1.5">
-          {isKakao ? "카카오 로그인됨" : `${josa(CHARACTER_NAME, "과", "와")} 함께 절약 중`}
-        </p>
+      <header className="pb-5">
+        <p className="text-title font-semibold text-ink">서재</p>
+        <p className="text-caption text-ink-soft mt-0.5">기록이 만들어 준 볼거리들</p>
       </header>
 
-      {/* 김집사 주간 결산 — 기록 있으면 Wrapped 스토리, 없으면 장부 주간 상세로 */}
+      {/* 김집사의 주간 결산 — Wrapped 스토리 */}
       <button
         onClick={() => (weekCount > 0 ? setShowWrapped(true) : onOpenWeekly())}
         className="w-full text-left bg-butler border border-butler-line rounded-card p-5 mb-3 active:scale-[0.99] active:opacity-90 transition-all"
@@ -131,43 +85,58 @@ export default function Profile({ onOpenWeekly }: { onOpenWeekly: () => void }) 
         </div>
       </button>
 
-      {/* 누적 — 조용한 참고용 스탯 (2칸 위계) */}
-      <div className="grid grid-cols-2 gap-2.5 mb-6">
+      {/* 월간 결산 — 카테고리 구성 (구 사진 뷰에서 이사) */}
+      <div className="bg-white border border-line rounded-card p-5 mb-3">
+        <div className="flex items-baseline justify-between mb-3">
+          <p className="text-micro text-gold tracking-wide font-medium">{month + 1}월 결산</p>
+          <p className="font-mono text-body font-bold text-emerald-500 tabular-nums">+₩{fmt(monthTotal)}</p>
+        </div>
+        {monthByCategory.length > 0 ? (
+          <div className="space-y-1.5">
+            {monthByCategory.map(([cat, profit]) => {
+              const pct = monthTotal > 0 ? Math.round((profit / monthTotal) * 100) : 0;
+              return (
+                <div key={cat}>
+                  <div className="flex justify-between text-caption mb-0.5">
+                    <span className="text-ink-soft">{cat}</span>
+                    <span className="text-ink-soft tabular-nums">+₩{fmt(profit)} ({pct}%)</span>
+                  </div>
+                  <div className="h-1 bg-line rounded-full overflow-hidden">
+                    <div className="h-full bg-emerald-400 rounded-full transition-all" style={{ width: `${pct}%` }} />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          <p className="text-caption text-ink-faint text-center py-3">이 달엔 아직 기록이 없어요</p>
+        )}
+      </div>
+
+      {/* 이달의 카드 — 꾸미기 (구 사진 뷰에서 이사, #23 카드 스킨 프로젝트의 집) */}
+      <button
+        onClick={() => setShowKit(true)}
+        disabled={monthPhotos.length === 0}
+        className="w-full flex items-center justify-between bg-white border border-line rounded-card px-4 py-3.5 mb-3 active:bg-cream disabled:opacity-50 transition-colors"
+      >
+        <span className="flex items-center gap-2.5 text-body text-ink">
+          <Sparkles size={17} className="text-gold" /> 이달의 카드 꾸미기
+        </span>
+        <span className="flex items-center gap-1.5 text-caption text-ink-soft">
+          사진 {monthPhotos.length}장
+          <ChevronRight size={16} className="text-ink-faint" />
+        </span>
+      </button>
+
+      {/* 누적 — 조용한 참고용 */}
+      <div className="grid grid-cols-2 gap-2.5">
         <Stat label="누적 수익" value={won(total)} />
         <Stat label="총 기록" value={`${count}건`} />
       </div>
 
-      {/* 계정 — 게스트면 카카오 로그인 유도, 로그인됨이면 로그아웃 */}
-      {!isKakao && kakaoEnabled ? (
-        <a href="/api/auth/kakao" className="w-full flex items-center justify-between rounded-card px-4 py-3.5 mb-2.5 bg-[#FEE500] active:opacity-90 transition-opacity">
-          <span className="flex flex-col text-left">
-            <span className="text-body font-semibold text-[#191600]">카카오로 로그인</span>
-            <span className="text-micro text-[#191600]/60">다른 기기에서도 보고, 기록을 안전하게</span>
-          </span>
-          <ChevronRight size={16} className="text-[#191600]/40" />
-        </a>
-      ) : isKakao ? (
-        <button onClick={() => logout()} className="w-full flex items-center justify-between bg-white border border-line rounded-card px-4 py-3.5 mb-2.5 active:bg-cream transition-colors">
-          <span className="flex items-center gap-2.5 text-body text-ink">
-            <LogOut size={17} className="text-ink-soft" /> 로그아웃
-          </span>
-          <ChevronRight size={16} className="text-ink-faint" />
-        </button>
-      ) : null}
-
-      {/* 데이터 내보내기 — 제자리에서 바로 시트로 */}
-      <button onClick={() => setShowExport(true)} className="w-full flex items-center justify-between bg-white border border-line rounded-card px-4 py-3.5 active:bg-cream transition-colors">
-        <span className="flex items-center gap-2.5 text-body text-ink">
-          <Download size={17} className="text-emerald-500" /> 데이터 내보내기
-        </span>
-        <ChevronRight size={16} className="text-ink-faint" />
-      </button>
-
-      {showExport && <ExportSheet entries={entries as SavingsEntry[]} onClose={() => setShowExport(false)} />}
-
       {showWrapped && (
         <WeeklyWrapped
-          entries={entries as SavingsEntry[]}
+          entries={list}
           onClose={() => setShowWrapped(false)}
           onGoDetail={() => {
             setShowWrapped(false);
@@ -176,9 +145,16 @@ export default function Profile({ onOpenWeekly }: { onOpenWeekly: () => void }) 
         />
       )}
 
-      <p className="text-center text-micro text-ink-faint mt-10 font-mono tracking-wider">
-        {APP_NAME} · {josa(CHARACTER_NAME, "과", "와")} 함께
-      </p>
+      {showKit && (
+        <AlbumKit
+          year={year}
+          month={month}
+          photos={monthPhotos}
+          count={monthList.length}
+          total={monthTotal}
+          onClose={() => setShowKit(false)}
+        />
+      )}
     </div>
   );
 }

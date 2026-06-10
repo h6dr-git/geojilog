@@ -1,13 +1,13 @@
 // 하단 탭바 — 집무실 · 장부 · 회장님 (순수 탭 3개)
 // 사진 캡처는 탭바의 일이 아니다 — 집무실 메인 버튼과 장부의 '기록 추가'가 진입점.
-import { Home, BookText, Crown } from "lucide-react";
+import { Home, BookText, Library } from "lucide-react";
 
 export type MainNavTab = "home" | "records" | "profile";
 
 const TABS = [
   { key: "home" as const, label: "집무실", Icon: Home },
   { key: "records" as const, label: "장부", Icon: BookText },
-  { key: "profile" as const, label: "회장님", Icon: Crown },
+  { key: "profile" as const, label: "서재", Icon: Library },
 ];
 
 export default function BottomNav({

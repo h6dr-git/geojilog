@@ -1,6 +1,6 @@
-// 거지로그 — 장부: [기록 | 사진] 2뷰 + '기록 추가' 시트.
-// 2026-06-10 개편: 기록=날짜 그룹 리스트(+접이식 달력), 사진=관리 인덱스(탭→상세).
-// 행의 상시 아이콘을 없애고 행 탭 → 상세 시트(EntryDetailSheet)에서 보기·수정·삭제·공유.
+// 거지로그 — 장부: 기록 단일 뷰 + '기록 추가' 시트.
+// 2026-06-10 재편: 사진 탭 폐지(장부 메타포에서 사진은 1급 객체가 아니라 기록의 증빙).
+// 월간 결산·이달의 카드는 '서재' 탭으로 이사. 행 탭 → 상세 시트에서 보기·수정·삭제.
 // ============================================================
 
 import { useState, useRef, useCallback, useMemo } from "react";
@@ -12,10 +12,9 @@ import { smartCropToSquare } from "@/lib/smartCrop";
 import {
   Upload, Camera, PenLine, Loader2,
   Copy, ChevronDown, ChevronUp, ChevronRight, ChevronLeft,
-  X, RotateCw, Plus, Repeat, Sparkles, CalendarDays, ImageOff,
+  X, RotateCw, Plus, Repeat, CalendarDays,
 } from "lucide-react";
 import EntryDetailSheet from "@/components/EntryDetailSheet";
-import AlbumKit from "@/components/AlbumKit";
 import Jarureu from "@/components/Jarureu";
 import { SavingsEntry, fmt, todayStr, makeDefaultTitle, KO_DAYS } from "@/lib/ledger";
 import { celebrateSave } from "@/lib/celebrate";
@@ -46,8 +45,6 @@ interface QueueItem {
   aiActualAmount?: number;
 }
 
-type MainTab = "list" | "photos";
-
 // ── 메인 컴포넌트 ─────────────────────────────────────────────
 export default function Ledger({ initialFocus = null }: { initialFocus?: "week" | null }) {
   const { isAuthenticated, loading: authLoading } = useAuth();
@@ -64,9 +61,6 @@ export default function Ledger({ initialFocus = null }: { initialFocus?: "week" 
     () => (categories.length > 0 ? categories.map((c: { name: string }) => c.name) : ["식비", "카페", "교통", "쇼핑", "문화/여가", "기타"]),
     [categories]
   );
-
-  // ── 뷰: 기록 | 사진 ──
-  const [mainTab, setMainTab] = useState<MainTab>("list");
 
   // ── 월 네비게이션 (기록·사진 공통) ──
   const [viewDate, setViewDate] = useState(() => new Date());
@@ -130,12 +124,6 @@ export default function Ledger({ initialFocus = null }: { initialFocus?: "week" 
     monthEntries.forEach((e) => { map[e.date] = (map[e.date] ?? 0) + e.profit; });
     return map;
   }, [monthEntries]);
-  const monthPhotos = useMemo(() => monthEntries.filter((e) => e.imageUrl), [monthEntries]);
-  const monthByCategory = useMemo(() => {
-    const map: Record<string, number> = {};
-    monthEntries.forEach((e) => { map[e.category] = (map[e.category] ?? 0) + e.profit; });
-    return Object.entries(map).sort((a, b) => b[1] - a[1]);
-  }, [monthEntries]);
 
   // 달력 그리드 (7열)
   const calWeeks = useMemo(() => {
@@ -148,9 +136,8 @@ export default function Ledger({ initialFocus = null }: { initialFocus?: "week" 
     return weeks;
   }, [year, month]);
 
-  // ── 상세/꾸미기 ── (공유 카드 진입은 '카드 스킨 프로젝트'로 분리 — 피드백 #20 철회)
+  // ── 상세 ── (공유 카드 진입은 '카드 스킨 프로젝트'로 분리 — 피드백 #20 철회)
   const [detailEntry, setDetailEntry] = useState<SavingsEntry | null>(null);
-  const [showKit, setShowKit] = useState(false);
 
   // ── 기록 추가 시트 ──
   const [showAdd, setShowAdd] = useState(false);
@@ -449,21 +436,6 @@ export default function Ledger({ initialFocus = null }: { initialFocus?: "week" 
         </button>
       )}
 
-      {/* ── 뷰 세그먼트: 기록 | 사진 ── */}
-      <div className="flex gap-1 mb-4 bg-line/50 rounded-full p-1">
-        {([["list", "기록"], ["photos", "사진"]] as [MainTab, string][]).map(([t, label]) => (
-          <button
-            key={t}
-            onClick={() => setMainTab(t)}
-            className={`flex-1 py-2 rounded-full text-caption font-medium transition-all ${
-              mainTab === t ? "bg-white text-ink shadow-sm" : "text-ink-soft active:text-ink"
-            }`}
-          >
-            {label}
-          </button>
-        ))}
-      </div>
-
       {/* ── 월 네비 + 달력 토글 (주간 필터 중엔 숨김) ── */}
       {!weekFilter && (
         <div className="flex items-center justify-between mb-1">
@@ -478,7 +450,7 @@ export default function Ledger({ initialFocus = null }: { initialFocus?: "week" 
               {year}년 {month + 1}월
               <ChevronDown size={12} className="text-ink-soft" />
             </button>
-            {mainTab === "list" && (
+            {(
               <button
                 onClick={toggleCal}
                 aria-label="달력 보기"
@@ -511,8 +483,8 @@ export default function Ledger({ initialFocus = null }: { initialFocus?: "week" 
         </div>
       )}
 
-      {/* ════════ 기록 뷰 ════════ */}
-      {mainTab === "list" && (
+      {/* ════════ 기록 ════════ */}
+      {(
         <section className="mb-6">
           {/* 접이식 달력 — 날짜 탭하면 그 날만 필터 */}
           {showCal && !weekFilter && (
@@ -664,66 +636,6 @@ export default function Ledger({ initialFocus = null }: { initialFocus?: "week" 
                   <span className="text-body font-mono font-semibold text-emerald-600 tabular-nums">+₩{fmt(monthTotal)}</span>
                 </div>
               )}
-            </div>
-          )}
-        </section>
-      )}
-
-      {/* ════════ 사진 뷰 (관리 인덱스) ════════ */}
-      {mainTab === "photos" && (
-        <section className="mb-6">
-          {/* 월 요약 + 꾸미기 */}
-          <div className="flex items-end justify-between mb-3">
-            <div>
-              <p className="text-caption text-ink-soft">{monthEntries.length}건 기록</p>
-              <p className="font-mono text-title font-bold text-emerald-500 tabular-nums leading-tight">+₩{fmt(monthTotal)}</p>
-            </div>
-            <button
-              onClick={() => setShowKit(true)}
-              disabled={monthPhotos.length === 0}
-              className="flex items-center gap-1.5 px-3 py-2 rounded-full border border-line text-caption text-ink-soft active:bg-line/60 disabled:opacity-40 transition-colors"
-            >
-              <Sparkles size={13} />
-              월 카드 꾸미기
-            </button>
-          </div>
-
-          {/* 사진 그리드 — 탭하면 그 기록의 상세(수정·삭제·공유) */}
-          {monthPhotos.length > 0 ? (
-            <div className="grid grid-cols-3 gap-1.5">
-              {monthPhotos.map((e) => (
-                <button key={e.id} onClick={() => setDetailEntry(e)} className="relative active:opacity-80 transition-opacity">
-                  <img src={e.imageUrl!} alt={e.title} loading="lazy" className="w-full aspect-square object-cover rounded-xl bg-line" />
-                  <span className="absolute bottom-1 right-1.5 text-micro font-mono font-semibold text-white tabular-nums" style={{ textShadow: "0 1px 3px rgba(0,0,0,0.6)" }}>
-                    +{fmt(e.profit)}
-                  </span>
-                </button>
-              ))}
-            </div>
-          ) : (
-            <div className="flex flex-col items-center text-center py-12 border border-line rounded-card bg-white">
-              <ImageOff size={20} className="text-ink-faint mb-2" />
-              <p className="text-caption text-ink-soft">이 달엔 사진 기록이 없어요</p>
-            </div>
-          )}
-
-          {/* 카테고리별 */}
-          {monthByCategory.length > 0 && (
-            <div className="space-y-1.5 mt-5">
-              {monthByCategory.map(([cat, profit]) => {
-                const pct = monthTotal > 0 ? Math.round((profit / monthTotal) * 100) : 0;
-                return (
-                  <div key={cat}>
-                    <div className="flex justify-between text-caption mb-0.5">
-                      <span className="text-ink-soft">{cat}</span>
-                      <span className="text-ink-soft tabular-nums">+₩{fmt(profit)} ({pct}%)</span>
-                    </div>
-                    <div className="h-1 bg-line rounded-full overflow-hidden">
-                      <div className="h-full bg-emerald-400 rounded-full transition-all" style={{ width: `${pct}%` }} />
-                    </div>
-                  </div>
-                );
-              })}
             </div>
           )}
         </section>
@@ -1007,18 +919,6 @@ export default function Ledger({ initialFocus = null }: { initialFocus?: "week" 
           entry={detailEntry}
           categoryNames={categoryNames}
           onClose={() => setDetailEntry(null)}
-        />
-      )}
-
-      {/* 월 카드 꾸미기 */}
-      {showKit && (
-        <AlbumKit
-          year={year}
-          month={month}
-          photos={monthPhotos}
-          count={monthEntries.length}
-          total={monthTotal}
-          onClose={() => setShowKit(false)}
         />
       )}
 
