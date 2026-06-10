@@ -25,9 +25,10 @@ export async function setupVite(app: Express, server: Server) {
     const url = req.originalUrl;
 
     try {
+      // vite.ts는 <프로젝트>/server/ 에 있으므로 한 단계만 올라가면 프로젝트 루트다
       const clientTemplate = path.resolve(
         import.meta.dirname,
-        "../..",
+        "..",
         "client",
         "index.html"
       );
@@ -50,7 +51,7 @@ export async function setupVite(app: Express, server: Server) {
 export function serveStatic(app: Express) {
   const distPath =
     process.env.NODE_ENV === "development"
-      ? path.resolve(import.meta.dirname, "../..", "dist", "public")
+      ? path.resolve(import.meta.dirname, "..", "dist", "public")
       : path.resolve(import.meta.dirname, "public");
   if (!fs.existsSync(distPath)) {
     console.error(
