@@ -1,9 +1,9 @@
-// 기록 상세 시트 — 행을 탭하면 열린다. 보기·수정·삭제·공유를 한 곳에서(리스트 행의 상시 아이콘 3개 대체).
-// 장부 개편(2026-06-10): "기록 리스트가 이상하다" 진단의 처방 — 행은 깔끔하게, 액션은 상세로.
-import { useState } from "react";
+// 기록 상세 시트 — 행을 탭하면 열린다. 보기·수정·삭제·사진 관리를 한 곳에서.
+// 장부 = 원본 관리소: 이 시트가 기록 한 건의 완전한 관리 지점이다. (#24: 사진 나중에 붙이기/교체 포함)
+import { useRef, useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
-import { X, Pencil, Trash2, Loader2, Maximize2 } from "lucide-react";
+import { X, Pencil, Trash2, Loader2, Maximize2, ImagePlus } from "lucide-react";
 import ConfirmDialog from "@/components/ConfirmDialog";
 import { SavingsEntry, fmt } from "@/lib/ledger";
 
@@ -19,6 +19,31 @@ export default function EntryDetailSheet({
   const utils = trpc.useUtils();
   const updateEntry = trpc.savings.update.useMutation({ onSuccess: () => utils.savings.list.invalidate() });
   const deleteEntry = trpc.savings.delete.useMutation({ onSuccess: () => utils.savings.list.invalidate() });
+  const uploadImage = trpc.ai.uploadImage.useMutation();
+  const photoInputRef = useRef<HTMLInputElement>(null);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+
+  // #24 — 사진 나중에 붙이기/교체 (AI 분석 없이 업로드만)
+  const handlePhotoPick = async (file: File | null) => {
+    if (!file || !file.type.startsWith("image/")) return;
+    setUploadingPhoto(true);
+    try {
+      const base64 = await new Promise<string>((resolve, reject) => {
+        const r = new FileReader();
+        r.onload = () => resolve(String(r.result).split(",")[1] ?? "");
+        r.onerror = () => reject(new Error("읽기 실패"));
+        r.readAsDataURL(file);
+      });
+      const up = await uploadImage.mutateAsync({ imageBase64: base64, mimeType: file.type || "image/jpeg" });
+      await updateEntry.mutateAsync({ id: entry.id, imageUrl: up.imageUrl });
+      toast.success(entry.imageUrl ? "사진을 교체했습니다" : "사진을 붙였습니다");
+      onClose(); // 목록 갱신된 모습으로
+    } catch {
+      toast.error("사진 업로드에 실패했습니다");
+    } finally {
+      setUploadingPhoto(false);
+    }
+  };
 
   const [editing, setEditing] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -175,6 +200,16 @@ export default function EntryDetailSheet({
               <label className="text-caption text-ink-soft mb-1 block">내 썰 한 줄 (선택)</label>
               <input value={form.memo} onChange={(e) => setForm((f) => ({ ...f, memo: e.target.value }))} placeholder="나만 보는 한 줄 일기" className={inputCls} />
             </div>
+            {/* #24 — 사진 교체/추가 */}
+            <button
+              type="button"
+              onClick={() => photoInputRef.current?.click()}
+              disabled={uploadingPhoto}
+              className="w-full flex items-center justify-center gap-1.5 py-2.5 text-caption text-ink-soft border border-line rounded-lg active:border-emerald-300 active:text-emerald-600 disabled:opacity-50 transition-colors"
+            >
+              {uploadingPhoto ? <Loader2 size={13} className="animate-spin" /> : <ImagePlus size={13} />}
+              {entry.imageUrl ? "사진 교체" : "사진 붙이기"}
+            </button>
             <div className="flex gap-2 pt-1">
               <button
                 type="submit"
@@ -205,6 +240,15 @@ export default function EntryDetailSheet({
           <img src={entry.imageUrl} alt="" className="w-full max-h-[82vh] object-contain rounded-xl" />
         </div>
       )}
+
+      {/* 사진 선택 입력 */}
+      <input
+        ref={photoInputRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={(e) => { handlePhotoPick(e.target.files?.[0] ?? null); e.target.value = ""; }}
+      />
 
       {confirmDelete && (
         <ConfirmDialog

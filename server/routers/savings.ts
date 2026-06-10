@@ -76,6 +76,7 @@ export const savingsRouter = router({
         originalAmount: z.number().int().positive().optional(),
         actualAmount: z.number().int().min(0).optional(),
         memo: z.string().nullable().optional(),
+        imageUrl: z.string().optional(), // #24 — 사진 나중에 붙이기/교체
       }))
       .mutation(async ({ ctx, input }) => {
         await updateSavingsEntry(input.id, ctx.user.id, input);

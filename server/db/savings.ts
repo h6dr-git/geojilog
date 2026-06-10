@@ -54,6 +54,7 @@ export async function updateSavingsEntry(
     originalAmount?: number;
     actualAmount?: number;
     memo?: string | null;
+    imageUrl?: string;
   }
 ) {
   const db = await getDb();
@@ -68,6 +69,7 @@ export async function updateSavingsEntry(
   if (data.originalAmount !== undefined) updateData.originalAmount = data.originalAmount;
   if (data.actualAmount !== undefined) updateData.actualAmount = data.actualAmount;
   if (data.memo !== undefined) updateData.memo = data.memo;
+  if (data.imageUrl !== undefined) updateData.imageUrl = data.imageUrl;
   if (data.originalAmount !== undefined || data.actualAmount !== undefined) {
     const existing = await db.select().from(savingsEntries).where(eq(savingsEntries.id, id)).limit(1);
     if (existing[0]) {
