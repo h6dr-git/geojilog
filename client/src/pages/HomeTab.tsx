@@ -20,6 +20,19 @@ function recentWeekProfit(entries: Entry[]): number {
   cutoff.setDate(cutoff.getDate() - 6);
   return entries.filter((e) => new Date(e.date + "T00:00:00") >= cutoff).reduce((s, e) => s + (e.profit || 0), 0);
 }
+// 시간대별 로비 분위기 — 에셋 없이 상단 그라데이션 톤만 바뀐다 (집무실 안 B 라이트)
+function lobbyBg(): string {
+  const h = new Date().getHours();
+  const top =
+    h < 6 ? "rgba(74,90,110,0.12)"        // 새벽 — 푸른 어스름
+    : h < 11 ? "rgba(224,169,46,0.13)"    // 아침 — 골드
+    : h < 17 ? "rgba(16,185,129,0.08)"    // 낮 — 에메랄드
+    : h < 21 ? "rgba(228,138,84,0.12)"    // 저녁 — 노을
+    : "rgba(74,90,110,0.14)";             // 밤
+  const mid = h >= 11 && h < 17 ? "rgba(224,169,46,0.05)" : "rgba(16,185,129,0.05)";
+  return `radial-gradient(130% 52% at 50% 0%, ${top} 0%, ${mid} 26%, rgba(250,248,243,0) 58%), #FAF8F3`;
+}
+
 function butlerGreeting(): string {
   const h = new Date().getHours();
   if (h < 6) return "회장님, 깊은 밤까지 고생이 많으십니다.";
@@ -33,12 +46,13 @@ function butlerGreeting(): string {
 type Props = {
   onCapture: () => void;
   onOpenProfile: () => void;
+  onGoRecords: () => void;
   job: CaptureJob | null;
   onOpenConfirm: () => void;
   onCompleteDraft: (d: Draft) => void;
 };
 
-export default function HomeTab({ onCapture, onOpenProfile, job, onOpenConfirm, onCompleteDraft }: Props) {
+export default function HomeTab({ onCapture, onOpenProfile, onGoRecords, job, onOpenConfirm, onCompleteDraft }: Props) {
   const { isAuthenticated } = useAuth();
   const { data: entries = [] } = trpc.savings.list.useQuery(undefined, { enabled: isAuthenticated });
   const level = Math.min(1, recentWeekProfit(entries as Entry[]) / WEEKLY_GOAL);
@@ -89,7 +103,7 @@ export default function HomeTab({ onCapture, onOpenProfile, job, onOpenConfirm, 
   return (
     <div
       className="min-h-dvh max-w-lg mx-auto px-5 pb-24 flex flex-col"
-      style={{ background: "radial-gradient(130% 52% at 50% 0%, rgba(224,169,46,0.10) 0%, rgba(16,185,129,0.05) 26%, rgba(250,248,243,0) 58%), #FAF8F3" }}
+      style={{ background: lobbyBg() }}
     >
       <header className="pt-12 pb-2 flex items-center justify-between">
         <p className="text-caption font-mono text-ink-soft tracking-wider">{APP_NAME}</p>
@@ -152,7 +166,7 @@ export default function HomeTab({ onCapture, onOpenProfile, job, onOpenConfirm, 
           className="mt-7 w-full text-white font-semibold py-4 rounded-card flex items-center justify-center gap-2 active:scale-[0.98] transition-transform"
           style={{ background: "linear-gradient(180deg, #34d399 0%, #10b981 100%)", boxShadow: "0 10px 22px -8px rgba(16,185,129,0.55)" }}
         >
-          <Camera size={19} /> 사진으로 절약 기록하기
+          <Camera size={19} /> 사진으로 수익 기록하기
         </button>
       )}
 
@@ -167,28 +181,38 @@ export default function HomeTab({ onCapture, onOpenProfile, job, onOpenConfirm, 
         </button>
       )}
 
-      {/* 오늘의 장부 상태 — 안 A: 액수 없는 상태창 (민감정보 0 유지) */}
-      <div className="mt-2.5 flex items-center justify-between bg-white border border-line rounded-card px-4 py-3">
-        <p className="text-caption text-ink-soft flex items-center gap-1.5">
+      {/* 오늘의 장부 상태 — 안 A: 액수 없는 상태창 (민감정보 0 유지). 탭하면 장부로 */}
+      <button
+        onClick={onGoRecords}
+        className="mt-2.5 flex items-center justify-between bg-white border border-line rounded-card px-4 py-3 w-full active:bg-line/30 transition-colors"
+      >
+        <span className="text-caption text-ink-soft flex items-center gap-1.5">
           {fedToday ? (
             <>
-              <Check size={13} className="text-emerald-500" /> 오늘 절약 기록 완료
+              <Check size={13} className="text-emerald-500" /> 오늘 수익 기록 완료
             </>
           ) : (
-            "오늘은 아직 기록 전"
+            "오늘 수익은 아직 기록 전"
           )}
-        </p>
-        <div className="flex items-center gap-1.5" aria-label="이번 주 기록 현황">
-          {weekDots.map((d) => (
-            <span
-              key={d.ds}
-              className={`rounded-full transition-colors ${
-                d.isToday ? "w-2 h-2 ring-2 ring-emerald-200" : "w-1.5 h-1.5"
-              } ${d.has ? "bg-emerald-400" : d.future ? "bg-line/50" : "bg-line"}`}
-            />
+        </span>
+        <span className="flex items-end gap-1.5" aria-label="이번 주 기록 현황">
+          {weekDots.map((d, i) => (
+            <span key={d.ds} className="flex flex-col items-center gap-1">
+              <span
+                className={`rounded-full transition-colors ${
+                  d.isToday ? "w-2 h-2 ring-2 ring-emerald-200" : "w-1.5 h-1.5"
+                } ${d.has ? "bg-emerald-400" : d.future ? "bg-line/50" : "bg-line"}`}
+              />
+              <span
+                className={d.isToday ? "text-emerald-500 font-medium" : "text-ink-faint"}
+                style={{ fontSize: "9px", lineHeight: "10px" }}
+              >
+                {"월화수목금토일"[i]}
+              </span>
+            </span>
           ))}
-        </div>
-      </div>
+        </span>
+      </button>
 
       {/* 도사 한 마디 */}
       <div className="mt-10">

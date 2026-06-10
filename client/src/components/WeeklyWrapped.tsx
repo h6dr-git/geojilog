@@ -119,7 +119,7 @@ export default function WeeklyWrapped({
             <p className="text-micro tracking-[0.3em] font-mono mb-2" style={{ color: "#7E8C82" }}>WEEKLY REPORT</p>
             <p className="text-body" style={{ color: "#d8cfae" }}>김집사의 주간 결산</p>
             <p className="text-caption mt-1 font-mono" style={{ color: "#5E6A60" }}>{mmdd(start)} – {mmdd(end)}</p>
-            <p className="mt-8 text-micro" style={{ color: "#7E8C82" }}>이번 주 절약액</p>
+            <p className="mt-8 text-micro" style={{ color: "#7E8C82" }}>이번 주 수익</p>
             <p className="font-mono font-extrabold tabular-nums leading-none mt-2" style={{ fontSize: "52px", color: "#34d399" }}>
               +₩{n.toLocaleString("ko-KR")}
             </p>

@@ -123,7 +123,7 @@ export default function Profile({ onOpenWeekly }: { onOpenWeekly: () => void }) 
           <span className="w-7 h-7 rounded-lg flex items-center justify-center text-caption font-medium shrink-0" style={{ background: "#eadfc6", color: "#a9863f" }}>집</span>
           <p className="text-micro text-gold tracking-wide">김집사의 주간 결산</p>
         </div>
-        <p className="text-micro text-ink-soft">이번 주 절약액</p>
+        <p className="text-micro text-ink-soft">이번 주 수익</p>
         <p className="font-mono text-hero font-bold text-emerald-500 tabular-nums leading-tight mt-1">+{won(weekProfit)}</p>
         <div className="flex items-center justify-between mt-2.5">
           <p className="text-caption" style={{ color: "#5c5647" }}>{butlerSettlement(weekCount)}</p>
@@ -133,7 +133,7 @@ export default function Profile({ onOpenWeekly }: { onOpenWeekly: () => void }) 
 
       {/* 누적 — 조용한 참고용 스탯 (2칸 위계) */}
       <div className="grid grid-cols-2 gap-2.5 mb-6">
-        <Stat label="누적 절약액" value={won(total)} />
+        <Stat label="누적 수익" value={won(total)} />
         <Stat label="총 기록" value={`${count}건`} />
       </div>
 

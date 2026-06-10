@@ -415,7 +415,7 @@ export default function Ledger({ initialFocus = null }: { initialFocus?: "week" 
               <div className="flex flex-col items-center text-center py-10">
                 <Jarureu level={0.12} size={64} />
                 <p className="text-body font-medium text-ink mt-3">아직 장부가 비어 있어요</p>
-                <p className="text-caption text-ink-soft mt-1">사진 한 장이면 자르르가 첫 절약을 찾아드려요</p>
+                <p className="text-caption text-ink-soft mt-1">사진 한 장이면 자르르가 첫 수익을 찾아드려요</p>
                 <button
                   onClick={() => setShowAdd(true)}
                   className="mt-4 inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-emerald-500 text-white text-caption font-medium active:scale-95 transition-transform"
@@ -592,7 +592,7 @@ export default function Ledger({ initialFocus = null }: { initialFocus?: "week" 
                 onDrop={(e) => { e.preventDefault(); handleFiles(e.dataTransfer.files); }}
               >
                 <Upload className="w-7 h-7 text-emerald-400 mx-auto mb-2" />
-                <p className="text-body font-medium text-ink">사진을 올리면 자르르가 절약액을 계산해요</p>
+                <p className="text-body font-medium text-ink">사진을 올리면 자르르가 번 돈을 계산해요</p>
                 <p className="text-caption text-ink-soft mt-1">한 번에 여러 장 · 탭해서 선택</p>
               </div>
               {/* 카메라 — 향후 앱 톤에 맞춘 자체 카메라로 교체할 단일 진입점(openCamera) */}
@@ -695,7 +695,7 @@ export default function Ledger({ initialFocus = null }: { initialFocus?: "week" 
 
                         {/* 리빌 히어로 — 객관적 숫자 중심 (SSOT §9-2: '지켜냄' 워딩 제거) */}
                         <div className="flex items-baseline justify-between rounded-card bg-emerald-50 px-3 py-2.5">
-                          <span className="text-micro font-medium text-emerald-700/70">절약액</span>
+                          <span className="text-micro font-medium text-emerald-700/70">이번에 번 돈</span>
                           <span className="font-mono text-xl font-extrabold tabular-nums text-emerald-600">
                             {item.originalAmount && item.actualAmount
                               ? `+₩${fmt(Math.max(0, Number(item.originalAmount) - Number(item.actualAmount)))}`

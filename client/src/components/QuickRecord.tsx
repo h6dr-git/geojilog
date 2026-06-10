@@ -127,7 +127,7 @@ export default function QuickRecord({ data, onClose, onSaved }: Props) {
 
         {/* 절약 수익 */}
         <div className="text-center mb-4">
-          <p className="text-micro text-ink-soft mb-0.5">이번 한 끼로 아낀 돈</p>
+          <p className="text-micro text-ink-soft mb-0.5">이번에 번 돈</p>
           <p className={`font-mono text-hero font-bold tabular-nums ${profit >= 0 ? "text-emerald-500" : "text-red-400"}`}>
             {profit >= 0 ? "+" : "−"}
             {won(Math.abs(profit))}

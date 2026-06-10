@@ -171,6 +171,7 @@ export default function Shell() {
               <HomeTab
                 onCapture={triggerCapture}
                 onOpenProfile={() => setTab("profile")}
+                onGoRecords={() => changeTab("records")}
                 job={job}
                 onOpenConfirm={openConfirmFromJob}
                 onCompleteDraft={completeDraft}
