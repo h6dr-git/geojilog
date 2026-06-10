@@ -1,6 +1,6 @@
 // 자르르의 살림 선반 (집무실 안 B′) — 기록이 쌓일수록 소품이 하나씩 늘어난다.
-// 기준: 복합 점수 = 기록 건수 + (누적 수익 ₩10,000당 1점). 숫자는 절대 표시하지 않는다(민감정보 0).
-// 끊겨도 잃지 않는 축적형 — 스트릭류 부담 게이미피케이션 아님.
+// 기준: 복합 점수 = '이달' 기록 건수 + (이달 수익 ₩10,000당 1점). 숫자는 절대 표시하지 않는다(민감정보 0).
+// 월 단위 초기화(피드백): 매달 깡통부터 다시 — 계속 쌓이면 효용이 떨어지므로. 잃는 건 '지난달 선반'뿐, 기록은 그대로.
 // 소품은 자르르와 같은 프로토타입 톤의 코드 SVG.
 import type { ReactElement } from "react";
 
@@ -8,10 +8,10 @@ export type ShelfItem = { key: string; name: string; threshold: number };
 
 export const SHELF_ITEMS: ShelfItem[] = [
   { key: "can", name: "깡통", threshold: 0 },
-  { key: "bowl", name: "밥그릇", threshold: 5 },
-  { key: "cushion", name: "방석", threshold: 15 },
-  { key: "plant", name: "화분", threshold: 30 },
-  { key: "teapot", name: "찻주전자", threshold: 60 },
+  { key: "bowl", name: "밥그릇", threshold: 4 },
+  { key: "cushion", name: "방석", threshold: 10 },
+  { key: "plant", name: "화분", threshold: 20 },
+  { key: "teapot", name: "찻주전자", threshold: 35 },
 ];
 
 // 복합 해금 점수 — 건수 + 액수(만원당 1점)
@@ -76,7 +76,7 @@ const RENDER: Record<string, () => ReactElement> = {
   can: Can, bowl: Bowl, cushion: Cushion, plant: Plant, teapot: Teapot,
 };
 
-export default function JarureuShelf({ score }: { score: number }) {
+export default function JarureuShelf({ score, highlightKey }: { score: number; highlightKey?: string | null }) {
   const items = unlockedItems(score);
   if (items.length === 0) return null;
   return (
@@ -85,7 +85,7 @@ export default function JarureuShelf({ score }: { score: number }) {
         {items.map((it) => {
           const C = RENDER[it.key];
           return (
-            <span key={it.key} title={it.name} className="opacity-90">
+            <span key={it.key} title={it.name} className={it.key === highlightKey ? "animate-prop-in" : "opacity-90"}>
               <C />
             </span>
           );

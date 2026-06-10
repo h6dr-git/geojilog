@@ -7,8 +7,9 @@ import Jarureu from "@/components/Jarureu";
 import LoginChip from "@/components/LoginChip";
 import { useDrafts, type Draft } from "@/lib/drafts";
 import type { CaptureJob } from "@/lib/capture";
-import { deskNoteOfDay, jarureuLine, type JarureuSay } from "@/lib/voice";
+import { deskNote, jarureuLine, type JarureuSay } from "@/lib/voice";
 import JarureuShelf, { shelfScore, unlockedItems } from "@/components/JarureuShelf";
+import SpeakerBadge from "@/components/SpeakerBadge";
 import { useEffect, useRef, useState } from "react";
 import { Camera, ChevronRight, Check } from "lucide-react";
 
@@ -78,12 +79,11 @@ export default function HomeTab({ onCapture, onOpenProfile, onGoRecords, job, on
   })();
   const fedYesterday = (entries as Entry[]).some((e) => e.date === yesterday);
 
-  // 살림 선반(B′) — 복합 점수(건수+만원당 1점). 숫자는 화면에 안 보임.
-  const totalProfit = (entries as Entry[]).reduce((s, e) => s + (e.profit || 0), 0);
-  const score = shelfScore((entries as Entry[]).length, totalProfit);
-
-  // 최근 사진 스트립(D — 절제 버전): 액수·제목 없이 동그란 썸네일만
-  const recentPhotos = (entries as Entry[]).filter((e) => e.imageUrl).slice(0, 3);
+  // 살림 선반(B′) — '이달' 복합 점수(건수+만원당 1점). 매달 초기화(피드백), 숫자는 화면에 안 보임.
+  const ym = today.slice(0, 7);
+  const monthEntries = (entries as Entry[]).filter((e) => e.date.startsWith(ym));
+  const monthProfit = monthEntries.reduce((s, e) => s + (e.profit || 0), 0);
+  const score = shelfScore(monthEntries.length, monthProfit);
 
   // 이번 주(월~일) 기록 점 7개 — 돈 액수 없는 상태 표시 (집무실 안 A · 스트릭은 보류)
   const weekDots = (() => {
@@ -113,23 +113,27 @@ export default function HomeTab({ onCapture, onOpenProfile, onGoRecords, job, on
     jarTimer.current = window.setTimeout(() => setJarLine(null), ms);
   }
   function pokeJarureu() {
+    if (jarLine?.rare) return; // 희귀 대사 표시 중엔 탭 잠금 — 연타로 넘어가지 않게(피드백)
     const line = jarureuLine(fedToday, lastLine.current); // 연속 같은 대사 방지
     lastLine.current = line.text;
-    say(line, line.rare ? 6000 : 3200); // 희귀 대사는 캡처할 시간을 준다
+    say(line, line.rare ? 8000 : 3200); // 희귀 대사는 넉넉히 + 타이머 바 표시
   }
 
-  // 살림 해금 연출 — 새 소품이 생기면 자르르가 알려준다 (기기당 1회)
+  // 살림 해금 연출 — 새 소품이 생기면 자르르가 알리고 소품이 통통 튀며 등장 (월별 1회)
+  const [newProp, setNewProp] = useState<string | null>(null);
   const unlockedCount = unlockedItems(score).length;
   useEffect(() => {
-    if (!isAuthenticated || (entries as Entry[]).length === 0) return;
-    const KEY = "geojilog:shelf-seen";
+    if (!isAuthenticated || monthEntries.length === 0) return;
+    const KEY = `geojilog:shelf-seen:${ym}`; // 월 단위 초기화와 함께 리셋
     let seen = 0;
     try { seen = Number(localStorage.getItem(KEY) || "0"); } catch { /* 무시 */ }
     if (unlockedCount > seen) {
       try { localStorage.setItem(KEY, String(unlockedCount)); } catch { /* 무시 */ }
       if (seen > 0) {
         const newest = unlockedItems(score)[unlockedCount - 1];
-        say({ text: `새 살림이 생겼어!! ${newest.name} 봐봐~`, rare: true }, 6000);
+        setNewProp(newest.key);
+        window.setTimeout(() => setNewProp(null), 2600);
+        say({ text: `새 살림이 생겼어!! ${newest.name} 봐봐~`, rare: true }, 8000);
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -154,21 +158,25 @@ export default function HomeTab({ onCapture, onOpenProfile, onGoRecords, job, on
 
         {/* 살림 선반 — 기록이 쌓일수록 소품이 늘어난다 (숫자 미표기) */}
         <div className="mt-3">
-          <JarureuShelf score={score} />
+          <JarureuShelf score={score} highlightKey={newProp} />
         </div>
 
         <div className="relative mt-7 w-full max-w-[19.5rem]">
           <div className="absolute -top-1.5 left-1/2 -translate-x-1/2 w-3 h-3 bg-white border-l border-t border-line rotate-45" aria-hidden="true" />
           <div
-            className="relative border rounded-card px-4 py-3 shadow-sm flex items-start gap-2.5 transition-colors"
+            className="relative border rounded-card px-4 py-3 shadow-sm flex items-start gap-2.5 transition-colors overflow-hidden"
             style={jarLine?.rare ? { background: "#FFFBEF", borderColor: "#E0A92E" } : { background: "#ffffff", borderColor: "#EFE9DC" }}
           >
-            <span
-              className="w-6 h-6 rounded-lg flex items-center justify-center text-micro font-medium shrink-0"
-              style={jarLine ? { background: "#f7e9c4", color: "#b07f1e" } : { background: "#eadfc6", color: "#a9863f" }}
-            >
-              {jarLine ? "자" : "집"}
-            </span>
+            {/* 희귀 잔여시간 바 — 사라지기 전을 시각적으로 알림 */}
+            {jarLine?.rare && (
+              <span
+                key={jarLine.text + "-bar"}
+                className="absolute bottom-0 left-0 h-0.5 bg-gold/70"
+                style={{ animation: "rare-bar 8s linear forwards" }}
+                aria-hidden="true"
+              />
+            )}
+            <SpeakerBadge speaker={jarLine ? "jarureu" : "butler"} />
             <span className="flex-1 text-left">
               {jarLine?.rare && (
                 <span key={jarLine.text + "-tag"} className="block text-micro text-gold font-medium mb-0.5 animate-bubble-in">
@@ -271,14 +279,10 @@ export default function HomeTab({ onCapture, onOpenProfile, onGoRecords, job, on
         </span>
       </button>
 
-      {/* 오늘의 쪽지 — 화자 하루 로테이션(도사·김집사·자르르), 매일 다른 내용 */}
+      {/* 오늘의 쪽지 — 갱신 기준은 '기록 행동'(총 기록 수): 기록할 때마다 다음 쪽지로 넘어간다 */}
       {(() => {
-        const note = deskNoteOfDay();
-        const meta = {
-          dosa: { label: "도사의 오늘 한 마디", badge: "道", badgeBg: "#efe4cd", badgeColor: "#a9863f", italic: true },
-          butler: { label: "김집사의 집무 메모", badge: "집", badgeBg: "#eadfc6", badgeColor: "#a9863f", italic: false },
-          jarureu: { label: "자르르의 낙서", badge: "자", badgeBg: "#f7e9c4", badgeColor: "#b07f1e", italic: false },
-        }[note.speaker];
+        const note = deskNote((entries as Entry[]).length);
+        const LABELS = { dosa: "도사의 한 마디", butler: "김집사의 집무 메모", jarureu: "자르르의 낙서" } as const;
         return (
           <div className="mt-10">
             <div className="relative bg-butler border border-butler-line rounded-card px-5 py-5 overflow-hidden">
@@ -286,12 +290,10 @@ export default function HomeTab({ onCapture, onOpenProfile, onGoRecords, job, on
                 <span className="absolute -top-3 right-3 text-[68px] leading-none font-serif text-gold/20 select-none" aria-hidden="true">”</span>
               )}
               <div className="flex items-center gap-2 mb-2">
-                <span className="w-5 h-5 rounded-md flex items-center justify-center text-micro font-medium" style={{ background: meta.badgeBg, color: meta.badgeColor }}>
-                  {meta.badge}
-                </span>
-                <p className="text-micro text-gold tracking-wide font-medium">{meta.label}</p>
+                <SpeakerBadge speaker={note.speaker} size={20} />
+                <p className="text-micro text-gold tracking-wide font-medium">{LABELS[note.speaker]}</p>
               </div>
-              <p className={`text-body leading-relaxed relative ${meta.italic ? "italic" : ""}`} style={{ color: "#5c5647" }}>
+              <p className={`text-body leading-relaxed relative ${note.speaker === "dosa" ? "italic" : ""}`} style={{ color: "#5c5647" }}>
                 {note.text}
               </p>
             </div>
@@ -299,26 +301,6 @@ export default function HomeTab({ onCapture, onOpenProfile, onGoRecords, job, on
         );
       })()}
 
-      {/* 최근 장부 — 사진 스트립(D 절제판): 액수·제목 없이 동그란 썸네일만, 탭하면 장부로 */}
-      {recentPhotos.length >= 2 && (
-        <button onClick={onGoRecords} className="mt-3 w-full flex items-center justify-between px-2 py-1.5 active:opacity-70 transition-opacity">
-          <span className="text-micro text-ink-faint">최근 장부</span>
-          <span className="flex items-center">
-            <span className="flex -space-x-2.5">
-              {recentPhotos.map((e, i) => (
-                <img
-                  key={i}
-                  src={e.imageUrl!}
-                  alt=""
-                  className="w-8 h-8 rounded-full object-cover border-2"
-                  style={{ borderColor: "#FAF8F3", zIndex: 3 - i }}
-                />
-              ))}
-            </span>
-            <ChevronRight size={13} className="text-ink-faint ml-1" />
-          </span>
-        </button>
-      )}
     </div>
   );
 }

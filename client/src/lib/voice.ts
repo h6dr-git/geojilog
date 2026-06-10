@@ -64,16 +64,14 @@ export const JARUREU_NOTES = [
   "결제 알림음은 무서워… 사진 찍는 소리는 좋아!",
 ];
 
-// 오늘의 쪽지 — 화자 하루 로테이션 (도사 → 김집사 → 자르르)
+// 오늘의 쪽지 — 갱신 기준은 시간이 아니라 '기록 행동'(총 기록 수). 기록할 때마다 다음 쪽지로 넘어간다.
 export type DeskNote = { speaker: "dosa" | "butler" | "jarureu"; text: string };
-export function deskNoteOfDay(): DeskNote {
-  const now = new Date();
-  const start = new Date(now.getFullYear(), 0, 0);
-  const day = Math.floor((now.getTime() - start.getTime()) / 86400000);
-  const r = day % 3;
-  if (r === 0) return { speaker: "dosa", text: DOSA_LINES[day % DOSA_LINES.length] };
-  if (r === 1) return { speaker: "butler", text: BUTLER_TIPS[Math.floor(day / 3) % BUTLER_TIPS.length] };
-  return { speaker: "jarureu", text: JARUREU_NOTES[Math.floor(day / 3) % JARUREU_NOTES.length] };
+export function deskNote(recordCount: number): DeskNote {
+  const r = recordCount % 3;
+  const idx = Math.floor(recordCount / 3);
+  if (r === 0) return { speaker: "dosa", text: DOSA_LINES[idx % DOSA_LINES.length] };
+  if (r === 1) return { speaker: "butler", text: BUTLER_TIPS[idx % BUTLER_TIPS.length] };
+  return { speaker: "jarureu", text: JARUREU_NOTES[idx % JARUREU_NOTES.length] };
 }
 
 // 자르르 — 집무실에서 탭했을 때 (안전 로비 — 숫자 노출 금지)
@@ -88,12 +86,13 @@ export const JARUREU_HUNGRY_LINES = [
   "배고프다아… 한 끼만 아껴줘…",
   "기록 한 번이면 힘날 것 같아!",
 ];
-// 희귀 대사 — 낮은 확률(8%). 떴을 때 '희귀'임이 보이도록 UI에서 골드 처리(J안).
+// 희귀 대사 — 낮은 확률(8%). 떴을 때 '희귀'임이 보이도록 UI에서 골드 처리 + 탭 잠금 + 타이머 바.
+// 멘트 규칙: 세계관 사전지식 없이도 통하는 자기완결 유머만(피드백: 떡밥형은 모르는 사람에게 오그라듦).
 export const JARUREU_RARE_LINES = [
-  "사실 나… 전설의 장부에서 태어났어.",
-  "그분이 그랬대. 천원 아침이 첫 투자였다고.",
-  "내 금땜 자국? 깨진 데를 금으로 때운 거야. 멋있지!!",
-  "쉿— 김집사 정장, 그분이 처음 번 돈으로 사준 거래.",
+  "내 뚜껑? …모자 아니야. 아니다, 모자 맞아.",
+  "결제 알림음 들으면 나 진짜 기절해. 시험해 보진 마.",
+  "네가 안 쓴 돈, 사실 내가 다 세고 있어.",
+  "오늘따라 회장님 손이 따뜻하네…",
 ];
 
 export type JarureuSay = { text: string; rare: boolean };

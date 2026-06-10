@@ -194,3 +194,18 @@ body {
   100% { opacity: 1; transform: translateY(0) scale(1); }
 }
 .animate-bubble-in { animation: bubble-in 0.26s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+
+/* 살림 해금 이펙트 — 새 소품이 통통 튀며 등장 */
+@keyframes prop-in {
+  0% { opacity: 0; transform: scale(0.2) translateY(8px); }
+  55% { opacity: 1; transform: scale(1.25) translateY(-3px); }
+  75% { transform: scale(0.95) translateY(0); }
+  100% { opacity: 1; transform: scale(1); }
+}
+.animate-prop-in { animation: prop-in 0.7s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+
+/* 희귀 대사 잔여시간 바 — 사라지기 전을 시각적으로 인지 */
+@keyframes rare-bar {
+  from { width: 100%; }
+  to { width: 0%; }
+}
