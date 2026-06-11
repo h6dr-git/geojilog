@@ -180,6 +180,13 @@ body {
   overscroll-behavior-y: none;
 }
 
+/* #44 — 탭바 위치 변동 픽스: 짧은 탭(집무실)→긴 탭(장부) 전환 때 스크롤바가 나타나며
+   뷰포트 폭이 줄면, fixed left-1/2 인 탭바의 중앙 기준점이 밀려 좌우로 살짝 움직였다.
+   거터를 항상 예약해 폭을 고정한다 (오버레이 스크롤바 환경에선 원래 없던 문제 — 영향 0). */
+html {
+  scrollbar-gutter: stable;
+}
+
 /* ── 탭 전환 마이크로 트랜지션 ── */
 @keyframes tab-in {
   from { opacity: 0; transform: translateY(6px); }
