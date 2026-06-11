@@ -37,7 +37,9 @@ export default function ReportShareCard({
         {has("crown") && <div style={{ marginTop: "-3px" }}><CrownSticker /></div>}
       </div>
       <div style={{ fontSize: "11px", color: theme.sub, textAlign: "left", fontFamily: "'JetBrains Mono', ui-monospace, monospace", position: "relative" }}>{period}</div>
-      <div style={{ fontSize: "34px", fontWeight: 800, color: theme.accent, fontFamily: "'JetBrains Mono', ui-monospace, monospace", textAlign: "left", marginTop: "10px", position: "relative" }}>+₩{fmt(amount)}</div>
+      {/* C1 — 숫자에 의미 라벨: 맥락 없는 제3자가 "무슨 돈인지" 즉시 알게 */}
+      <div style={{ fontSize: "10px", color: theme.label, textAlign: "left", marginTop: "12px", letterSpacing: "1px", position: "relative" }}>아껴서 번 돈</div>
+      <div style={{ fontSize: "34px", fontWeight: 800, color: theme.accent, fontFamily: "'JetBrains Mono', ui-monospace, monospace", textAlign: "left", marginTop: "2px", position: "relative" }}>+₩{fmt(amount)}</div>
       {subline && (
         <div style={{ fontSize: "11px", color: theme.sub, textAlign: "left", marginTop: "2px", position: "relative" }}>{subline}</div>
       )}
@@ -52,7 +54,10 @@ export default function ReportShareCard({
         <div style={{ fontSize: "11px", color: theme.sub, textAlign: "left", marginTop: "10px", fontStyle: "italic", lineHeight: 1.6, position: "relative" }}>“{quote}” — 무일푼 도사</div>
       )}
       <div style={{ position: "relative", marginTop: "14px", minHeight: "16px" }}>
-        <div style={{ textAlign: "center", fontSize: "8px", color: theme.footer, letterSpacing: "2px", paddingTop: "4px" }}>GEOJILOG</div>
+        <div style={{ textAlign: "center", paddingTop: "4px" }}>
+          <span style={{ fontSize: "8px", color: theme.footer, letterSpacing: "2px" }}>GEOJILOG</span>
+          <span style={{ fontSize: "9px", color: theme.footer, display: "block", marginTop: "2px" }}>거지로그 — 절약을 수익으로 적는 가계부</span>
+        </div>
         {has("seal") && (
           <div style={{ position: "absolute", left: "0px", bottom: "-4px" }}>
             <SealStamp accent={theme.accent} />
