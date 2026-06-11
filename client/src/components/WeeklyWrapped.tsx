@@ -7,6 +7,10 @@ import Jarureu from "@/components/Jarureu";
 import CaptureView from "@/components/CaptureView";
 import { SavingsEntry, fmt } from "@/lib/ledger";
 import { butlerWeeklyComment, dosaLineOfDay } from "@/lib/voice";
+import {
+  CARD_THEMES, CARD_STICKERS, type StickerId,
+  loadKit, saveKit, themeById, CrownSticker, JarSticker, WonScatter, SealStamp,
+} from "@/components/cardSkin";
 
 const STEPS = 4;
 
@@ -33,6 +37,17 @@ export default function WeeklyWrapped({
   const [step, setStep] = useState(0);
   const [n, setN] = useState(0);
   const [captureMode, setCaptureMode] = useState(false);
+
+  // #23 — 카드 스킨 (앨범과 같은 "내 스킨"을 공유, 기기에 기억)
+  const [themeId, setThemeId] = useState(() => loadKit().theme);
+  const [stickers, setStickers] = useState<StickerId[]>(() => loadKit().stickers);
+  const theme = themeById(themeId);
+  const has = (id: StickerId) => stickers.includes(id);
+  const toggleSticker = (id: StickerId) =>
+    setStickers((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+  useEffect(() => {
+    saveKit({ theme: themeId, stickers });
+  }, [themeId, stickers]);
 
   const { start, end } = useMemo(weekRange, []);
   const week = useMemo(
@@ -81,20 +96,36 @@ export default function WeeklyWrapped({
   const prev = () => setStep((v) => Math.max(0, v - 1));
 
   const shareCard = (
-            <div className="mx-auto" style={{ maxWidth: "320px", backgroundColor: "#16201A", padding: "22px 20px", borderRadius: "16px", border: "1px solid rgba(224,169,46,0.25)" }}>
-              <div style={{ fontSize: "9px", letterSpacing: "3px", color: "#7E8C82", textTransform: "uppercase", marginBottom: "4px", textAlign: "left" }}>거지로그 주간 결산</div>
-              <div style={{ fontSize: "11px", color: "#5E6A60", textAlign: "left", fontFamily: "'JetBrains Mono', ui-monospace, monospace" }}>{mmdd(start)} – {mmdd(end)}</div>
-              <div style={{ fontSize: "34px", fontWeight: 800, color: "#10B981", fontFamily: "'JetBrains Mono', ui-monospace, monospace", textAlign: "left", marginTop: "10px" }}>+₩{fmt(profit)}</div>
-              <div style={{ fontSize: "11px", color: "#9aa89e", textAlign: "left", marginTop: "2px" }}>{week.length}끼 기록{best ? ` · 최고의 한 수 ${best.title}` : ""}</div>
+            <div className="mx-auto" style={{ maxWidth: "320px", position: "relative", overflow: "hidden", backgroundColor: theme.bg, padding: "22px 20px", borderRadius: "16px", border: `1px solid ${theme.border}` }}>
+              {has("won") && <WonScatter accent={theme.accent} />}
+              <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "4px", position: "relative" }}>
+                <div style={{ fontSize: "9px", letterSpacing: "3px", color: theme.label, textTransform: "uppercase", textAlign: "left" }}>거지로그 주간 결산</div>
+                {has("crown") && <div style={{ marginTop: "-3px" }}><CrownSticker /></div>}
+              </div>
+              <div style={{ fontSize: "11px", color: theme.sub, textAlign: "left", fontFamily: "'JetBrains Mono', ui-monospace, monospace", position: "relative" }}>{mmdd(start)} – {mmdd(end)}</div>
+              <div style={{ fontSize: "34px", fontWeight: 800, color: theme.accent, fontFamily: "'JetBrains Mono', ui-monospace, monospace", textAlign: "left", marginTop: "10px", position: "relative" }}>+₩{fmt(profit)}</div>
+              <div style={{ fontSize: "11px", color: theme.sub, textAlign: "left", marginTop: "2px", position: "relative" }}>{week.length}끼 기록{best ? ` · 최고의 한 수 ${best.title}` : ""}</div>
               {topSource && (
-                <div style={{ fontSize: "11px", color: "#E0A92E", textAlign: "left", marginTop: "4px" }}>
-                  주력 수익원 {topSource.name} <span style={{ fontFamily: "'JetBrains Mono', ui-monospace, monospace" }}>+₩{fmt(topSource.profit)}</span>
+                <div style={{ fontSize: "11px", color: theme.sub, textAlign: "left", marginTop: "4px", position: "relative" }}>
+                  주력 수익원 <span style={{ color: theme.accent, fontWeight: 600 }}>{topSource.name}</span> <span style={{ fontFamily: "'JetBrains Mono', ui-monospace, monospace" }}>+₩{fmt(topSource.profit)}</span>
                 </div>
               )}
-              <div style={{ borderTop: "1px solid rgba(255,255,255,0.1)", margin: "14px 0" }} />
-              <div style={{ fontSize: "12px", color: "#d8cfae", textAlign: "left", lineHeight: 1.6 }}>{butler}</div>
-              <div style={{ fontSize: "11px", color: "#8C7B5A", textAlign: "left", marginTop: "10px", fontStyle: "italic", lineHeight: 1.6 }}>“{dosa}” — 무일푼 도사</div>
-              <div style={{ textAlign: "center", fontSize: "8px", color: "#5E6A60", letterSpacing: "2px", marginTop: "14px" }}>GEOJILOG</div>
+              <div style={{ borderTop: `1px solid ${theme.divider}`, margin: "14px 0", position: "relative" }} />
+              <div style={{ fontSize: "12px", color: theme.title, textAlign: "left", lineHeight: 1.6, position: "relative" }}>{butler}</div>
+              <div style={{ fontSize: "11px", color: theme.sub, textAlign: "left", marginTop: "10px", fontStyle: "italic", lineHeight: 1.6, position: "relative" }}>“{dosa}” — 무일푼 도사</div>
+              <div style={{ position: "relative", marginTop: "14px", minHeight: "16px" }}>
+                <div style={{ textAlign: "center", fontSize: "8px", color: theme.footer, letterSpacing: "2px", paddingTop: "4px" }}>GEOJILOG</div>
+                {has("seal") && (
+                  <div style={{ position: "absolute", left: "0px", bottom: "-4px" }}>
+                    <SealStamp accent={theme.accent} />
+                  </div>
+                )}
+                {has("jar") && (
+                  <div style={{ position: "absolute", right: "0px", bottom: "-6px" }}>
+                    <JarSticker size={28} />
+                  </div>
+                )}
+              </div>
             </div>
   );
 
@@ -184,8 +215,42 @@ export default function WeeklyWrapped({
             {/* 공유 카드 (캡처 뷰에서도 동일 사용) */}
             {shareCard}
 
+            {/* #23 — 카드 스킨: 테마 3종 + 스티커 토글 (선택은 기기에 기억, 앨범과 공유) */}
+            <div className="flex items-center justify-center gap-1.5 mt-4">
+              {CARD_THEMES.map((t) => (
+                <button
+                  key={t.id}
+                  onClick={() => setThemeId(t.id)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-micro font-medium transition-all active:scale-95"
+                  style={
+                    themeId === t.id
+                      ? { background: "rgba(224,169,46,0.18)", border: "1px solid rgba(224,169,46,0.6)", color: "#E0A92E" }
+                      : { background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.14)", color: "#9aa89e" }
+                  }
+                >
+                  <span className="w-3 h-3 rounded-full" style={{ background: t.bg, border: "1px solid rgba(255,255,255,0.25)" }} />
+                  {t.name}
+                </button>
+              ))}
+            </div>
+            <div className="flex items-center justify-center gap-1.5 mt-2 flex-wrap">
+              {CARD_STICKERS.map((st) => (
+                <button
+                  key={st.id}
+                  onClick={() => toggleSticker(st.id)}
+                  className="px-2.5 py-1 rounded-full text-micro transition-all active:scale-95"
+                  style={
+                    has(st.id)
+                      ? { background: "rgba(255,255,255,0.92)", color: "#16201A", border: "1px solid rgba(255,255,255,0.92)" }
+                      : { background: "transparent", border: "1px solid rgba(255,255,255,0.18)", color: "#9aa89e" }
+                  }
+                >
+                  {st.name}
+                </button>
+              ))}
+            </div>
 
-            <div className="flex gap-2 mt-5 max-w-[320px] mx-auto">
+            <div className="flex gap-2 mt-4 max-w-[320px] mx-auto">
               <button
                 onClick={() => setCaptureMode(true)}
                 className="flex-1 flex items-center justify-center gap-1.5 py-3 rounded-xl text-body font-medium active:scale-[0.98] transition-transform"
@@ -211,7 +276,7 @@ export default function WeeklyWrapped({
       </p>
 
       {captureMode && (
-        <CaptureView bg="#16201A" onClose={() => setCaptureMode(false)}>
+        <CaptureView bg={theme.bg} onClose={() => setCaptureMode(false)}>
           <div className="w-full max-w-[320px]">{shareCard}</div>
         </CaptureView>
       )}
