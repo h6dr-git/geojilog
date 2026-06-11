@@ -115,6 +115,7 @@ export default function Shell() {
           date: exifDate ?? undefined,
           priorOriginalAmount: r.prior?.originalAmount,
           priorDate: r.prior?.date,
+          priorUsualActual: r.prior?.usualActual,
           aiOriginalAmount: r.estimatedOriginalAmount,
         },
       });

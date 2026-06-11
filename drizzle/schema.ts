@@ -104,3 +104,26 @@ export const pushSubscriptions = sqliteTable("push_subscriptions", {
 
 export type PushSubscription = typeof pushSubscriptions.$inferSelect;
 export type InsertPushSubscription = typeof pushSubscriptions.$inferInsert;
+
+// ── 단골 사전 (P2 2차 · #37) ──────────────────────────────────────
+// 기록에서 자동 축적되는 '내 항목' 사전. 기준가(usualOriginal=시중가)와
+// 평소가(usualActual=평소 내가 내는 돈)를 분리 보관 → 이중 할인(#37)의 세 층을 표현.
+// pinned='yes'면 사용자가 직접 관리하는 항목 — 가격 자동 갱신을 멈춘다.
+export const userItems = sqliteTable("user_items", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  userId: integer("userId").notNull(),
+  name: text("name").notNull(),
+  normName: text("normName").notNull(), // lower(trim(name)) — 매칭키
+  category: text("category").notNull(),
+  usualOriginal: integer("usualOriginal").notNull(),
+  usualActual: integer("usualActual").notNull(),
+  pinned: text("pinned").notNull().default("no"),
+  timesUsed: integer("timesUsed").notNull().default(1),
+  lastDate: text("lastDate"),
+  createdAt: integer("createdAt")
+    .notNull()
+    .default(sql`(unixepoch())`),
+});
+
+export type UserItem = typeof userItems.$inferSelect;
+export type InsertUserItem = typeof userItems.$inferInsert;

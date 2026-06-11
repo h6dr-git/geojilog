@@ -69,7 +69,8 @@ export default function QuickRecord({ data, onClose, onSaved }: Props) {
         memo: memo.trim() || undefined,
       });
       if (data.draftId) removeDraft(data.draftId);
-      if (profit > 0) celebrateSave({ profit, title: title.trim() });
+      const bonus = data.priorUsualActual != null && a < data.priorUsualActual ? data.priorUsualActual - a : undefined;
+      if (profit > 0) celebrateSave({ profit, title: title.trim(), bonus });
       else toast.success("기록됐어요");
       onSaved?.();
       onClose();

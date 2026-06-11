@@ -62,6 +62,21 @@ CREATE TABLE IF NOT EXISTS push_subscriptions (
   createdAt INTEGER NOT NULL DEFAULT (unixepoch())
 );
 CREATE INDEX IF NOT EXISTS idx_push_user ON push_subscriptions(userId);
+CREATE TABLE IF NOT EXISTS user_items (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  userId INTEGER NOT NULL,
+  name TEXT NOT NULL,
+  normName TEXT NOT NULL,
+  category TEXT NOT NULL,
+  usualOriginal INTEGER NOT NULL,
+  usualActual INTEGER NOT NULL,
+  pinned TEXT NOT NULL DEFAULT 'no',
+  timesUsed INTEGER NOT NULL DEFAULT 1,
+  lastDate TEXT,
+  createdAt INTEGER NOT NULL DEFAULT (unixepoch()),
+  UNIQUE(userId, normName)
+);
+CREATE INDEX IF NOT EXISTS idx_items_user ON user_items(userId, timesUsed);
 `;
 
 let _db: ReturnType<typeof drizzle> | null = null;

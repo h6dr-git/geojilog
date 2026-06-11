@@ -100,6 +100,13 @@ export default function SaveReveal() {
         </p>
       )}
 
+      {/* #37 — 평소(단골 사전 평소가)보다 더 아낀 날 */}
+      {detail.bonus != null && detail.bonus > 0 && (
+        <p className="mt-1.5 text-caption font-medium" style={{ color: "#E0A92E", animation: "rvRise .35s ease .31s both" }}>
+          ✨ 평소보다 ₩{detail.bonus.toLocaleString("ko-KR")} 더 아꼈어요
+        </p>
+      )}
+
       <p className="mt-1.5 text-body leading-relaxed max-w-[17rem]" style={{ color: "#d8cfae", animation: "rvRise .35s ease .34s both" }}>
         {butlerLine}
       </p>

@@ -1,5 +1,5 @@
 // 저장 축하(리빌) 이벤트 버스 — 어디서 저장하든(QuickRecord·장부 큐·수동입력) 같은 연출을 띄운다.
-export type RevealDetail = { profit: number; title?: string };
+export type RevealDetail = { profit: number; title?: string; bonus?: number /* #37 — 평소보다 더 아낀 금액 */ };
 
 const EVT = "geojilog:save-reveal";
 

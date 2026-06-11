@@ -15,6 +15,7 @@ import {
   X, RotateCw, Plus, Repeat, CalendarDays,
 } from "lucide-react";
 import EntryDetailSheet from "@/components/EntryDetailSheet";
+import ItemDictSheet from "@/components/ItemDictSheet";
 import Jarureu from "@/components/Jarureu";
 import { SavingsEntry, fmt, todayStr, makeDefaultTitle, KO_DAYS } from "@/lib/ledger";
 import { celebrateSave } from "@/lib/celebrate";
@@ -43,6 +44,7 @@ interface QueueItem {
   imageUrl?: string;
   priorDate?: string; // P2 — 지난 확정가가 적용된 경우
   nSplit?: string;     // #33 엔빵 — 인원 (원가=총 추정액÷n, 실제는 청구액 직접 입력)
+  priorUsualActual?: number; // 단골 평소가 (#37)
   aiOriginalAmount?: number;
   aiActualAmount?: number;
 }
@@ -159,29 +161,22 @@ export default function Ledger({ weekFocusNonce = 0 }: { weekFocusNonce?: number
     return { date: d, title: makeDefaultTitle(d, "식비"), category: "식비", originalAmount: "", actualAmount: "", description: "", memo: "" };
   });
 
-  // ── P1: 늘 지키는 것 — 제목 기준 2회 이상 기록된 항목 상위 4개 ──
-  const frequents = useMemo(() => {
-    type Freq = { title: string; category: string; originalAmount: number; actualAmount: number; count: number; lastDate: string };
-    const map = new Map<string, Freq>();
-    for (const e of entries as SavingsEntry[]) {
-      const key = e.title.trim().toLowerCase();
-      if (!key) continue;
-      const cur = map.get(key);
-      if (cur) {
-        cur.count += 1;
-        if (e.date > cur.lastDate) {
-          cur.lastDate = e.date; cur.title = e.title; cur.category = e.category;
-          cur.originalAmount = e.originalAmount; cur.actualAmount = e.actualAmount;
-        }
-      } else {
-        map.set(key, { title: e.title, category: e.category, originalAmount: e.originalAmount, actualAmount: e.actualAmount, count: 1, lastDate: e.date });
-      }
-    }
-    return Array.from(map.values())
-      .filter((v) => v.count >= 2)
-      .sort((a, b) => b.count - a.count || b.lastDate.localeCompare(a.lastDate))
-      .slice(0, 4);
-  }, [entries]);
+  // ── P1→P2 2차: '단골' 칩 — 클라 빈도 스캔에서 서버 단골 사전 기반으로 승격 ──
+  const { data: dictItems = [] } = trpc.items.list.useQuery(undefined, { enabled: isAuthenticated });
+  const frequents = useMemo(
+    () =>
+      (dictItems as { id: number; name: string; category: string; usualOriginal: number; usualActual: number; pinned: string }[])
+        .slice(0, 6)
+        .map((it) => ({
+          title: it.name,
+          category: it.category,
+          originalAmount: it.usualOriginal,
+          actualAmount: it.usualActual,
+          pinned: it.pinned === "yes",
+        })),
+    [dictItems]
+  );
+  const [showDict, setShowDict] = useState(false);
 
   const [repeating, setRepeating] = useState(false);
   const handleQuickRepeat = async (f: { title: string; category: string; originalAmount: number; actualAmount: number }) => {
@@ -247,6 +242,7 @@ export default function Ledger({ weekFocusNonce = 0 }: { weekFocusNonce?: number
       // P2 — 지난 확정가 우선 (기준가 일관성)
       originalAmount: String(result.prior?.originalAmount ?? result.estimatedOriginalAmount),
       priorDate: result.prior?.date,
+      priorUsualActual: result.prior?.usualActual,
       actualAmount: String(result.estimatedActualAmount),
       aiReason: result.reason,
       date,
@@ -323,7 +319,9 @@ export default function Ledger({ weekFocusNonce = 0 }: { weekFocusNonce?: number
         memo: item.memo || undefined,
       });
       const saved = Math.max(0, Number(item.originalAmount) - Number(item.actualAmount));
-      if (saved > 0) celebrateSave({ profit: saved, title: item.title || item.fileName });
+      const actualNum = Number(item.actualAmount);
+      const bonus = item.priorUsualActual != null && actualNum < item.priorUsualActual ? item.priorUsualActual - actualNum : undefined;
+      if (saved > 0) celebrateSave({ profit: saved, title: item.title || item.fileName, bonus });
       else toast.success("기록됐어요", { description: `${item.title || item.fileName} 기록됨` });
       setQueue(prev => {
         const it = prev.find(i => i.id === item.id);
@@ -671,10 +669,15 @@ export default function Ledger({ weekFocusNonce = 0 }: { weekFocusNonce?: number
               </button>
             </div>
 
-            {/* P1 — 늘 지키는 것 */}
-            {frequents.length > 0 && (
+            {/* 단골 — 사전 기반 원탭 기록 (P2 2차). '관리'에서 가격 고정(★)·수정 */}
+            {frequents.length > 0 ? (
               <section className="mb-5">
-                <p className="text-caption font-mono text-ink-soft tracking-widest uppercase mb-2">자주 기록하는 항목</p>
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-caption font-mono text-ink-soft tracking-widest uppercase">단골</p>
+                  <button onClick={() => setShowDict(true)} className="text-caption text-emerald-600 font-medium active:opacity-70">
+                    관리
+                  </button>
+                </div>
                 <div className="flex gap-2 flex-wrap">
                   {frequents.map((f) => (
                     <button
@@ -684,13 +687,15 @@ export default function Ledger({ weekFocusNonce = 0 }: { weekFocusNonce?: number
                       className="flex items-center gap-1.5 pl-3 pr-3.5 py-2 rounded-full border border-emerald-200 bg-emerald-50 text-caption text-emerald-700 font-medium active:scale-95 disabled:opacity-50 transition-transform"
                     >
                       <Repeat size={12} />
-                      <span className="max-w-[8rem] truncate">{f.title}</span>
+                      <span className="max-w-[8rem] truncate">{f.pinned ? "★ " : ""}{f.title}</span>
                       <span className="font-mono tabular-nums">+₩{fmt(Math.max(0, f.originalAmount - f.actualAmount))}</span>
                     </button>
                   ))}
                 </div>
-                <p className="text-micro text-ink-faint mt-1.5">탭하면 오늘 기록으로 바로 추가돼요 (지난번 금액 기준 · 목록에서 수정 가능)</p>
+                <p className="text-micro text-ink-faint mt-1.5">탭하면 오늘 기록으로 바로 추가돼요 (단골 가격 기준 · 목록에서 수정 가능)</p>
               </section>
+            ) : (
+              <p className="text-micro text-ink-faint mb-4 text-center">같은 항목을 기록하면 여기에 '단골' 원탭 버튼이 생겨요</p>
             )}
 
             {/* 사진 업로드 영역 — 업로드가 시작되면 큰 드롭존은 내려가고 컴팩트 행으로 (#31) */}
@@ -1010,6 +1015,9 @@ export default function Ledger({ weekFocusNonce = 0 }: { weekFocusNonce?: number
           onClose={() => setDetailEntry(null)}
         />
       )}
+
+      {/* 단골 사전 관리 */}
+      {showDict && <ItemDictSheet onClose={() => setShowDict(false)} />}
 
       {/* hidden file inputs */}
       <input ref={cameraRef} type="file" accept="image/*" capture="environment" multiple className="hidden"

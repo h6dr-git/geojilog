@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { protectedProcedure, router } from "../trpc";
-import { getSavingsEntries, createSavingsEntry, deleteSavingsEntry, deleteMultipleSavingsEntries, deleteAllSavingsEntries, countSavingsEntriesByCategory, updateSavingsEntry, logUsageEvent } from "../db";
+import { getSavingsEntries, createSavingsEntry, deleteSavingsEntry, deleteMultipleSavingsEntries, deleteAllSavingsEntries, countSavingsEntriesByCategory, updateSavingsEntry, logUsageEvent, upsertItemFromEntry } from "../db";
 
 function generateTicker(category: string, count: number): string {
   const prefixMap: Record<string, string> = {
@@ -51,6 +51,16 @@ export const savingsRouter = router({
           memo: input.memo,
         });
         await logUsageEvent(ctx.user.id, "entry_create");
+        // 단골 사전 자동 축적 (P2 2차) — 실패해도 기록 저장엔 영향 없음
+        try {
+          await upsertItemFromEntry(ctx.user.id, {
+            title: input.title,
+            category: input.category,
+            originalAmount: input.originalAmount,
+            actualAmount: input.actualAmount,
+            date: input.date,
+          });
+        } catch { /* 사전 축적 실패 무시 */ }
         // 데이터 해자: AI 추정 기준가 → 사용자 확정 실가격의 '보정'을 쌓는다(클라가 AI 추정 원본값을 보낼 때만 작동).
         const correctedOrig = input.aiOriginalAmount !== undefined && input.aiOriginalAmount !== input.originalAmount;
         const correctedActual = input.aiActualAmount !== undefined && input.aiActualAmount !== input.actualAmount;

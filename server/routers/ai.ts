@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { protectedProcedure, router } from "../trpc";
-import { countAiCallsToday, logUsageEvent, getLatestEntryByTitle } from "../db";
+import { countAiCallsToday, logUsageEvent, getLatestEntryByTitle, getItemByName } from "../db";
 import { invokeLLM } from "../llm";
 import { storagePut, storageGetSignedUrl } from "../storage";
 import { IMAGE_ANALYSIS_SYSTEM_PROMPT, SMS_PARSE_SYSTEM_PROMPT } from "../prompts";
@@ -95,11 +95,23 @@ export const aiRouter = router({
           cropBox: { x: number; y: number };
         };
         await logUsageEvent(ctx.user.id, "ai_analyze_image");
-        // P2(나만의 기준가) — 같은 제목으로 과거 확정한 금액이 있으면 함께 반환(클라가 우선 제안)
-        let prior: { originalAmount: number; actualAmount: number; date: string } | null = null;
+        // P2(나만의 기준가) — ① 단골 사전 우선 ② 없으면 같은 제목 최근 3건 중간값.
+        // usualActual(평소가)을 함께 줘서, 평소보다 더 아낀 날(#37)을 클라가 표시할 수 있게.
+        let prior: { originalAmount: number; actualAmount: number; date: string; usualActual?: number; source: "dict" | "history" } | null = null;
         try {
-          const prev = await getLatestEntryByTitle(ctx.user.id, parsed.title);
-          if (prev) prior = { originalAmount: prev.originalAmount, actualAmount: prev.actualAmount, date: prev.date };
+          const dict = await getItemByName(ctx.user.id, parsed.title);
+          if (dict) {
+            prior = {
+              originalAmount: dict.usualOriginal,
+              actualAmount: dict.usualActual,
+              date: dict.lastDate ?? "",
+              usualActual: dict.usualActual,
+              source: "dict",
+            };
+          } else {
+            const prev = await getLatestEntryByTitle(ctx.user.id, parsed.title);
+            if (prev) prior = { originalAmount: prev.originalAmount, actualAmount: prev.actualAmount, date: prev.date, usualActual: prev.actualAmount, source: "history" };
+          }
         } catch { /* 조회 실패해도 분석 결과는 정상 반환 */ }
         return { ...parsed, imageUrl: `/manus-storage/${key}`, prior };
       }),
