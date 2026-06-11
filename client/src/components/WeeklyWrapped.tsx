@@ -9,16 +9,18 @@ import { SavingsEntry, fmt } from "@/lib/ledger";
 import { butlerWeeklyComment, dosaLineOfDay } from "@/lib/voice";
 import {
   CARD_THEMES, CARD_STICKERS, type StickerId,
-  loadKit, saveKit, themeById, CrownSticker, JarSticker, WonScatter, SealStamp,
+  loadKit, saveKit, themeById,
 } from "@/components/cardSkin";
+import ReportShareCard from "@/components/ReportShareCard";
 
 const STEPS = 4;
 
 function weekRange(): { start: string; end: string } {
+  // 캘린더 주(월요일~오늘) — 장부 주간 필터·리그 결산(월~일)과 같은 문법 (#45)
   const e = new Date();
   e.setHours(0, 0, 0, 0);
   const s = new Date(e);
-  s.setDate(s.getDate() - 6);
+  s.setDate(s.getDate() - ((s.getDay() + 6) % 7));
   const f = (d: Date) =>
     `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
   return { start: f(s), end: f(e) };
@@ -96,37 +98,17 @@ export default function WeeklyWrapped({
   const prev = () => setStep((v) => Math.max(0, v - 1));
 
   const shareCard = (
-            <div className="mx-auto" style={{ maxWidth: "320px", position: "relative", overflow: "hidden", backgroundColor: theme.bg, padding: "22px 20px", borderRadius: "16px", border: `1px solid ${theme.border}` }}>
-              {has("won") && <WonScatter accent={theme.accent} />}
-              <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "4px", position: "relative" }}>
-                <div style={{ fontSize: "9px", letterSpacing: "3px", color: theme.label, textTransform: "uppercase", textAlign: "left" }}>거지로그 주간 결산</div>
-                {has("crown") && <div style={{ marginTop: "-3px" }}><CrownSticker /></div>}
-              </div>
-              <div style={{ fontSize: "11px", color: theme.sub, textAlign: "left", fontFamily: "'JetBrains Mono', ui-monospace, monospace", position: "relative" }}>{mmdd(start)} – {mmdd(end)}</div>
-              <div style={{ fontSize: "34px", fontWeight: 800, color: theme.accent, fontFamily: "'JetBrains Mono', ui-monospace, monospace", textAlign: "left", marginTop: "10px", position: "relative" }}>+₩{fmt(profit)}</div>
-              <div style={{ fontSize: "11px", color: theme.sub, textAlign: "left", marginTop: "2px", position: "relative" }}>{week.length}끼 기록{best ? ` · 최고의 한 수 ${best.title}` : ""}</div>
-              {topSource && (
-                <div style={{ fontSize: "11px", color: theme.sub, textAlign: "left", marginTop: "4px", position: "relative" }}>
-                  주력 수익원 <span style={{ color: theme.accent, fontWeight: 600 }}>{topSource.name}</span> <span style={{ fontFamily: "'JetBrains Mono', ui-monospace, monospace" }}>+₩{fmt(topSource.profit)}</span>
-                </div>
-              )}
-              <div style={{ borderTop: `1px solid ${theme.divider}`, margin: "14px 0", position: "relative" }} />
-              <div style={{ fontSize: "12px", color: theme.title, textAlign: "left", lineHeight: 1.6, position: "relative" }}>{butler}</div>
-              <div style={{ fontSize: "11px", color: theme.sub, textAlign: "left", marginTop: "10px", fontStyle: "italic", lineHeight: 1.6, position: "relative" }}>“{dosa}” — 무일푼 도사</div>
-              <div style={{ position: "relative", marginTop: "14px", minHeight: "16px" }}>
-                <div style={{ textAlign: "center", fontSize: "8px", color: theme.footer, letterSpacing: "2px", paddingTop: "4px" }}>GEOJILOG</div>
-                {has("seal") && (
-                  <div style={{ position: "absolute", left: "0px", bottom: "-4px" }}>
-                    <SealStamp accent={theme.accent} />
-                  </div>
-                )}
-                {has("jar") && (
-                  <div style={{ position: "absolute", right: "0px", bottom: "-6px" }}>
-                    <JarSticker size={28} />
-                  </div>
-                )}
-              </div>
-            </div>
+    <ReportShareCard
+      theme={theme}
+      stickers={stickers}
+      label="거지로그 주간 결산"
+      period={`${mmdd(start)} – ${mmdd(end)}`}
+      amount={profit}
+      subline={`${week.length}끼 기록${best ? ` · 최고의 한 수 ${best.title}` : ""}`}
+      topSource={topSource}
+      comment={butler}
+      quote={dosa}
+    />
   );
 
   return (

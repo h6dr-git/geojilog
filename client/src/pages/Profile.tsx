@@ -1,128 +1,156 @@
-// 서재 v2 — "김집사가 정리해 둔 보고서" 서가. (2026-06-10 무너뜨리고 재출발)
-// 원칙: 단일 시각 언어(보고서 카드 양식의 반복) = 정갈함. 서재는 2차 생산지(통계·콘텐츠),
-//       원본 관리는 장부(상세 시트)가 전담. 톤·개연성을 해치는 것은 두지 않는다.
-// 보류(배선 해제, 코드 보존): 이달의 카드 꾸미기(AlbumKit) → #23 카드 스킨 프로젝트에서 명분 있게 재진입.
+// 서재 v3 (#45) — "기간 대시보드 + 결산은 이벤트".
+// 진단(2026-06-11): v2는 카드마다 행동이 달랐고(주간=스토리, 월간=토글, 총람=정적),
+// 공유가 4스텝 스토리 안에 묻혀 있었다. 유사 앱 패턴(Apple Health Summary·토스 내 소비·Spotify Wrapped)에서:
+//   ① 탭의 기본 = 즉시 읽히는 단일 보고서 (탭 없이 스크롤로 전부)
+//   ② 시간 단위가 IA의 제1축 — [주간|월간|전체] 세그먼트 + ‹› 기간 이동
+//   ③ 스토리(Wrapped)는 일상 동선이 아니라 이벤트 — 주말(일·월)에만 배너로 등장
+//   ④ 공유는 직행 — '결산 카드' 버튼 → 시트(카드+스킨+캡처), 스토리 통과 불필요
 import { useMemo, useState } from "react";
 import { UNCLASSIFIED } from "@shared/incomeSources";
 import { trpc } from "@/lib/trpc";
-import { won } from "@/lib/format";
 import { useAuth } from "@/hooks/useAuth";
 import WeeklyWrapped from "@/components/WeeklyWrapped";
 import SpeakerBadge from "@/components/SpeakerBadge";
+import ShareCardSheet from "@/components/ShareCardSheet";
 import { SavingsEntry, fmt } from "@/lib/ledger";
-import { ChevronRight } from "lucide-react";
+import { butlerWeeklyComment, dosaLineOfDay } from "@/lib/voice";
+import { ChevronLeft, ChevronRight, Sparkles, ImageDown } from "lucide-react";
 
-function startOfRecentWeek(): Date {
-  const d = new Date();
-  d.setHours(0, 0, 0, 0);
-  d.setDate(d.getDate() - 6);
-  return d;
-}
-function butlerSettlement(weekCount: number): string {
-  if (weekCount === 0) return "이번 주는 아직 조용하군요.";
-  return `이번 주 ${weekCount}건을 정리해 두었습니다.`;
-}
+type Period = "week" | "month" | "all";
 
-// 보고서 카드 — 서재의 단일 양식 (주간·월간이 같은 형식으로 반복된다)
-function ReportCard({
-  label,
-  hero,
-  children,
-  onClick,
-  footnote,
-}: {
-  label: string;
-  hero: string;
-  children?: React.ReactNode;
-  onClick?: () => void;
-  footnote?: string;
-}) {
-  const Tag = onClick ? "button" : "div";
-  return (
-    <Tag
-      onClick={onClick}
-      className={`w-full text-left bg-butler border border-butler-line rounded-card p-5 mb-3 ${
-        onClick ? "active:scale-[0.99] active:opacity-90 transition-all" : ""
-      }`}
-    >
-      <div className="flex items-center justify-between mb-2.5">
-        <div className="flex items-center gap-2">
-          <SpeakerBadge speaker="butler" size={22} />
-          <p className="text-micro text-gold tracking-wide font-medium">{label}</p>
-        </div>
-        {onClick && <ChevronRight size={15} style={{ color: "#cbb98c" }} />}
-      </div>
-      <p className="font-mono text-hero font-bold text-emerald-500 tabular-nums leading-tight">{hero}</p>
-      {children}
-      {footnote && (
-        <p className="text-caption mt-2.5" style={{ color: "#5c5647" }}>{footnote}</p>
-      )}
-    </Tag>
-  );
+const pad = (n: number) => String(n).padStart(2, "0");
+const iso = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+const mmdd = (s: string) => s.slice(5).replace("-", ".");
+
+function mondayOf(d: Date): Date {
+  const x = new Date(d);
+  x.setHours(0, 0, 0, 0);
+  x.setDate(x.getDate() - ((x.getDay() + 6) % 7));
+  return x;
 }
 
 export default function Profile({ onOpenWeekly }: { onOpenWeekly: () => void }) {
   const { isAuthenticated } = useAuth();
   const { data: entries = [] } = trpc.savings.list.useQuery(undefined, { enabled: isAuthenticated });
-
   const list = entries as SavingsEntry[];
-  const total = list.reduce((s, e) => s + (e.profit || 0), 0);
-  const count = list.length;
 
-  // 주간 보고 (최근 7일)
-  const weekStart = startOfRecentWeek();
-  const weekList = list.filter((e) => new Date(e.date + "T00:00:00") >= weekStart);
-  const weekProfit = weekList.reduce((s, e) => s + (e.profit || 0), 0);
-  const weekCount = weekList.length;
+  // ── 기간 축: 세그먼트 + 오프셋(0=현재, 1=이전…) ──
+  const [period, setPeriod] = useState<Period>("week");
+  const [offset, setOffset] = useState(0);
+  const changePeriod = (p: Period) => { setPeriod(p); setOffset(0); };
 
-  // 월간 보고 (이번 달 + 지난달 같은 기간 대비)
-  const now = new Date();
-  const ym = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
-  const prev = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-  const prevYm = `${prev.getFullYear()}-${String(prev.getMonth() + 1).padStart(2, "0")}`;
-  const dayOfMonth = now.getDate();
+  const today = useMemo(() => { const d = new Date(); d.setHours(0, 0, 0, 0); return d; }, []);
 
-  const monthList = useMemo(() => list.filter((e) => e.date.startsWith(ym)), [list, ym]);
-  const monthTotal = monthList.reduce((s, e) => s + e.profit, 0);
-  // 지난달 '같은 기간'(1일~오늘 일자)과 비교 — 공정한 추이
-  const prevSamePeriod = useMemo(
-    () => list.filter((e) => e.date.startsWith(prevYm) && Number(e.date.slice(8, 10)) <= dayOfMonth),
-    [list, prevYm, dayOfMonth]
+  const range = useMemo(() => {
+    if (period === "week") {
+      const mon = mondayOf(today);
+      mon.setDate(mon.getDate() - 7 * offset);
+      const sun = new Date(mon);
+      sun.setDate(mon.getDate() + 6);
+      const endD = offset === 0 && today < sun ? today : sun;
+      return {
+        start: iso(mon), end: iso(endD),
+        label: offset === 0 ? "이번 주" : `${mmdd(iso(mon))} ~ ${mmdd(iso(sun))}`,
+        cardLabel: "거지로그 주간 결산",
+        cardPeriod: `${mmdd(iso(mon))} – ${mmdd(iso(endD))}`,
+      };
+    }
+    if (period === "month") {
+      const m = new Date(today.getFullYear(), today.getMonth() - offset, 1);
+      const last = new Date(m.getFullYear(), m.getMonth() + 1, 0);
+      const isThisYear = m.getFullYear() === today.getFullYear();
+      return {
+        start: iso(m), end: iso(last),
+        label: offset === 0 ? `${m.getMonth() + 1}월` : isThisYear ? `${m.getMonth() + 1}월` : `${m.getFullYear()}.${pad(m.getMonth() + 1)}`,
+        cardLabel: `거지로그 ${m.getMonth() + 1}월 결산`,
+        cardPeriod: `${m.getFullYear()}.${pad(m.getMonth() + 1)}`,
+      };
+    }
+    return { start: "0000-01-01", end: "9999-12-31", label: "전체", cardLabel: "거지로그 총결산", cardPeriod: "ALL TIME" };
+  }, [period, offset, today]);
+
+  // ── 기간 데이터 ──
+  const scoped = useMemo(
+    () => list.filter((e) => e.date >= range.start && e.date <= range.end),
+    [list, range.start, range.end]
   );
-  const prevTotal = prevSamePeriod.reduce((s, e) => s + e.profit, 0);
-  const diff = monthTotal - prevTotal;
+  const profit = scoped.reduce((s, e) => s + (e.profit || 0), 0);
+  const count = scoped.length;
+  const best = useMemo(
+    () => (scoped.length ? scoped.reduce((a, b) => (b.profit > a.profit ? b : a)) : null),
+    [scoped]
+  );
 
-  const monthByCategory = useMemo(() => {
+  // 구성 — 수익원(기본) / 카테고리
+  const [compBy, setCompBy] = useState<"source" | "category">("source");
+  const composition = useMemo(() => {
     const map: Record<string, number> = {};
-    monthList.forEach((e) => { map[e.category] = (map[e.category] ?? 0) + e.profit; });
-    return Object.entries(map).sort((a, b) => b[1] - a[1]);
-  }, [monthList]);
-
-  // #37+#38 — 수익원 구성 ("어떻게 벌었나"가 거지로그의 본질 축 — 기본 보기)
-  const monthBySource = useMemo(() => {
-    const map: Record<string, number> = {};
-    monthList.forEach((e) => {
-      const k = e.incomeSource ?? UNCLASSIFIED;
+    scoped.forEach((e) => {
+      const k = compBy === "source" ? (e.incomeSource ?? UNCLASSIFIED) : e.category;
       map[k] = (map[k] ?? 0) + e.profit;
     });
-    // 미분류는 맨 뒤로 (수익 순 정렬 후)
     return Object.entries(map).sort((a, b) =>
       a[0] === UNCLASSIFIED ? 1 : b[0] === UNCLASSIFIED ? -1 : b[1] - a[1]
     );
-  }, [monthList]);
-  const [compBy, setCompBy] = useState<"source" | "category">("source");
+  }, [scoped, compBy]);
+  const topSource = useMemo(() => {
+    const m: Record<string, number> = {};
+    scoped.forEach((e) => { if (e.incomeSource) m[e.incomeSource] = (m[e.incomeSource] ?? 0) + e.profit; });
+    const arr = Object.entries(m).sort((a, b) => b[1] - a[1]);
+    return arr[0] ? { name: arr[0][0], profit: arr[0][1] } : null;
+  }, [scoped]);
+
+  // 비교 한 줄 — 이번 달일 때만 지난달 같은 기간 (공정 비교)
+  const monthCompare = useMemo(() => {
+    if (period !== "month" || offset !== 0) return null;
+    const dayOfMonth = today.getDate();
+    const prev = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+    const prevYm = `${prev.getFullYear()}-${pad(prev.getMonth() + 1)}`;
+    const prevList = list.filter((e) => e.date.startsWith(prevYm) && Number(e.date.slice(8, 10)) <= dayOfMonth);
+    if (prevList.length === 0) return null;
+    const prevTotal = prevList.reduce((s, e) => s + e.profit, 0);
+    return profit - prevTotal;
+  }, [period, offset, list, profit, today]);
+
+  // 집사 코멘트 — 기간별
+  const comment = useMemo(() => {
+    if (count === 0) return period === "week" && offset === 0 ? "이번 주는 아직 조용하군요." : "이 기간엔 기록이 없습니다.";
+    if (period === "week") return butlerWeeklyComment(count, profit);
+    if (period === "month") return `${count}건을 정리해 두었습니다.`;
+    return `지금까지 ${count}건, 전부 장부에 있습니다.`;
+  }, [period, offset, count, profit]);
+
+  // ── Wrapped 이벤트 배너 — 주말 결산 시점(일·월)에만, 이번 주 기록이 있을 때 ──
+  const dow = new Date().getDay();
+  const thisWeekCount = useMemo(() => {
+    const mon = iso(mondayOf(today));
+    return list.filter((e) => e.date >= mon && e.date <= iso(today)).length;
+  }, [list, today]);
+  const showBanner = (dow === 0 || dow === 1) && thisWeekCount > 0;
 
   const [showWrapped, setShowWrapped] = useState(false);
+  const [showShare, setShowShare] = useState(false);
+
+  const segBtn = (key: Period, label: string) => (
+    <button
+      key={key}
+      onClick={() => changePeriod(key)}
+      className={`flex-1 py-2 rounded-full text-caption font-medium transition-colors ${
+        period === key ? "bg-ink text-white" : "text-ink-soft active:bg-line/60"
+      }`}
+    >
+      {label}
+    </button>
+  );
 
   return (
     <div className="min-h-dvh max-w-lg mx-auto px-5 pt-12 pb-24 bg-cream">
-      <header className="pb-5">
+      <header className="pb-4">
         <p className="text-title font-semibold text-ink">서재</p>
         <p className="text-caption text-ink-soft mt-0.5">김집사가 정리해 둔 보고서</p>
       </header>
 
-      {count === 0 ? (
-        /* 빈 서재 */
+      {list.length === 0 ? (
         <div className="text-center py-16">
           <p className="text-body text-ink-soft leading-relaxed">
             아직 보고서가 없습니다.<br />
@@ -131,34 +159,78 @@ export default function Profile({ onOpenWeekly }: { onOpenWeekly: () => void }) 
         </div>
       ) : (
         <>
-          {/* 주간 보고 — 탭하면 브리핑(Wrapped) */}
-          <ReportCard
-            label="주간 보고"
-            hero={`+${won(weekProfit)}`}
-            onClick={() => (weekCount > 0 ? setShowWrapped(true) : onOpenWeekly())}
-            footnote={butlerSettlement(weekCount)}
-          />
+          {/* 주말 이벤트 — 결산 브리핑 (Wrapped 스토리 진입은 여기로만) */}
+          {showBanner && (
+            <button
+              onClick={() => setShowWrapped(true)}
+              className="w-full flex items-center gap-2.5 mb-4 px-4 py-3 rounded-card text-left active:scale-[0.99] transition-transform"
+              style={{ background: "#16201A", border: "1px solid rgba(224,169,46,0.35)" }}
+            >
+              <Sparkles size={16} style={{ color: "#E0A92E" }} className="shrink-0" />
+              <span className="flex-1 text-caption font-medium" style={{ color: "#F4EFE3" }}>
+                주간 결산 브리핑이 도착했습니다
+              </span>
+              <ChevronRight size={14} style={{ color: "#E0A92E" }} className="shrink-0" />
+            </button>
+          )}
 
-          {/* 월간 보고 — 카테고리 구성 + 지난달 같은 기간 대비 */}
-          <ReportCard
-            label={`${now.getMonth() + 1}월 보고`}
-            hero={`+₩${fmt(monthTotal)}`}
-            footnote={
-              prevSamePeriod.length > 0 || prevTotal > 0
-                ? diff >= 0
-                  ? `지난달 같은 기간보다 ₩${fmt(Math.abs(diff))} 더 벌었습니다.`
-                  : `지난달 같은 기간보다 ₩${fmt(Math.abs(diff))} 적습니다.`
-                : `${monthList.length}건을 정리해 두었습니다.`
-            }
-          >
-            {monthList.length > 0 && (
-              <div className="mt-3">
-                {/* 구성 기준 토글 — 수익원(어떻게 벌었나, 기본) / 카테고리(어디에 쓴 돈) */}
+          {/* 기간 세그먼트 */}
+          <div className="flex gap-1 p-1 bg-white border border-line rounded-full mb-3">
+            {segBtn("week", "주간")}
+            {segBtn("month", "월간")}
+            {segBtn("all", "전체")}
+          </div>
+
+          {/* 기간 네비 — 전체에선 숨김 */}
+          {period !== "all" && (
+            <div className="flex items-center justify-between mb-2">
+              <button onClick={() => setOffset((o) => o + 1)} aria-label="이전 기간" className="min-w-[40px] min-h-[36px] flex items-center justify-center rounded-lg text-ink-soft active:bg-line/60 transition-colors">
+                <ChevronLeft size={15} />
+              </button>
+              <p className="text-body font-medium text-ink">{range.label}</p>
+              <button
+                onClick={() => setOffset((o) => Math.max(0, o - 1))}
+                disabled={offset === 0}
+                aria-label="다음 기간"
+                className="min-w-[40px] min-h-[36px] flex items-center justify-center rounded-lg text-ink-soft active:bg-line/60 disabled:opacity-30 transition-colors"
+              >
+                <ChevronRight size={15} />
+              </button>
+            </div>
+          )}
+
+          {/* ── 단일 보고서 — 탭 없이 스크롤로 전부 읽힌다 ── */}
+          <div className="bg-butler border border-butler-line rounded-card p-5">
+            <div className="flex items-center justify-between mb-2.5">
+              <div className="flex items-center gap-2">
+                <SpeakerBadge speaker="butler" size={22} />
+                <p className="text-micro text-gold tracking-wide font-medium">
+                  {period === "week" ? "주간 보고" : period === "month" ? "월간 보고" : "총람"}
+                </p>
+              </div>
+              {period === "week" && offset === 0 && count > 0 && (
+                <button onClick={onOpenWeekly} className="text-micro text-ink-soft underline-offset-2 active:text-ink flex items-center gap-0.5">
+                  장부에서 보기 <ChevronRight size={11} />
+                </button>
+              )}
+            </div>
+
+            <p className="font-mono text-hero font-bold text-emerald-500 tabular-nums leading-tight">+₩{fmt(profit)}</p>
+            <p className="text-caption mt-1" style={{ color: "#5c5647" }}>
+              {count}건
+              {monthCompare != null && (
+                <> · 지난달 같은 기간보다 {monthCompare >= 0 ? `₩${fmt(Math.abs(monthCompare))} 더 벌었습니다` : `₩${fmt(Math.abs(monthCompare))} 적습니다`}</>
+              )}
+            </p>
+
+            {/* 구성 — 수익원(기본)/카테고리 */}
+            {count > 0 && (
+              <div className="mt-4">
                 <div className="flex gap-1 mb-2.5">
                   {([["source", "수익원"], ["category", "카테고리"]] as const).map(([key, label]) => (
                     <button
                       key={key}
-                      onClick={(e) => { e.stopPropagation(); setCompBy(key); }}
+                      onClick={() => setCompBy(key)}
                       className="px-2.5 py-1 rounded-full text-micro transition-colors"
                       style={
                         compBy === key
@@ -171,22 +243,19 @@ export default function Profile({ onOpenWeekly }: { onOpenWeekly: () => void }) 
                   ))}
                 </div>
                 <div className="space-y-1.5">
-                  {(compBy === "source" ? monthBySource : monthByCategory).map(([name, profit]) => {
-                    const pct = monthTotal > 0 ? Math.round((profit / monthTotal) * 100) : 0;
+                  {composition.map(([name, p]) => {
+                    const pct = profit > 0 ? Math.round((p / profit) * 100) : 0;
                     const dim = name === UNCLASSIFIED;
                     return (
                       <div key={name} style={dim ? { opacity: 0.55 } : undefined}>
                         <div className="flex justify-between text-caption mb-0.5">
                           <span style={{ color: "#5c5647" }}>{name}</span>
-                          <span className="tabular-nums" style={{ color: "#5c5647" }}>+₩{fmt(profit)} ({pct}%)</span>
+                          <span className="tabular-nums" style={{ color: "#5c5647" }}>+₩{fmt(p)} ({pct}%)</span>
                         </div>
                         <div className="h-1 rounded-full overflow-hidden" style={{ background: "#efe4cd" }}>
                           <div
                             className="h-full rounded-full transition-all"
-                            style={{
-                              width: `${pct}%`,
-                              background: dim ? "#cdbfa0" : compBy === "source" ? "rgba(224,169,46,0.85)" : "rgba(52,211,153,0.8)",
-                            }}
+                            style={{ width: `${pct}%`, background: dim ? "#cdbfa0" : compBy === "source" ? "rgba(224,169,46,0.85)" : "rgba(52,211,153,0.8)" }}
                           />
                         </div>
                       </div>
@@ -195,15 +264,35 @@ export default function Profile({ onOpenWeekly }: { onOpenWeekly: () => void }) 
                 </div>
               </div>
             )}
-          </ReportCard>
 
-          {/* 총람 — 조용한 한 줄 */}
-          <div className="flex items-center justify-between px-1 pt-2">
-            <span className="text-caption text-ink-soft">지금까지</span>
-            <span className="text-caption text-ink-soft tabular-nums">
-              누적 <span className="font-mono font-semibold text-ink">+{won(total)}</span> · {count}건
-            </span>
+            {/* 최고의 한 수 */}
+            {best && best.profit > 0 && (
+              <div className="flex items-center gap-3 mt-4 pt-4" style={{ borderTop: "1px solid #efe4cd" }}>
+                {best.imageUrl
+                  ? <img src={best.imageUrl} alt="" className="w-12 h-12 rounded-xl object-cover shrink-0" />
+                  : <div className="w-12 h-12 rounded-xl shrink-0" style={{ background: "#efe4cd" }} />}
+                <div className="flex-1 min-w-0">
+                  <p className="text-micro" style={{ color: "#8a7f63" }}>최고의 한 수</p>
+                  <p className="text-body font-medium text-ink truncate">{best.title}</p>
+                </div>
+                <p className="text-body font-mono font-semibold text-emerald-600 tabular-nums shrink-0">+₩{fmt(best.profit)}</p>
+              </div>
+            )}
+
+            {/* 김집사 코멘트 */}
+            <p className="text-caption mt-4" style={{ color: "#5c5647" }}>{comment}</p>
           </div>
+
+          {/* 결산 카드 — 공유 직행 (스토리 통과 불필요) */}
+          {count > 0 && period !== "all" && (
+            <button
+              onClick={() => setShowShare(true)}
+              className="mt-3 w-full flex items-center justify-center gap-2 py-3 rounded-card border border-line bg-white text-body text-ink font-medium active:bg-cream transition-colors"
+            >
+              <ImageDown size={15} className="text-gold" />
+              결산 카드 만들기
+            </button>
+          )}
         </>
       )}
 
@@ -215,6 +304,19 @@ export default function Profile({ onOpenWeekly }: { onOpenWeekly: () => void }) 
             setShowWrapped(false);
             onOpenWeekly();
           }}
+        />
+      )}
+
+      {showShare && (
+        <ShareCardSheet
+          label={range.cardLabel}
+          period={range.cardPeriod}
+          amount={profit}
+          subline={`${count}${period === "week" ? "끼" : "건"} 기록${best && best.profit > 0 ? ` · 최고의 한 수 ${best.title}` : ""}`}
+          topSource={topSource}
+          comment={comment}
+          quote={dosaLineOfDay()}
+          onClose={() => setShowShare(false)}
         />
       )}
     </div>
