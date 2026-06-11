@@ -32,6 +32,23 @@ export function isIOS(): boolean {
   return /iPad|iPhone|iPod/.test(navigator.userAgent);
 }
 
+// 브라우저 식별 — 설치 경로가 브라우저마다 달라 안내를 차등화 (#40 2차)
+export type BrowserKind = "ios-safari" | "ios-other" | "android-chrome" | "android-samsung" | "android-other" | "desktop";
+export function browserKind(): BrowserKind {
+  if (typeof navigator === "undefined") return "desktop";
+  const ua = navigator.userAgent;
+  if (/iPad|iPhone|iPod/.test(ua)) {
+    // iOS의 크롬/엣지/파폭은 설치 불가 — 사파리로 보내야 한다
+    return /CriOS|FxiOS|EdgiOS|OPiOS/.test(ua) ? "ios-other" : "ios-safari";
+  }
+  if (/Android/.test(ua)) {
+    if (/SamsungBrowser/.test(ua)) return "android-samsung";
+    if (/Chrome\//.test(ua)) return "android-chrome";
+    return "android-other";
+  }
+  return "desktop";
+}
+
 export function useInstall() {
   const [, force] = useState(0);
   useEffect(() => {

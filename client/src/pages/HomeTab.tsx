@@ -15,6 +15,7 @@ import AccountSheet from "@/components/AccountSheet";
 import InstallGuideSheet from "@/components/InstallGuideSheet";
 import { useInstall } from "@/lib/install";
 import { useEffect, useRef, useState } from "react";
+import { toast } from "sonner";
 import { ChevronRight, Check, Eye, EyeOff } from "lucide-react";
 
 const WEEKLY_GOAL = 50000;
@@ -60,6 +61,8 @@ export default function HomeTab({ onGoRecords, job, onOpenConfirm, onCompleteDra
   function dismissInstall() {
     setInstallDismissed(true);
     try { localStorage.setItem("geojilog:install-dismissed", "1"); } catch { /* 무시 */ }
+    // #40 2차 — 닫아도 어디서 다시 찾는지 알려준다
+    toast("설치 안내는 위 프로필(이름) → '홈 화면에 추가'에 있어요", { duration: 3500 });
   }
   async function handleInstall() {
     if (canPrompt) {

@@ -88,13 +88,35 @@ export const aiRouter = router({
 
         const content = result.choices[0]?.message?.content;
         if (!content || typeof content !== "string") throw new Error("AI 분석 결과를 받지 못했습니다");
-        const parsed = JSON.parse(content) as {
-          title: string; category: string;
-          estimatedOriginalAmount: number;
-          estimatedActualAmount: number;
-          estimatedPeopleCount: number;
-          reason: string; confidence: "high" | "medium" | "low";
-          cropBox: { x: number; y: number };
+        const raw = JSON.parse(content) as Record<string, unknown>;
+
+        // #33·#42 — 응답 검증: 폴백(lite) 모델이 JSON 계약을 어겨도 NaN/undefined가
+        // 클라로 새어나가지 않게 서버에서 막는다. 금액이 불완전하면 명시적 실패(큐에서 '다시 시도').
+        const toInt = (v: unknown): number | null => {
+          const n = typeof v === "string" ? Number(v) : v;
+          return typeof n === "number" && Number.isFinite(n) ? Math.round(n) : null;
+        };
+        const clamp01 = (v: unknown): number =>
+          typeof v === "number" && Number.isFinite(v) ? Math.min(1, Math.max(0, v)) : 0.5;
+        const CATEGORIES = ["식비", "카페", "교통", "쇼핑", "문화/여가", "기타"];
+        const origAmt = toInt(raw.estimatedOriginalAmount);
+        const actAmt = toInt(raw.estimatedActualAmount);
+        if (origAmt == null || origAmt <= 0 || actAmt == null || actAmt < 0) {
+          throw new Error("AI 분석 결과가 불완전합니다 — 다시 시도해 주세요");
+        }
+        const people = toInt(raw.estimatedPeopleCount);
+        const cropRaw = (raw.cropBox ?? {}) as { x?: unknown; y?: unknown };
+        const parsed = {
+          title: typeof raw.title === "string" && raw.title.trim() ? raw.title.trim().slice(0, 30) : "이름 모를 한 끼",
+          category: typeof raw.category === "string" && CATEGORIES.includes(raw.category) ? raw.category : "기타",
+          estimatedOriginalAmount: origAmt,
+          estimatedActualAmount: actAmt,
+          estimatedPeopleCount: people != null && people >= 1 && people <= 50 ? people : 1,
+          reason:
+            (typeof raw.reason === "string" ? raw.reason : "") +
+            (result.modelUsed.includes("lite") ? " (혼잡으로 간이 분석 — 금액을 한 번 확인해 주세요)" : ""),
+          confidence: (["high", "medium", "low"].includes(String(raw.confidence)) ? String(raw.confidence) : "low") as "high" | "medium" | "low",
+          cropBox: { x: clamp01(cropRaw.x), y: clamp01(cropRaw.y) },
         };
         await logUsageEvent(ctx.user.id, "ai_analyze_image");
         // P2(나만의 기준가) — ① 단골 사전 우선 ② 없으면 같은 제목 최근 3건 중간값.

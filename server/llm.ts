@@ -29,19 +29,26 @@ export type InvokeResult = {
     message: { role: Role; content: string };
     finish_reason: string | null;
   }>;
+  /** 실제 사용된 모델 — lite 폴백 여부를 호출자가 알 수 있게 (#42) */
+  modelUsed: string;
 };
 
 // ── 설정 ──────────────────────────────────────────────
 // 감도/정확도를 바꾸고 싶으면 routers.ts 의 프롬프트(가격 추정 규칙)를 고치세요.
 // 모델 폴백: 1차(정확) → 일시적 과부하(503 등)면 가벼운 모델로 자동 대체 → 첫 분석 실패 최소화.
 // 2026-06 기준 2.0 계열은 종료 → 2.5 flash(정확) ↔ 2.5 flash-lite(가볍고 덜 붐빔)로 이중화.
-const MODELS = ["gemini-2.5-flash", "gemini-2.5-flash-lite"] as const;
+// LLM_MODELS 환경변수로 교체 가능 (쉼표 구분, 앞이 1차)
+const MODELS: readonly string[] = (process.env.LLM_MODELS?.split(",").map((s) => s.trim()).filter(Boolean)) ?? [
+  "gemini-2.5-flash",
+  "gemini-2.5-flash-lite",
+];
 const ENDPOINT =
   "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions";
 
 // 일시적 오류(과부하/혼잡/속도제한)일 때 모델당 자동 재시도. 폴백이 있으니 짧게.
 const RETRYABLE_STATUS = new Set([429, 500, 502, 503, 504]);
-const RETRY_DELAYS_MS = [700, 1500];
+// #42: 1차(정확) 모델의 재시도 예산을 늘려 lite 폴백 빈도를 줄인다 (lite는 마지막 보루)
+const RETRY_DELAYS_MS = [800, 2000, 4500];
 
 function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -88,7 +95,15 @@ export async function invokeLLM(params: InvokeParams): Promise<InvokeResult> {
   // 1차 모델부터 시도 → 일시적 과부하(503 등)로 재시도까지 소진되면 다음(가벼운) 모델로 폴백.
   for (let m = 0; m < MODELS.length; m++) {
     const model = MODELS[m];
-    const payload = { model, messages, max_tokens: maxTokens };
+    // #42·#33: JSON 응답을 프롬프트 유도에만 맡기지 않고 네이티브 JSON 모드로 강제
+    // (Gemini OpenAI 호환 엔드포인트의 response_format=json_object — 필드 누락·코드펜스 사고 감소)
+    const wantsJson = !!params.response_format;
+    const payload = {
+      model,
+      messages,
+      max_tokens: maxTokens,
+      ...(wantsJson ? { response_format: { type: "json_object" } } : {}),
+    };
 
     for (let attempt = 0; attempt <= RETRY_DELAYS_MS.length; attempt++) {
       let response: Response;
@@ -132,7 +147,7 @@ export async function invokeLLM(params: InvokeParams): Promise<InvokeResult> {
             finish_reason: c?.finish_reason ?? null,
           };
         });
-        return { choices };
+        return { choices, modelUsed: model };
       }
 
       lastStatus = response.status;
