@@ -12,6 +12,8 @@ import { deskNote, jarureuLine, jarureuIdleLine, type JarureuSay } from "@/lib/v
 import JarureuShelf, { shelfScore, unlockedItems } from "@/components/JarureuShelf";
 import SpeakerBadge from "@/components/SpeakerBadge";
 import AccountSheet from "@/components/AccountSheet";
+import InstallGuideSheet from "@/components/InstallGuideSheet";
+import { useInstall } from "@/lib/install";
 import { useEffect, useRef, useState } from "react";
 import { ChevronRight, Check, Eye, EyeOff } from "lucide-react";
 
@@ -48,6 +50,25 @@ type Props = {
 export default function HomeTab({ onGoRecords, job, onOpenConfirm, onCompleteDraft }: Props) {
   // 계정 시트 — 프로필 칩에서 (구조 재편: 계정 기능은 탭이 아니라 칩 뒤로)
   const [showAccount, setShowAccount] = useState(false);
+
+  // #40 — 설치 유도: 미설치 환경에서만, 한 번 닫으면 다시 안 보임(계정 시트에 상시 입구)
+  const { standalone, canPrompt, promptInstall } = useInstall();
+  const [installDismissed, setInstallDismissed] = useState<boolean>(() => {
+    try { return localStorage.getItem("geojilog:install-dismissed") === "1"; } catch { return true; }
+  });
+  const [showInstallGuide, setShowInstallGuide] = useState(false);
+  function dismissInstall() {
+    setInstallDismissed(true);
+    try { localStorage.setItem("geojilog:install-dismissed", "1"); } catch { /* 무시 */ }
+  }
+  async function handleInstall() {
+    if (canPrompt) {
+      const ok = await promptInstall();
+      if (ok) dismissInstall();
+    } else {
+      setShowInstallGuide(true);
+    }
+  }
   const { isAuthenticated } = useAuth();
   const { data: entries = [] } = trpc.savings.list.useQuery(undefined, { enabled: isAuthenticated });
   const level = Math.min(1, recentWeekProfit(entries as Entry[]) / WEEKLY_GOAL);
@@ -280,6 +301,19 @@ export default function HomeTab({ onGoRecords, job, onOpenConfirm, onCompleteDra
         </span>
       </button>
 
+      {/* #40 — 설치 유도 (미설치 + 미해제일 때만, 조용한 한 줄) */}
+      {!standalone && !installDismissed && (
+        <div className="mt-2.5 flex items-center gap-2 bg-butler border border-butler-line rounded-card px-4 py-3">
+          <button onClick={handleInstall} className="flex-1 text-left active:opacity-80 transition-opacity">
+            <p className="text-caption font-medium" style={{ color: "#5c5647" }}>홈 화면에 거지로그를 두세요</p>
+            <p className="text-micro" style={{ color: "#a9863f" }}>앱처럼 열리고, 김집사의 저녁 보고도 받을 수 있어요 — 탭해서 설치</p>
+          </button>
+          <button onClick={dismissInstall} aria-label="닫기" className="w-6 h-6 flex items-center justify-center text-ink-faint active:text-ink-soft shrink-0">
+            ✕
+          </button>
+        </div>
+      )}
+
       {/* 오늘의 쪽지 — 갱신 기준은 '기록 행동'(총 기록 수): 기록할 때마다 다음 쪽지로 넘어간다 */}
       {(() => {
         const note = deskNote((entries as Entry[]).length);
@@ -304,6 +338,7 @@ export default function HomeTab({ onGoRecords, job, onOpenConfirm, onCompleteDra
 
 
       {showAccount && <AccountSheet onClose={() => setShowAccount(false)} />}
+      {showInstallGuide && <InstallGuideSheet onClose={() => setShowInstallGuide(false)} />}
     </div>
   );
 }

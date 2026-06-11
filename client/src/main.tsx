@@ -59,6 +59,8 @@ createRoot(document.getElementById("root")!).render(
   </trpc.Provider>
 );
 
+import "@/lib/install"; // PWA 설치 프롬프트 조기 캡처 (#40)
+
 // 웹 푸시용 서비스워커 — 지원 환경에서만 조용히 등록
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {

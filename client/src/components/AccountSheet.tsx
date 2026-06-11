@@ -9,7 +9,9 @@ import ExportSheet from "@/components/ExportSheet";
 import type { SavingsEntry } from "@/lib/ledger";
 import { useEffect } from "react";
 import { toast } from "sonner";
-import { X, Pencil, Check, LogOut, Download, ChevronRight, Bell, BellOff, Loader2 } from "lucide-react";
+import { X, Pencil, Check, LogOut, Download, ChevronRight, Bell, BellOff, Loader2, SquarePlus } from "lucide-react";
+import InstallGuideSheet from "@/components/InstallGuideSheet";
+import { useInstall } from "@/lib/install";
 
 export default function AccountSheet({ onClose }: { onClose: () => void }) {
   const { isAuthenticated, user, logout } = useAuth();
@@ -25,6 +27,8 @@ export default function AccountSheet({ onClose }: { onClose: () => void }) {
   const [editing, setEditing] = useState(false);
   const [draftName, setDraftName] = useState("");
   const [showExport, setShowExport] = useState(false);
+  const { standalone, canPrompt, promptInstall } = useInstall();
+  const [showInstallGuide, setShowInstallGuide] = useState(false);
 
   // ── 웹 푸시 — 김집사의 저녁 보고 (금액 없는 알림) ──
   const { data: pushConfig } = trpc.push.config.useQuery();
@@ -209,6 +213,22 @@ export default function AccountSheet({ onClose }: { onClose: () => void }) {
           </button>
         )}
 
+        {/* 홈 화면에 추가 (#40) — 이미 설치된 환경에선 숨김 */}
+        {!standalone && (
+          <button
+            onClick={async () => {
+              if (canPrompt) await promptInstall();
+              else setShowInstallGuide(true);
+            }}
+            className="w-full flex items-center justify-between bg-white border border-line rounded-card px-4 py-3.5 mb-2.5 active:bg-cream transition-colors"
+          >
+            <span className="flex items-center gap-2.5 text-body text-ink">
+              <SquarePlus size={17} className="text-gold" /> 홈 화면에 추가
+            </span>
+            <ChevronRight size={16} className="text-ink-faint" />
+          </button>
+        )}
+
         {/* 데이터 내보내기 */}
         <button onClick={() => setShowExport(true)} className="w-full flex items-center justify-between bg-white border border-line rounded-card px-4 py-3.5 active:bg-cream transition-colors">
           <span className="flex items-center gap-2.5 text-body text-ink">
@@ -219,6 +239,7 @@ export default function AccountSheet({ onClose }: { onClose: () => void }) {
       </div>
 
       {showExport && <ExportSheet entries={entries as SavingsEntry[]} onClose={() => setShowExport(false)} />}
+      {showInstallGuide && <InstallGuideSheet onClose={() => setShowInstallGuide(false)} />}
     </div>
   );
 }

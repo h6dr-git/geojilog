@@ -66,6 +66,7 @@ export const aiRouter = router({
                   category: { type: "string", enum: ["식비", "카페", "교통", "쇼핑", "문화/여가", "기타"] },
                   estimatedOriginalAmount: { type: "integer" },
                   estimatedActualAmount: { type: "integer" },
+                  estimatedPeopleCount: { type: "integer" }, // #33 — 보이는 음식이 약 몇 인분인지 (1인분=1)
                   reason: { type: "string" },
                   confidence: { type: "string", enum: ["high", "medium", "low"] },
                   cropBox: {
@@ -78,7 +79,7 @@ export const aiRouter = router({
                     additionalProperties: false,
                   },
                 },
-                required: ["title", "category", "estimatedOriginalAmount", "estimatedActualAmount", "reason", "confidence", "cropBox"],
+                required: ["title", "category", "estimatedOriginalAmount", "estimatedActualAmount", "estimatedPeopleCount", "reason", "confidence", "cropBox"],
                 additionalProperties: false,
               },
             },
@@ -91,14 +92,17 @@ export const aiRouter = router({
           title: string; category: string;
           estimatedOriginalAmount: number;
           estimatedActualAmount: number;
+          estimatedPeopleCount: number;
           reason: string; confidence: "high" | "medium" | "low";
           cropBox: { x: number; y: number };
         };
         await logUsageEvent(ctx.user.id, "ai_analyze_image");
         // P2(나만의 기준가) — ① 단골 사전 우선 ② 없으면 같은 제목 최근 3건 중간값.
         // usualActual(평소가)을 함께 줘서, 평소보다 더 아낀 날(#37)을 클라가 표시할 수 있게.
+        // ⚠️ 단, 단체 사진(2인분 이상 추정)이면 사전을 적용하지 않는다 — 1인분 단가가 총액 추정을 덮어쓰던 버그(#33)
         let prior: { originalAmount: number; actualAmount: number; date: string; usualActual?: number; source: "dict" | "history" } | null = null;
         try {
+          if ((parsed.estimatedPeopleCount ?? 1) < 2) {
           const dict = await getItemByName(ctx.user.id, parsed.title);
           if (dict) {
             prior = {
@@ -111,6 +115,7 @@ export const aiRouter = router({
           } else {
             const prev = await getLatestEntryByTitle(ctx.user.id, parsed.title);
             if (prev) prior = { originalAmount: prev.originalAmount, actualAmount: prev.actualAmount, date: prev.date, usualActual: prev.actualAmount, source: "history" };
+          }
           }
         } catch { /* 조회 실패해도 분석 결과는 정상 반환 */ }
         return { ...parsed, imageUrl: `/manus-storage/${key}`, prior };

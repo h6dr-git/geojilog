@@ -17,6 +17,14 @@ export default function EntryDetailSheet({
   onClose: () => void;
 }) {
   const utils = trpc.useUtils();
+  // #37 — 단골 사전의 '평소가'로 세 층 가격(시중가→평소가→오늘가) 표시
+  const { data: dictItems = [] } = trpc.items.list.useQuery();
+  const dictHit = (dictItems as { name: string; usualActual: number }[]).find(
+    (it) => it.name.trim().toLowerCase() === entry.title.trim().toLowerCase()
+  );
+  const usual = dictHit?.usualActual;
+  // 평소가가 오늘가와 시중가 사이에 있을 때만 세 층이 의미 있다
+  const threeLayer = usual != null && entry.actualAmount < usual && usual < entry.originalAmount;
   const updateEntry = trpc.savings.update.useMutation({ onSuccess: () => utils.savings.list.invalidate() });
   const deleteEntry = trpc.savings.delete.useMutation({ onSuccess: () => utils.savings.list.invalidate() });
   const uploadImage = trpc.ai.uploadImage.useMutation();
@@ -148,14 +156,27 @@ export default function EntryDetailSheet({
 
             <p className="text-title font-semibold text-ink">{entry.title}</p>
 
-            {/* 금액 */}
-            <div className="flex items-baseline justify-between mt-3 bg-emerald-50 rounded-card px-4 py-3">
-              <span className="text-caption text-ink-soft tabular-nums">
-                <span className="line-through">₩{fmt(entry.originalAmount)}</span>
-                <span className="mx-1.5 text-ink-faint">→</span>
-                <span>₩{fmt(entry.actualAmount)}</span>
-              </span>
-              <span className="font-mono text-title font-bold text-emerald-600 tabular-nums">+₩{fmt(entry.profit)}</span>
+            {/* 금액 — #37: 평소보다 더 아낀 날은 세 층(시중가→평소가→오늘가)으로 */}
+            <div className="mt-3 bg-emerald-50 rounded-card px-4 py-3">
+              <div className="flex items-baseline justify-between">
+                <span className="text-caption text-ink-soft tabular-nums">
+                  <span className="line-through">₩{fmt(entry.originalAmount)}</span>
+                  <span className="mx-1.5 text-ink-faint">→</span>
+                  {threeLayer && (
+                    <>
+                      <span className="line-through text-gold/80">₩{fmt(usual!)}</span>
+                      <span className="mx-1.5 text-ink-faint">→</span>
+                    </>
+                  )}
+                  <span>₩{fmt(entry.actualAmount)}</span>
+                </span>
+                <span className="font-mono text-title font-bold text-emerald-600 tabular-nums">+₩{fmt(entry.profit)}</span>
+              </div>
+              {threeLayer && (
+                <p className="text-micro mt-1.5" style={{ color: "#B07F1E" }}>
+                  ✨ 평소(₩{fmt(usual!)})보다 ₩{fmt(usual! - entry.actualAmount)} 더 아낀 날
+                </p>
+              )}
             </div>
 
             {/* 메모 · AI 근거 */}

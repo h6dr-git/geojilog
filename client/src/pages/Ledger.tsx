@@ -154,11 +154,17 @@ export default function Ledger({ weekFocusNonce = 0 }: { weekFocusNonce?: number
   // #31 재작업 — 업로드하면 시트가 '내려가고', 분석 시작 연출이 잠깐 뜬다 (완료 리빌의 짝)
   const [startFx, setStartFx] = useState(false);
   const startFxTimer = useRef<number | undefined>(undefined);
+  const [startFxLeaving, setStartFxLeaving] = useState(false);
+  const startFxTimer2 = useRef<number | undefined>(undefined);
   function playStartFx() {
     setShowAdd(false); // 업로드 창은 내려간다 — 분석은 백그라운드 (전역 자르르 필 + 진행 칩이 잇는다)
     setStartFx(true);
+    setStartFxLeaving(false);
     window.clearTimeout(startFxTimer.current);
-    startFxTimer.current = window.setTimeout(() => setStartFx(false), 1500);
+    window.clearTimeout(startFxTimer2.current);
+    // #31 코멘트: 뚝 사라지지 않게 — 1.5초 보여주고 0.5초에 걸쳐 잦아든다
+    startFxTimer.current = window.setTimeout(() => setStartFxLeaving(true), 1500);
+    startFxTimer2.current = window.setTimeout(() => setStartFx(false), 2000);
   }
 
   // ── 업로드 큐 ──
@@ -257,6 +263,8 @@ export default function Ledger({ weekFocusNonce = 0 }: { weekFocusNonce?: number
       originalAmount: String(result.prior?.originalAmount ?? result.estimatedOriginalAmount),
       priorDate: result.prior?.date,
       priorUsualActual: result.prior?.usualActual,
+      // #33 — AI가 2인분 이상으로 보면 엔빵 인원 프리필 (1인 몫 적용은 사용자가 탭)
+      nSplit: (result.estimatedPeopleCount ?? 1) >= 2 ? String(result.estimatedPeopleCount) : undefined,
       actualAmount: String(result.estimatedActualAmount),
       aiReason: result.reason,
       date,
@@ -901,7 +909,7 @@ export default function Ledger({ weekFocusNonce = 0 }: { weekFocusNonce?: number
                           )}
                         </div>
                         {Number(item.nSplit) >= 2 && (
-                          <p className="text-micro text-ink-faint px-1">원가는 총 추정액 ÷ {item.nSplit}명. 실제 지출은 엔빵 청구액으로 직접 고치면 돼요.</p>
+                          <p className="text-micro text-ink-faint px-1">자르르가 약 {item.nSplit}인분으로 봤어요. '1인 몫 적용'을 누르면 총 추정액 ÷ {item.nSplit}. 실제 지출은 엔빵 청구액으로 직접.</p>
                         )}
 
                         <input
@@ -1039,12 +1047,16 @@ export default function Ledger({ weekFocusNonce = 0 }: { weekFocusNonce?: number
         />
       )}
 
-      {/* #31 — 분석 시작 연출 (1.5초, 완료 리빌의 짝) */}
+      {/* #31 — 분석 시작 연출 (완료 리빌의 짝). 끝날 땐 0.5초 페이드아웃으로 잦아든다 */}
       {startFx && (
         <div
           className="fixed inset-0 z-[70] flex flex-col items-center justify-center pointer-events-none"
-          style={{ background: "rgba(22,32,26,0.85)", animation: "adFade .2s ease" }}
+          style={{
+            background: "rgba(22,32,26,0.85)",
+            animation: startFxLeaving ? "sfxOut .5s ease forwards" : "adFade .25s ease",
+          }}
         >
+          <style>{`@keyframes sfxOut{from{opacity:1}to{opacity:0}}@keyframes adFade{from{opacity:0}to{opacity:1}}`}</style>
           <div style={{ animation: "prop-in .5s cubic-bezier(.2,.8,.2,1) both" }}>
             <Jarureu level={0.5} size={96} analyzing />
           </div>
