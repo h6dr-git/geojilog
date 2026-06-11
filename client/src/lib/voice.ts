@@ -74,6 +74,18 @@ export function deskNote(recordCount: number): DeskNote {
   return { speaker: "jarureu", text: JARUREU_NOTES[idx % JARUREU_NOTES.length] };
 }
 
+// 자르르 — 집무실 상주 인사 (시간대별 · 당위/숫자 없음)
+// 집무실 말풍선은 자르르 전용: 김집사 인사는 귀속 혼동 피드백으로 퇴장(김집사 채널 = 쪽지·푸시·결산)
+export function jarureuIdleLine(): string {
+  const h = new Date().getHours();
+  if (h < 6) return "흐냐… 늦었네. 왔어…?";
+  if (h < 11) return "좋은 아침!! 기지개 쭉—";
+  if (h < 14) return "벌써 점심때다~ 오늘도 자르르!";
+  if (h < 18) return "나른한 오후야아… 흐암.";
+  if (h < 22) return "오늘 하루도 수고했어!!";
+  return "하루 마감할 시간이야~ 같이 닫자!";
+}
+
 // 자르르 — 집무실에서 탭했을 때 (안전 로비 — 숫자 노출 금지)
 export const JARUREU_FED_LINES = [
   "오늘도 아꼈다!! 배부르다아~",

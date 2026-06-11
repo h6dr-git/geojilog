@@ -3,7 +3,7 @@
 // 월간 결산·이달의 카드는 '서재' 탭으로 이사. 행 탭 → 상세 시트에서 보기·수정·삭제.
 // ============================================================
 
-import { useState, useRef, useCallback, useMemo } from "react";
+import { useState, useRef, useCallback, useMemo, useEffect } from "react";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
@@ -46,7 +46,7 @@ interface QueueItem {
 }
 
 // ── 메인 컴포넌트 ─────────────────────────────────────────────
-export default function Ledger({ initialFocus = null }: { initialFocus?: "week" | null }) {
+export default function Ledger({ weekFocusNonce = 0 }: { weekFocusNonce?: number }) {
   const { isAuthenticated, loading: authLoading } = useAuth();
 
   const utils = trpc.useUtils();
@@ -86,14 +86,15 @@ export default function Ledger({ initialFocus = null }: { initialFocus?: "week" 
     return next;
   });
 
-  // ── 주간 딥링크 (회장님 '주간 결산' → 이번 주 기록만) ──
-  const [weekFilter, setWeekFilter] = useState<{ start: string; end: string } | null>(() => {
-    if (initialFocus !== "week") return null;
+  // ── 주간 딥링크 (서재 '주간 보고' → 이번 주 기록만) — keep-mounted라 nonce 증가로 신호받음 ──
+  const [weekFilter, setWeekFilter] = useState<{ start: string; end: string } | null>(null);
+  useEffect(() => {
+    if (weekFocusNonce <= 0) return;
     const e = new Date(); e.setHours(0, 0, 0, 0);
     const s = new Date(e); s.setDate(s.getDate() - 6);
     const f = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-    return { start: f(s), end: f(e) };
-  });
+    setWeekFilter({ start: f(s), end: f(e) });
+  }, [weekFocusNonce]);
 
   // ── 데이터 (서버가 날짜순 정렬) ──
   const monthEntries = useMemo(

@@ -33,8 +33,8 @@ function emptyData(imageUrl: string, date?: string): Prefill {
 
 export default function Shell() {
   const [tab, setTab] = useState<MainNavTab>("home");
-  // 장부 딥링크 — 회장님 탭 '주간 결산' → 장부 달력의 주간 상세로 바로
-  const [ledgerFocus, setLedgerFocus] = useState<"week" | null>(null);
+  // 서재 '주간 보고' → 장부 주간 필터 딥링크 — keep-mounted 구조라 nonce 신호로 전달
+  const [weekFocusNonce, setWeekFocusNonce] = useState(0);
   const [job, setJob] = useState<CaptureJob | null>(null);
   const [confirmData, setConfirmData] = useState<Prefill | null>(null);
   const cameraRef = useRef<HTMLInputElement>(null);
@@ -142,11 +142,10 @@ export default function Shell() {
     });
   }
   function changeTab(t: MainNavTab) {
-    setLedgerFocus(null); // 일반 탭 이동 시 딥링크 초기화
     setTab(t);
   }
   function openWeeklyLedger() {
-    setLedgerFocus("week");
+    setWeekFocusNonce((n) => n + 1);
     setTab("records");
   }
   function onResolved() {
@@ -176,19 +175,24 @@ export default function Shell() {
         <>
           <LoginFailNotice />
 
-          {/* 탭 콘텐츠 — key로 가벼운 전환 트랜지션 */}
-          <main key={tab} className="animate-tab-in">
-            {tab === "home" && (
+          {/* 탭 콘텐츠 — 전부 마운트 유지, 숨김으로 전환.
+              조건부 렌더(언마운트)는 장부 분석 큐·작성 중 입력을 날렸다(치명 버그 #27).
+              전환 애니메이션은 transform 잔류·언마운트 문제로 제거. */}
+          <main>
+            <div className={tab === "home" ? "" : "hidden"}>
               <HomeTab
-                onCapture={triggerCapture}
                 onGoRecords={() => changeTab("records")}
                 job={job}
                 onOpenConfirm={openConfirmFromJob}
                 onCompleteDraft={completeDraft}
               />
-            )}
-            {tab === "records" && <Ledger initialFocus={ledgerFocus} />}
-            {tab === "profile" && <Profile onOpenWeekly={openWeeklyLedger} />}
+            </div>
+            <div className={tab === "records" ? "" : "hidden"}>
+              <Ledger weekFocusNonce={weekFocusNonce} />
+            </div>
+            <div className={tab === "profile" ? "" : "hidden"}>
+              <Profile onOpenWeekly={openWeeklyLedger} />
+            </div>
           </main>
 
           {/* 다른 탭에 있을 때 비차단 알림 칩 — 탭바 위로 띄운다 */}

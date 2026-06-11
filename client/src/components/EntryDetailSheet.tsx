@@ -36,10 +36,10 @@ export default function EntryDetailSheet({
       });
       const up = await uploadImage.mutateAsync({ imageBase64: base64, mimeType: file.type || "image/jpeg" });
       await updateEntry.mutateAsync({ id: entry.id, imageUrl: up.imageUrl });
-      toast.success(entry.imageUrl ? "사진을 교체했습니다" : "사진을 붙였습니다");
-      onClose(); // 목록 갱신된 모습으로
-    } catch {
-      toast.error("사진 업로드에 실패했습니다");
+      setImgOverride(up.imageUrl); // 시트를 닫지 않고 바로 보여준다
+      toast.success(imageUrl ? "사진을 교체했습니다" : "사진을 붙였습니다");
+    } catch (e) {
+      toast.error(`사진 업로드 실패: ${(e as Error)?.message ?? "알 수 없는 오류"}`);
     } finally {
       setUploadingPhoto(false);
     }
@@ -48,6 +48,8 @@ export default function EntryDetailSheet({
   const [editing, setEditing] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [showPhoto, setShowPhoto] = useState(false); // 사진 탭 = 사진 확대 (관습 그대로 — #20 철회 반영)
+  const [imgOverride, setImgOverride] = useState<string | null>(null); // 사진 교체 직후 즉시 반영용
+  const imageUrl = imgOverride ?? entry.imageUrl;
   const [form, setForm] = useState({
     date: entry.date,
     title: entry.title,
@@ -102,6 +104,18 @@ export default function EntryDetailSheet({
         style={{ animation: "edUp .28s cubic-bezier(.2,.8,.2,1)" }}
         onClick={(e) => e.stopPropagation()}
       >
+        {/* 사진 선택 입력 — 반드시 전파 차단 영역(시트 내부)에 둘 것.
+            오버레이 직속에 두면 프로그램적 click()이 버블링돼 onClose가 시트를 언마운트시켜
+            사진을 골라도 받을 input이 사라진다 (#24 버그의 원인) */}
+        <input
+          ref={photoInputRef}
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onClick={(e) => e.stopPropagation()}
+          onChange={(e) => { handlePhotoPick(e.target.files?.[0] ?? null); e.target.value = ""; }}
+        />
+
         <div className="flex items-center justify-between mb-3">
           <div className="w-8" />
           <span className="text-body font-medium text-ink">{editing ? "기록 수정" : "기록 상세"}</span>
@@ -112,12 +126,12 @@ export default function EntryDetailSheet({
 
         {/* 사진 — 탭하면 '사진이' 커진다 (확대 아이콘은 확대를 해야 함 — #20 철회 반영).
             공유 카드 진입은 '카드 스킨 프로젝트'에서 별도 재설계 예정 */}
-        {entry.imageUrl && !editing && (
+        {imageUrl && !editing && (
           <button
             onClick={() => setShowPhoto(true)}
             className="relative w-full aspect-[4/3] rounded-2xl overflow-hidden bg-line mb-4 active:opacity-90 transition-opacity"
           >
-            <img src={entry.imageUrl} alt="" className="w-full h-full object-cover" />
+            <img src={imageUrl} alt="" className="w-full h-full object-cover" />
             <span className="absolute bottom-2 right-2 w-7 h-7 rounded-full flex items-center justify-center" style={{ background: "rgba(0,0,0,0.35)" }}>
               <Maximize2 size={13} className="text-white" />
             </span>
@@ -208,7 +222,7 @@ export default function EntryDetailSheet({
               className="w-full flex items-center justify-center gap-1.5 py-2.5 text-caption text-ink-soft border border-line rounded-lg active:border-emerald-300 active:text-emerald-600 disabled:opacity-50 transition-colors"
             >
               {uploadingPhoto ? <Loader2 size={13} className="animate-spin" /> : <ImagePlus size={13} />}
-              {entry.imageUrl ? "사진 교체" : "사진 붙이기"}
+              {imageUrl ? "사진 교체" : "사진 붙이기"}
             </button>
             <div className="flex gap-2 pt-1">
               <button
@@ -231,24 +245,15 @@ export default function EntryDetailSheet({
       </div>
 
       {/* 사진 확대 뷰어 — 탭하면 닫힘 */}
-      {showPhoto && entry.imageUrl && (
+      {showPhoto && imageUrl && (
         <div
           className="fixed inset-0 z-[80] flex items-center justify-center px-4"
           style={{ background: "rgba(0,0,0,0.96)", animation: "edFade .2s ease" }}
           onClick={(e) => { e.stopPropagation(); setShowPhoto(false); }}
         >
-          <img src={entry.imageUrl} alt="" className="w-full max-h-[82vh] object-contain rounded-xl" />
+          <img src={imageUrl} alt="" className="w-full max-h-[82vh] object-contain rounded-xl" />
         </div>
       )}
-
-      {/* 사진 선택 입력 */}
-      <input
-        ref={photoInputRef}
-        type="file"
-        accept="image/*"
-        className="hidden"
-        onChange={(e) => { handlePhotoPick(e.target.files?.[0] ?? null); e.target.value = ""; }}
-      />
 
       {confirmDelete && (
         <ConfirmDialog

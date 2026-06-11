@@ -1,18 +1,19 @@
-// 집무실(홈) = "자르르의 방" — 자르르가 화면 주인공. 김집사가 말풍선으로 인사, 단일 기록 액션, 도사 한 줄.
+// 집무실(홈) = "자르르의 방" — 진짜 홈. 기록 행위는 장부에서(인터페이스 철학, 피드백 #28).
+// 말풍선은 자르르 전용(김집사 인사는 귀속 혼동으로 퇴장 — 김집사 채널은 쪽지·결산·푸시).
 // 안전 로비: 수익·통계·결산·내 기록(숫자) 절대 노출 금지.
 import { trpc } from "@/lib/trpc";
-import { APP_NAME, CHARACTER_NAME, josa } from "@/lib/brand";
+import { APP_NAME } from "@/lib/brand";
 import { useAuth } from "@/hooks/useAuth";
 import Jarureu from "@/components/Jarureu";
 import LoginChip from "@/components/LoginChip";
 import { useDrafts, type Draft } from "@/lib/drafts";
 import type { CaptureJob } from "@/lib/capture";
-import { deskNote, jarureuLine, type JarureuSay } from "@/lib/voice";
+import { deskNote, jarureuLine, jarureuIdleLine, type JarureuSay } from "@/lib/voice";
 import JarureuShelf, { shelfScore, unlockedItems } from "@/components/JarureuShelf";
 import SpeakerBadge from "@/components/SpeakerBadge";
 import AccountSheet from "@/components/AccountSheet";
 import { useEffect, useRef, useState } from "react";
-import { Camera, ChevronRight, Check } from "lucide-react";
+import { ChevronRight, Check } from "lucide-react";
 
 const WEEKLY_GOAL = 50000;
 type Entry = { date: string; profit: number; imageUrl?: string | null };
@@ -36,25 +37,15 @@ function lobbyBg(): string {
   return `radial-gradient(130% 52% at 50% 0%, ${top} 0%, ${mid} 26%, rgba(250,248,243,0) 58%), #FAF8F3`;
 }
 
-function butlerGreeting(): string {
-  const h = new Date().getHours();
-  if (h < 6) return "회장님, 깊은 밤까지 고생이 많으십니다.";
-  if (h < 11) return "회장님, 좋은 아침입니다. 오늘 첫 끼도 알뜰히 챙기시지요.";
-  if (h < 14) return "회장님, 점심은 드셨는지요. 한 끼 남겨두시겠습니까.";
-  if (h < 18) return "회장님, 나른한 오후입니다. 한 끼만 기록해 두시지요.";
-  if (h < 22) return "회장님, 오늘 하루도 무탈히 지켜내셨습니다.";
-  return "회장님, 늦은 시각입니다. 오늘의 한 끼만 정리하고 쉬시지요.";
-}
 
 type Props = {
-  onCapture: () => void;
   onGoRecords: () => void;
   job: CaptureJob | null;
   onOpenConfirm: () => void;
   onCompleteDraft: (d: Draft) => void;
 };
 
-export default function HomeTab({ onCapture, onGoRecords, job, onOpenConfirm, onCompleteDraft }: Props) {
+export default function HomeTab({ onGoRecords, job, onOpenConfirm, onCompleteDraft }: Props) {
   // 계정 시트 — 프로필 칩에서 (구조 재편: 계정 기능은 탭이 아니라 칩 뒤로)
   const [showAccount, setShowAccount] = useState(false);
   const { isAuthenticated } = useAuth();
@@ -73,14 +64,6 @@ export default function HomeTab({ onCapture, onGoRecords, job, onOpenConfirm, on
     return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
   })();
   const fedToday = (entries as Entry[]).some((e) => e.date === today);
-  const yesterday = (() => {
-    const d = new Date();
-    d.setDate(d.getDate() - 1);
-    const p2 = (n: number) => String(n).padStart(2, "0");
-    return `${d.getFullYear()}-${p2(d.getMonth() + 1)}-${p2(d.getDate())}`;
-  })();
-  const fedYesterday = (entries as Entry[]).some((e) => e.date === yesterday);
-
   // 살림 선반(B′) — '이달' 복합 점수(건수+만원당 1점). 매달 초기화(피드백), 숫자는 화면에 안 보임.
   const ym = today.slice(0, 7);
   const monthEntries = (entries as Entry[]).filter((e) => e.date.startsWith(ym));
@@ -178,15 +161,15 @@ export default function HomeTab({ onCapture, onGoRecords, job, onOpenConfirm, on
                 aria-hidden="true"
               />
             )}
-            <SpeakerBadge speaker={jarLine ? "jarureu" : "butler"} />
+            <SpeakerBadge speaker="jarureu" />
             <span className="flex-1 text-left">
               {jarLine?.rare && (
                 <span key={jarLine.text + "-tag"} className="block text-micro text-gold font-medium mb-0.5 animate-bubble-in">
                   ✨ 희귀 한 마디
                 </span>
               )}
-              <p key={jarLine?.text ?? "butler"} className="text-body text-ink/85 leading-relaxed animate-bubble-in">
-                {jarLine?.text ?? (analyzingJob ? `${josa(CHARACTER_NAME, "이", "가")} 사진을 살펴보는 중이에요…` : butlerGreeting())}
+              <p key={jarLine?.text ?? "idle"} className="text-body text-ink/85 leading-relaxed animate-bubble-in">
+                {jarLine?.text ?? (analyzingJob ? "사진 보고 있어! 잠깐만 기다려줘~" : jarureuIdleLine())}
               </p>
             </span>
           </div>
@@ -198,7 +181,7 @@ export default function HomeTab({ onCapture, onGoRecords, job, onOpenConfirm, on
         <div className="mt-7 flex items-center gap-3 bg-emerald-50 border border-emerald-100 rounded-card p-3.5 shadow-sm">
           <img src={analyzingJob.preview} alt="" className="w-12 h-12 rounded-card object-cover shrink-0" />
           <div className="text-left">
-            <p className="text-body font-medium text-emerald-700">{CHARACTER_NAME}가 분석하고 있어요</p>
+            <p className="text-body font-medium text-emerald-700">자르르가 분석하고 있어요</p>
             <p className="text-micro text-emerald-600">잠시 둘러보고 계셔도 됩니다</p>
           </div>
         </div>
@@ -220,22 +203,7 @@ export default function HomeTab({ onCapture, onGoRecords, job, onOpenConfirm, on
           </div>
           <ChevronRight size={16} className="text-ink-faint shrink-0" />
         </button>
-      ) : (
-        <button
-          onClick={onCapture}
-          className="mt-7 w-full text-white font-semibold py-4 rounded-card flex items-center justify-center gap-2 active:scale-[0.98] transition-transform"
-          style={{ background: "linear-gradient(180deg, #34d399 0%, #10b981 100%)", boxShadow: "0 10px 22px -8px rgba(16,185,129,0.55)" }}
-        >
-          <Camera size={19} /> 사진으로 수익 기록하기
-        </button>
-      )}
-
-      {/* 어제 기록이 비었으면 — 조용한 한 줄 (EXIF 자동 날짜) */}
-      {!fedYesterday && !analyzingJob && !readyJob && !errorJob && (
-        <p className="mt-2 text-center text-micro text-ink-faint">
-          어제 사진이 있다면 그냥 올려보세요 — 날짜는 자르르가 알아서 읽어요
-        </p>
-      )}
+      ) : null /* 기록 버튼 없음 — 기록은 장부에서 (인터페이스 철학) */}
 
       {topDraft && (
         <button onClick={() => onCompleteDraft(topDraft)} className="mt-2.5 w-full flex items-center gap-3 border border-amber-200 bg-amber-50 rounded-card px-3.5 py-3 text-left active:bg-amber-100 transition-colors">
