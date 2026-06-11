@@ -1,5 +1,5 @@
-// 하단 탭바 — 떠 있는 글래스 필(반투명+블러) 1차 시도. (피드백 #35: 인스타 신UI/리퀴드 글래스 차용)
-// 참고: 실제 인스타 디자인은 미확인 — iOS 글래스 문법(반투명·블러·부유 필)으로 근사. 회장님 평가 후 조정.
+// 하단 탭바 v2 — 인스타 신UI 문법(박상욱 제공 스크린샷 기준):
+// 아이콘만(라벨 없음) · 순백에 가까운 부유 필 · 활성 = 진하고 살짝 큰 아이콘. (#35)
 import { Home, BookText, Library } from "lucide-react";
 
 export type MainNavTab = "home" | "records" | "profile";
@@ -19,17 +19,18 @@ export default function BottomNav({
 }) {
   return (
     <nav
-      className="fixed left-1/2 -translate-x-1/2 z-40 w-[calc(100%-2.5rem)] max-w-sm"
-      style={{ bottom: "max(0.8rem, env(safe-area-inset-bottom))" }}
+      className="fixed left-1/2 -translate-x-1/2 z-40 w-[calc(100%-3.5rem)] max-w-xs"
+      style={{ bottom: "max(0.9rem, env(safe-area-inset-bottom))" }}
     >
       <div
-        className="flex p-1 rounded-full border"
+        className="flex items-center rounded-full border px-2"
         style={{
-          background: "rgba(255, 255, 255, 0.68)",
-          backdropFilter: "blur(20px) saturate(1.7)",
-          WebkitBackdropFilter: "blur(20px) saturate(1.7)",
-          borderColor: "rgba(255, 255, 255, 0.55)",
-          boxShadow: "0 10px 32px rgba(26, 26, 23, 0.14), inset 0 1px 0 rgba(255, 255, 255, 0.65)",
+          background: "rgba(255, 255, 255, 0.92)",
+          backdropFilter: "blur(18px) saturate(1.5)",
+          WebkitBackdropFilter: "blur(18px) saturate(1.5)",
+          borderColor: "rgba(26, 26, 23, 0.05)",
+          boxShadow: "0 8px 28px rgba(26, 26, 23, 0.16)",
+          height: "58px",
         }}
       >
         {TABS.map(({ key, label, Icon }) => {
@@ -38,21 +39,15 @@ export default function BottomNav({
             <button
               key={key}
               onClick={() => onChange(key)}
+              aria-label={label}
               aria-current={active ? "page" : undefined}
-              className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-full text-caption transition-all duration-200 ${
-                active ? "font-semibold text-emerald-700" : "text-ink-soft active:text-ink"
-              }`}
-              style={
-                active
-                  ? {
-                      background: "rgba(255, 255, 255, 0.92)",
-                      boxShadow: "0 2px 10px rgba(26, 26, 23, 0.10), inset 0 1px 0 rgba(255,255,255,0.9)",
-                    }
-                  : undefined
-              }
+              className="flex-1 h-full flex items-center justify-center active:scale-90 transition-transform"
             >
-              <Icon size={17} strokeWidth={active ? 2.3 : 1.9} />
-              {label}
+              <Icon
+                size={active ? 26 : 24}
+                strokeWidth={active ? 2.5 : 1.8}
+                className={`transition-all duration-150 ${active ? "text-ink" : "text-ink-faint"}`}
+              />
             </button>
           );
         })}

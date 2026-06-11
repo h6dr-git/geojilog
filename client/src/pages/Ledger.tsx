@@ -42,6 +42,7 @@ interface QueueItem {
   memo: string;
   imageUrl?: string;
   priorDate?: string; // P2 — 지난 확정가가 적용된 경우
+  nSplit?: string;     // #33 엔빵 — 인원 (원가=총 추정액÷n, 실제는 청구액 직접 입력)
   aiOriginalAmount?: number;
   aiActualAmount?: number;
 }
@@ -152,6 +153,7 @@ export default function Ledger({ weekFocusNonce = 0 }: { weekFocusNonce?: number
   // ── 수동 입력 ──
   const [showManual, setShowManual] = useState(false);
   const [manualTitleEdited, setManualTitleEdited] = useState(false);
+  const [manualSplit, setManualSplit] = useState(""); // #33 엔빵 인원
   const [manualForm, setManualForm] = useState(() => {
     const d = todayStr();
     return { date: d, title: makeDefaultTitle(d, "식비"), category: "식비", originalAmount: "", actualAmount: "", description: "", memo: "" };
@@ -840,6 +842,40 @@ export default function Ledger({ weekFocusNonce = 0 }: { weekFocusNonce?: number
                           <p className="text-micro text-emerald-600/80">원가는 지난번 확정가 기준 ({item.priorDate.slice(5).replace("-", ".")})</p>
                         )}
 
+                        {/* #33 엔빵 — 한 테이블을 찍었을 때: 원가(총 추정액)÷인원, 실제는 청구액을 직접 */}
+                        <div className="flex items-center gap-2 px-1 text-micro text-ink-soft">
+                          <span className="font-mono uppercase tracking-wider text-ink-faint">엔빵</span>
+                          <input
+                            type="number"
+                            min={2}
+                            max={30}
+                            placeholder="인원"
+                            value={item.nSplit ?? ""}
+                            onChange={e => updateQueueItem(item.id, { nSplit: e.target.value })}
+                            className="w-12 border-0 border-b border-line bg-transparent text-right tabular-nums text-ink-soft focus:border-emerald-400 focus:outline-none"
+                          />
+                          명
+                          {Number(item.nSplit) >= 2 && (
+                            <button
+                              onClick={() => {
+                                const n = Number(item.nSplit);
+                                const baseO = item.aiOriginalAmount ?? (Number(item.originalAmount) || 0);
+                                const baseA = item.aiActualAmount ?? (Number(item.actualAmount) || 0);
+                                updateQueueItem(item.id, {
+                                  originalAmount: String(Math.round(baseO / n)),
+                                  actualAmount: String(Math.round(baseA / n)),
+                                });
+                              }}
+                              className="px-2 py-1 rounded-full border border-emerald-200 text-emerald-600 active:bg-emerald-50 transition-colors"
+                            >
+                              1인 몫 적용
+                            </button>
+                          )}
+                        </div>
+                        {Number(item.nSplit) >= 2 && (
+                          <p className="text-micro text-ink-faint px-1">원가는 총 추정액 ÷ {item.nSplit}명. 실제 지출은 엔빵 청구액으로 직접 고치면 돼요.</p>
+                        )}
+
                         <input
                           value={item.memo}
                           onChange={e => updateQueueItem(item.id, { memo: e.target.value })}
@@ -915,6 +951,34 @@ export default function Ledger({ weekFocusNonce = 0 }: { weekFocusNonce?: number
                         onChange={e => setManualForm(f => ({ ...f, actualAmount: e.target.value }))}
                         className="w-full text-body border border-line rounded-lg px-3 py-2 focus:outline-none focus:border-emerald-400" />
                     </div>
+                  </div>
+                  {/* #33 엔빵 — 총액을 적은 뒤 인원으로 나누기 */}
+                  <div className="flex items-center gap-2 text-caption text-ink-soft">
+                    <span>엔빵</span>
+                    <input
+                      type="number" min={2} max={30} placeholder="인원"
+                      value={manualSplit}
+                      onChange={e => setManualSplit(e.target.value)}
+                      className="w-14 border border-line rounded-lg px-2 py-1 text-right tabular-nums focus:outline-none focus:border-emerald-400"
+                    />
+                    명
+                    {Number(manualSplit) >= 2 && manualForm.originalAmount && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const n = Number(manualSplit);
+                          setManualForm(f => ({
+                            ...f,
+                            originalAmount: String(Math.round((Number(f.originalAmount) || 0) / n)),
+                            actualAmount: f.actualAmount ? String(Math.round((Number(f.actualAmount) || 0) / n)) : f.actualAmount,
+                          }));
+                          setManualSplit("");
+                        }}
+                        className="px-2.5 py-1 rounded-full border border-emerald-200 text-emerald-600 active:bg-emerald-50 transition-colors"
+                      >
+                        ÷ 나누기
+                      </button>
+                    )}
                   </div>
                   <div>
                     <label className="text-caption text-ink-soft mb-1 block">메모 (선택)</label>

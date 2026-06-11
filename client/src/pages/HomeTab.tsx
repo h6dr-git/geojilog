@@ -13,7 +13,7 @@ import JarureuShelf, { shelfScore, unlockedItems } from "@/components/JarureuShe
 import SpeakerBadge from "@/components/SpeakerBadge";
 import AccountSheet from "@/components/AccountSheet";
 import { useEffect, useRef, useState } from "react";
-import { ChevronRight, Check } from "lucide-react";
+import { ChevronRight, Check, Eye, EyeOff } from "lucide-react";
 
 const WEEKLY_GOAL = 50000;
 type Entry = { date: string; profit: number; imageUrl?: string | null };
@@ -69,6 +69,20 @@ export default function HomeTab({ onGoRecords, job, onOpenConfirm, onCompleteDra
   const monthEntries = (entries as Entry[]).filter((e) => e.date.startsWith(ym));
   const monthProfit = monthEntries.reduce((s, e) => s + (e.profit || 0), 0);
   const score = shelfScore(monthEntries.length, monthProfit);
+
+  // 이번 달 수익 — 탭 투 리빌(#36 확정): 기본 마스킹, 탭하면 3초 노출 후 다시 가림.
+  // 동기부여(매일 보고 싶은 숫자)와 안전 로비(어깨너머 방어)의 절충 — 잔액 숨김은 핀테크 문법 그대로.
+  const [revealed, setRevealed] = useState(false);
+  const revealTimer = useRef<number | undefined>(undefined);
+  function toggleReveal() {
+    window.clearTimeout(revealTimer.current);
+    if (revealed) {
+      setRevealed(false);
+      return;
+    }
+    setRevealed(true);
+    revealTimer.current = window.setTimeout(() => setRevealed(false), 3000);
+  }
 
   // 이번 주(월~일) 기록 점 7개 — 돈 액수 없는 상태 표시 (집무실 안 A · 스트릭은 보류)
   const weekDots = (() => {
@@ -246,6 +260,23 @@ export default function HomeTab({ onGoRecords, job, onOpenConfirm, onCompleteDra
               </span>
             </span>
           ))}
+        </span>
+      </button>
+
+      {/* 이번 달 수익 — 기본 마스킹·탭 투 리빌 (#36): 노출은 3초, 어깨너머엔 ●●●● */}
+      <button
+        onClick={toggleReveal}
+        className="mt-2.5 w-full flex items-center justify-between bg-white border border-line rounded-card px-4 py-3 active:bg-line/30 transition-colors"
+      >
+        <span className="text-caption text-ink-soft flex items-center gap-1.5">
+          {revealed ? <Eye size={13} className="text-emerald-500" /> : <EyeOff size={13} className="text-ink-faint" />}
+          이번 달 수익
+        </span>
+        <span
+          key={revealed ? "on" : "off"}
+          className={`font-mono text-body font-semibold tabular-nums animate-bubble-in ${revealed ? "text-emerald-600" : "text-ink-faint tracking-widest"}`}
+        >
+          {revealed ? `+₩${monthProfit.toLocaleString("ko-KR")}` : "₩ ●●●●●"}
         </span>
       </button>
 
