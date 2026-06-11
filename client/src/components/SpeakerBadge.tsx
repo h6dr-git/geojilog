@@ -1,13 +1,16 @@
-// 화자 배지 — "집"/"자" 텍스트 마크를 대체하는 미니 아이콘 (피드백: 텍스트 프로필 마크 개선)
-// 자르르=미니 단지 / 김집사=보타이 / 도사=댓잎. 전부 코드 SVG(프로토타입 톤).
-export type Speaker = "dosa" | "butler" | "jarureu";
+// 화자 배지 — 미니 아이콘. 쌀집군=미니 계산기 / 회시생=넥타이 / 도사=댓잎. (#41 v3)
+export type Speaker = "dosa" | "cpa" | "ssal";
 
-function JarIcon() {
+function CalcIcon() {
   return (
-    <svg width="15" height="16" viewBox="0 0 100 108">
-      <path d="M27,27 C9,36 9,72 22,88 C31,98 69,98 78,88 C91,72 91,36 73,27 Z" fill="#f2c94c" stroke="#a3744a" strokeWidth="6" />
-      <ellipse cx="50" cy="27" rx="23" ry="6.5" fill="#cda35f" stroke="#8f6336" strokeWidth="5" />
-      <circle cx="50" cy="15" r="5" fill="#e8b84a" stroke="#8f6336" strokeWidth="4" />
+    <svg width="14" height="16" viewBox="0 0 100 118">
+      <rect x="10" y="8" width="80" height="102" rx="12" fill="#3a3a40" stroke="#1b1b1f" strokeWidth="6" />
+      <rect x="20" y="22" width="60" height="22" rx="5" fill="#cfd9c4" />
+      {[0, 1, 2].map((r) =>
+        [0, 1, 2].map((c) => (
+          <rect key={`${r}${c}`} x={20 + c * 22} y={54 + r * 18} width="16" height="12" rx="4" fill={r === 2 && c === 2 ? "#E0A92E" : "#5a5a64"} />
+        ))
+      )}
     </svg>
   );
 }
@@ -31,8 +34,8 @@ function LeafIcon() {
 
 const BG: Record<Speaker, string> = {
   dosa: "#e6efe2",
-  butler: "#eadfc6",
-  jarureu: "#f7e9c4",
+  cpa: "#eadfc6",
+  ssal: "#e4e4ea",
 };
 
 export default function SpeakerBadge({ speaker, size = 24 }: { speaker: Speaker; size?: number }) {
@@ -42,7 +45,7 @@ export default function SpeakerBadge({ speaker, size = 24 }: { speaker: Speaker;
       style={{ width: size, height: size, background: BG[speaker] }}
       aria-hidden="true"
     >
-      {speaker === "jarureu" ? <JarIcon /> : speaker === "butler" ? <BowtieIcon /> : <LeafIcon />}
+      {speaker === "ssal" ? <CalcIcon /> : speaker === "cpa" ? <BowtieIcon /> : <LeafIcon />}
     </span>
   );
 }

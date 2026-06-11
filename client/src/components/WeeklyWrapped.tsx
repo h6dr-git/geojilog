@@ -3,10 +3,10 @@
 // 좌/우 탭으로 이동, 상단 프로그레스 바. 사적 화면이라 숫자 노출 OK.
 import { useEffect, useMemo, useState } from "react";
 import { X, ChevronRight, Maximize2 } from "lucide-react";
-import Jarureu from "@/components/Jarureu";
+import SsalCalc from "@/components/SsalCalc";
 import CaptureView from "@/components/CaptureView";
 import { SavingsEntry, fmt } from "@/lib/ledger";
-import { butlerWeeklyComment, dosaLineOfDay } from "@/lib/voice";
+import { cpaWeeklyComment, dosaLineOfDay } from "@/lib/voice";
 import {
   CARD_THEMES, CARD_STICKERS, type StickerId,
   loadKit, saveKit, themeById,
@@ -77,7 +77,7 @@ export default function WeeklyWrapped({
     const arr = Object.entries(m).sort((a, b) => b[1] - a[1]);
     return arr[0] ? { name: arr[0][0], profit: arr[0][1] } : null;
   }, [week]);
-  const butler = useMemo(() => butlerWeeklyComment(week.length, profit), [week.length, profit]);
+  const butler = useMemo(() => cpaWeeklyComment(week.length, profit), [week.length, profit]);
   const dosa = useMemo(dosaLineOfDay, []);
 
   // 스텝 0 진입 시 +₩ 카운트업
@@ -145,7 +145,7 @@ export default function WeeklyWrapped({
         {step === 0 && (
           <div key={0} style={{ animation: "wwRise .4s ease both" }}>
             <p className="text-micro tracking-[0.3em] font-mono mb-2" style={{ color: "#7E8C82" }}>WEEKLY REPORT</p>
-            <p className="text-body" style={{ color: "#d8cfae" }}>김집사의 주간 결산</p>
+            <p className="text-body" style={{ color: "#d8cfae" }}>회시생의 주간 결산</p>
             <p className="text-caption mt-1 font-mono" style={{ color: "#5E6A60" }}>{mmdd(start)} – {mmdd(end)}</p>
             <p className="mt-8 text-micro" style={{ color: "#7E8C82" }}>이번 주 수익</p>
             <p className="font-mono font-extrabold tabular-nums leading-none mt-2" style={{ fontSize: "52px", color: "#34d399" }}>
@@ -165,7 +165,7 @@ export default function WeeklyWrapped({
                   <img src={best.imageUrl} alt="" className="w-44 h-44 rounded-2xl object-cover mx-auto" style={{ border: "2px solid rgba(224,169,46,0.4)" }} />
                 ) : (
                   <div className="w-44 h-44 rounded-2xl mx-auto flex items-center justify-center" style={{ background: "rgba(255,255,255,0.06)" }}>
-                    <Jarureu level={0.8} size={96} />
+                    <SsalCalc level={0.8} size={84} display={`+${fmt(profit)}`} />
                   </div>
                 )}
                 <p className="mt-4 text-title font-semibold" style={{ color: "#F4EFE3" }}>{best.title}</p>
@@ -180,8 +180,8 @@ export default function WeeklyWrapped({
 
         {step === 2 && (
           <div key={2} style={{ animation: "wwRise .4s ease both" }}>
-            <p className="text-micro tracking-[0.3em] font-mono mb-6" style={{ color: "#7E8C82" }}>BUTLER'S NOTE</p>
-            <span className="w-10 h-10 rounded-xl inline-flex items-center justify-center text-body font-medium mb-5" style={{ background: "#eadfc6", color: "#a9863f" }}>집</span>
+            <p className="text-micro tracking-[0.3em] font-mono mb-6" style={{ color: "#7E8C82" }}>CPA'S NOTE</p>
+            <span className="w-10 h-10 rounded-xl inline-flex items-center justify-center text-body font-medium mb-5" style={{ background: "#eadfc6", color: "#a9863f" }}>회</span>
             <p className="text-title leading-relaxed max-w-[19rem]" style={{ color: "#F4EFE3" }}>{butler}</p>
             <div className="mt-8 space-y-1.5">
               <p className="text-caption" style={{ color: "#9aa89e" }}>기록 {week.length}건</p>

@@ -15,7 +15,7 @@ export default function Onboarding({ onStart, onKakao }: { onStart: () => void; 
       {/* 앱 이름 — 자간 넓은 모노 */}
       <p className="text-body font-mono tracking-[0.4em] text-[#8ba896] mb-10">{APP_NAME}</p>
 
-      {/* 자르르 (골드 글로우) */}
+      {/* 마스코트 (골드 글로우) */}
       <div className="mb-9" style={{ filter: "drop-shadow(0 10px 28px rgba(240,200,80,0.22))" }}>
         <Jarureu level={0.72} size={140} />
       </div>

@@ -6,8 +6,14 @@
 /** 앱 이름 */
 export const APP_NAME = "거지로그";
 
-/** 메인 캐릭터(금 단지) 이름 */
-export const CHARACTER_NAME = "자르르";
+/** 마스코트(쌀집 계산기) 이름 — #41 v3: 자르르(단지) → 쌀집군(계산기) */
+export const CHARACTER_NAME = "쌀집군";
+/** 계산기 몸체 모델명 (JS-40B 변형, 상표 회피) */
+export const CALC_MODEL = "SJ-40B";
+/** 보좌 캐릭터 — 김집사 → 회시생 (#41 v3) */
+export const CPA_NAME = "회시생";
+/** 사용자 호칭 — 회장님 → CEO님 (#41 v3 '예비 세계관') */
+export const USER_TITLE = "CEO님";
 
 /**
  * 한글 받침 유무에 따라 조사를 붙인다.

@@ -1,14 +1,14 @@
-// 집무실(홈) = "자르르의 방" — 진짜 홈. 기록 행위는 장부에서(인터페이스 철학, 피드백 #28).
-// 말풍선은 자르르 전용(김집사 인사는 귀속 혼동으로 퇴장 — 김집사 채널은 쪽지·결산·푸시).
+// 집무실(홈) = "회시생의 사무소" — 진짜 홈. 기록 행위는 장부에서(인터페이스 철학, 피드백 #28).
+// 말풍선 기본 화자는 쌀집군(숫자어) — 회시생 채널은 쪽지·결산·푸시. (#41 v3)
 // 안전 로비: 수익·통계·결산·내 기록(숫자) 절대 노출 금지.
 import { trpc } from "@/lib/trpc";
 import { APP_NAME } from "@/lib/brand";
 import { useAuth } from "@/hooks/useAuth";
-import Jarureu from "@/components/Jarureu";
+import SsalCalc from "@/components/SsalCalc";
 import LoginChip from "@/components/LoginChip";
 import { useDrafts, type Draft } from "@/lib/drafts";
 import type { CaptureJob } from "@/lib/capture";
-import { deskNote, jarureuLine, jarureuIdleLine, type JarureuSay } from "@/lib/voice";
+import { deskNote, ssalDisplay } from "@/lib/voice";
 import JarureuShelf, { shelfScore, unlockedItems } from "@/components/JarureuShelf";
 import SpeakerBadge from "@/components/SpeakerBadge";
 import AccountSheet from "@/components/AccountSheet";
@@ -130,19 +130,30 @@ export default function HomeTab({ onGoRecords, job, onOpenConfirm, onCompleteDra
       };
     });
   })();
-  const [jarLine, setJarLine] = useState<JarureuSay | null>(null);
+  // 말풍선 — 기본 화자 쌀집군(숫자 코드), 살림 해금 알림만 회시생 텍스트. (#41 v3)
+  type Bubble = { speaker: "ssal" | "cpa"; text: string; meaning?: string; rare: boolean };
+  const [jarLine, setJarLine] = useState<Bubble | null>(null);
+  const [showMeaning, setShowMeaning] = useState(false); // 코드 탭 → 뜻 1.5초
+  const meaningTimer = useRef<number | undefined>(undefined);
   const jarTimer = useRef<number | undefined>(undefined);
   const lastLine = useRef<string | null>(null);
-  function say(line: JarureuSay, ms: number) {
+  function say(line: Bubble, ms: number) {
     setJarLine(line);
+    setShowMeaning(false);
     window.clearTimeout(jarTimer.current);
     jarTimer.current = window.setTimeout(() => setJarLine(null), ms);
   }
   function pokeJarureu() {
-    if (jarLine?.rare) return; // 희귀 대사 표시 중엔 탭 잠금 — 연타로 넘어가지 않게(피드백)
-    const line = jarureuLine(fedToday, lastLine.current); // 연속 같은 대사 방지
-    lastLine.current = line.text;
-    say(line, line.rare ? 8000 : 3200); // 희귀 대사는 넉넉히 + 타이머 바 표시
+    if (jarLine?.rare) return; // 희귀 코드 표시 중엔 탭 잠금
+    const c = ssalDisplay(fedToday, lastLine.current);
+    lastLine.current = c.code;
+    say({ speaker: "ssal", text: c.code, meaning: c.meaning, rare: c.rare }, c.rare ? 8000 : 3200);
+  }
+  function revealMeaning() {
+    if (!jarLine?.meaning) return;
+    setShowMeaning(true);
+    window.clearTimeout(meaningTimer.current);
+    meaningTimer.current = window.setTimeout(() => setShowMeaning(false), 1500);
   }
 
   // 살림 해금 연출 — 새 소품이 생기면 자르르가 알리고 소품이 통통 튀며 등장 (월별 1회)
@@ -159,7 +170,7 @@ export default function HomeTab({ onGoRecords, job, onOpenConfirm, onCompleteDra
         const newest = unlockedItems(score)[unlockedCount - 1];
         setNewProp(newest.key);
         window.setTimeout(() => setNewProp(null), 2600);
-        say({ text: `새 살림이 생겼어!! ${newest.name} 봐봐~`, rare: true }, 8000);
+        say({ speaker: "cpa", text: `비품이 추가되었습니다 — ${newest.name}. 사무소가 좋아지는군요.`, rare: true }, 8000);
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -175,10 +186,15 @@ export default function HomeTab({ onGoRecords, job, onOpenConfirm, onCompleteDra
         <LoginChip onClick={() => setShowAccount(true)} />
       </header>
 
-      {/* 자르르 주인공 + 김집사 말풍선 인사 */}
+      {/* 쌀집군 본체 — 디스플레이 = 이번 달 수익 (탭 투 리빌 #36과 융합: 기본 마스킹) */}
       <div className="flex flex-col items-center mt-10">
         <div className="relative" onClick={pokeJarureu}>
-          <Jarureu level={level} size={156} analyzing={!!analyzingJob} />
+          <SsalCalc
+            level={level}
+            size={132}
+            analyzing={!!analyzingJob}
+            display={revealed ? `+${monthProfit.toLocaleString("ko-KR")}` : "-----"}
+          />
           <div className="absolute left-1/2 -translate-x-1/2 -bottom-0.5 w-24 h-3.5 rounded-[50%] bg-black/10 blur-md" aria-hidden="true" />
         </div>
 
@@ -202,16 +218,24 @@ export default function HomeTab({ onGoRecords, job, onOpenConfirm, onCompleteDra
                 aria-hidden="true"
               />
             )}
-            <SpeakerBadge speaker="jarureu" />
-            <span className="flex-1 text-left">
+            <SpeakerBadge speaker={jarLine?.speaker ?? "ssal"} />
+            <span className="flex-1 text-left" onClick={revealMeaning}>
               {jarLine?.rare && (
                 <span key={jarLine.text + "-tag"} className="block text-micro text-gold font-medium mb-0.5 animate-bubble-in">
-                  ✨ 희귀 한 마디
+                  ✨ 희귀 코드
                 </span>
               )}
-              <p key={jarLine?.text ?? "idle"} className="text-body text-ink/85 leading-relaxed animate-bubble-in">
-                {jarLine?.text ?? (analyzingJob ? "사진 보고 있어! 잠깐만 기다려줘~" : jarureuIdleLine())}
-              </p>
+              {jarLine?.speaker === "cpa" ? (
+                <p key={jarLine.text} className="text-body text-ink/85 leading-relaxed animate-bubble-in">{jarLine.text}</p>
+              ) : (
+                <p key={(jarLine?.text ?? "idle") + (showMeaning ? "-m" : "")} className="font-mono text-body font-semibold tabular-nums text-ink/85 leading-relaxed animate-bubble-in">
+                  {analyzingJob && !jarLine
+                    ? "······"
+                    : showMeaning && jarLine?.meaning
+                      ? `${jarLine.text} — ${jarLine.meaning}`
+                      : jarLine?.text ?? (fedToday ? "1004" : "8282")}
+                </p>
+              )}
             </span>
           </div>
         </div>
@@ -222,7 +246,7 @@ export default function HomeTab({ onGoRecords, job, onOpenConfirm, onCompleteDra
         <div className="mt-7 flex items-center gap-3 bg-emerald-50 border border-emerald-100 rounded-card p-3.5 shadow-sm">
           <img src={analyzingJob.preview} alt="" className="w-12 h-12 rounded-card object-cover shrink-0" />
           <div className="text-left">
-            <p className="text-body font-medium text-emerald-700">자르르가 분석하고 있어요</p>
+            <p className="text-body font-medium text-emerald-700">쌀집군이 두드리고 있어요</p>
             <p className="text-micro text-emerald-600">잠시 둘러보고 계셔도 됩니다</p>
           </div>
         </div>
@@ -343,7 +367,7 @@ export default function HomeTab({ onGoRecords, job, onOpenConfirm, onCompleteDra
       {/* 오늘의 쪽지 — 갱신 기준은 '기록 행동'(총 기록 수): 기록할 때마다 다음 쪽지로 넘어간다 */}
       {(() => {
         const note = deskNote((entries as Entry[]).length);
-        const LABELS = { dosa: "도사의 한 마디", butler: "김집사의 집무 메모", jarureu: "자르르의 낙서" } as const;
+        const LABELS = { dosa: "도사의 한 마디", cpa: "회시생의 메모", ssal: "쌀집군의 출력" } as const;
         return (
           <div className="mt-10">
             <div className="relative bg-butler border border-butler-line rounded-card px-5 py-5 overflow-hidden">

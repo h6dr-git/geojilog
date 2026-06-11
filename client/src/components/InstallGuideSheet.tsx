@@ -81,7 +81,7 @@ export default function InstallGuideSheet({ onClose }: { onClose: () => void }) 
         </div>
         <p className="text-micro text-gold text-center font-medium mb-1">{label} 기준 안내</p>
         <p className="text-caption text-ink-soft text-center mb-5">
-          홈 화면에 두면 앱처럼 열리고, 김집사의 저녁 보고(알림)도 받을 수 있습니다.
+          홈 화면에 두면 앱처럼 열리고, 회시생의 저녁 보고(알림)도 받을 수 있습니다.
         </p>
 
         <div className="space-y-2.5">

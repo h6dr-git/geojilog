@@ -1,9 +1,9 @@
 // 리빌 연출 — 저장 성공 순간의 도파민. (바이블 §2: 핵심 루프의 도파민 = "+₩ 지켜냄" 리프레임)
-// 다크그린 무대 + 자르르 + 카운트업 +₩ + 김집사 보고 한 줄. 탭하거나 2.6초 뒤 자동으로 사라진다.
+// 다크그린 무대 + 쌀집군 + 카운트업 +₩ + 회시생 보고 한 줄. 탭하거나 2.6초 뒤 자동으로 사라진다.
 import { useEffect, useMemo, useRef, useState } from "react";
-import Jarureu from "@/components/Jarureu";
+import SsalCalc from "@/components/SsalCalc";
 import { onCelebrate, type RevealDetail } from "@/lib/celebrate";
-import { butlerSaveLine } from "@/lib/voice";
+import { cpaSaveLine, profitEasterEgg } from "@/lib/voice";
 
 const AUTO_CLOSE_MS = 2600;
 
@@ -40,7 +40,12 @@ export default function SaveReveal() {
     return () => cancelAnimationFrame(raf);
   }, [detail]);
 
-  const butlerLine = useMemo(() => (detail ? butlerSaveLine(detail.profit) : ""), [detail]);
+  // 회시생 보고 + 금액 이스터에그(#41 v3: +₩1,004 = 천사의 수익 등)
+  const butlerLine = useMemo(() => {
+    if (!detail) return "";
+    const egg = profitEasterEgg(detail.profit);
+    return egg ? `${cpaSaveLine(detail.profit)} ${egg}` : cpaSaveLine(detail.profit);
+  }, [detail]);
 
   if (!detail) return null;
 
@@ -81,7 +86,7 @@ export default function SaveReveal() {
       </div>
 
       <div style={{ animation: "rvPop .4s cubic-bezier(.2,.8,.2,1) both" }}>
-        <Jarureu level={0.86} size={104} />
+        <SsalCalc level={0.86} size={92} display={detail ? `+${detail.profit.toLocaleString("ko-KR")}` : ""} />
       </div>
 
       <p className="mt-5 text-micro tracking-[0.3em] font-mono" style={{ color: "#7E8C82", animation: "rvRise .35s ease .1s both" }}>

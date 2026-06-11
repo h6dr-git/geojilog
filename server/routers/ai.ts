@@ -10,7 +10,7 @@ import { IMAGE_ANALYSIS_SYSTEM_PROMPT, SMS_PARSE_SYSTEM_PROMPT } from "../prompt
 // AI 분석(사진·문자)은 유저당 하루 호출 상한 — 비용 폭탄·봇 방어.
 // AI는 '입력 마찰 제거'용일 뿐(해자 아님) → 한도에 닿아도 수동 입력으로 똑같이 기록되게 안내한다.
 const AI_DAILY_LIMIT = 30;
-const AI_LIMIT_MESSAGE = `오늘 AI 분석 한도(${AI_DAILY_LIMIT}회)를 다 쓰셨어요, 회장님. 남은 기록은 직접 입력으로 올리시면 똑같이 +수익으로 잡힙니다.`;
+const AI_LIMIT_MESSAGE = `오늘 AI 분석 한도(${AI_DAILY_LIMIT}회)를 다 쓰셨습니다, CEO님. 남은 기록은 직접 입력으로 올리시면 똑같이 +수익으로 계상됩니다.`;
 
 export const aiRouter = router({
     analyzeImage: protectedProcedure

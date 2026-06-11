@@ -20,7 +20,7 @@ import ConfirmDialog from "@/components/ConfirmDialog";
 import IncomeSourceChips, { useIncomeSourceList } from "@/components/IncomeSourceChips";
 import IncomeSourceSheet, { UNCLASSIFIED_KEY } from "@/components/IncomeSourceSheet";
 import { UNCLASSIFIED, FIXED_ACTUAL } from "@shared/incomeSources";
-import Jarureu from "@/components/Jarureu";
+import SsalCalc from "@/components/SsalCalc";
 import { SavingsEntry, fmt, todayStr, makeDefaultTitle, KO_DAYS, incomeSourceUsual } from "@/lib/ledger";
 import { celebrateSave } from "@/lib/celebrate";
 import { analyzingStart, analyzingEnd } from "@/lib/analyzing";
@@ -751,13 +751,13 @@ export default function Ledger({ weekFocusNonce = 0 }: { weekFocusNonce?: number
             </div>
           ) : groups.length === 0 ? (
             <div className="flex flex-col items-center text-center py-10">
-              <Jarureu level={0.12} size={64} />
+              <SsalCalc level={0.12} size={56} display="E" />
               <p className="text-body font-medium text-ink mt-3">
                 {(entries as SavingsEntry[]).length === 0 ? "아직 장부가 비어 있어요" : "이 기간엔 기록이 없어요"}
               </p>
               {(entries as SavingsEntry[]).length === 0 && (
                 <>
-                  <p className="text-caption text-ink-soft mt-1">사진 한 장이면 자르르가 첫 수익을 찾아드려요</p>
+                  <p className="text-caption text-ink-soft mt-1">사진 한 장이면 쌀집군이 첫 수익을 두드려 드려요</p>
                   <button
                     onClick={() => setShowAdd(true)}
                     className="mt-4 inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-emerald-500 text-white text-caption font-medium active:scale-95 transition-transform"
@@ -949,7 +949,7 @@ export default function Ledger({ weekFocusNonce = 0 }: { weekFocusNonce?: number
                   onDrop={(e) => { e.preventDefault(); handleFiles(e.dataTransfer.files); }}
                 >
                   <Upload className="w-7 h-7 text-emerald-400 mx-auto mb-2" />
-                  <p className="text-body font-medium text-ink">사진을 올리면 자르르가 번 돈을 계산해요</p>
+                  <p className="text-body font-medium text-ink">사진을 올리면 쌀집군이 번 돈을 두드려요</p>
                   <p className="text-caption text-ink-soft mt-1">한 번에 여러 장 · 탭해서 선택</p>
                 </div>
                 <button
@@ -998,7 +998,7 @@ export default function Ledger({ weekFocusNonce = 0 }: { weekFocusNonce?: number
                           <div className="h-3 bg-line rounded animate-pulse w-1/2" />
                           <div className="flex items-center gap-1.5 text-caption text-ink-soft">
                             <Loader2 size={12} className="animate-spin text-emerald-500" />
-                            자르르가 살펴보는 중...
+                            쌀집군이 두드리는 중...
                           </div>
                         </div>
                         <button onClick={() => removeQueueItem(item.id)} className="p-1 text-ink-faint active:text-ink-soft">
@@ -1332,9 +1332,9 @@ export default function Ledger({ weekFocusNonce = 0 }: { weekFocusNonce?: number
         >
           <style>{`@keyframes sfxOut{from{opacity:1}to{opacity:0}}@keyframes adFade{from{opacity:0}to{opacity:1}}`}</style>
           <div style={{ animation: "prop-in .5s cubic-bezier(.2,.8,.2,1) both" }}>
-            <Jarureu level={0.5} size={96} analyzing />
+            <SsalCalc level={0.5} size={84} analyzing />
           </div>
-          <p className="mt-4 text-body font-medium" style={{ color: "#d8cfae" }}>자르르가 살펴보기 시작했어요</p>
+          <p className="mt-4 text-body font-medium" style={{ color: "#d8cfae" }}>쌀집군이 계산을 시작했어요</p>
           <p className="mt-1 text-caption" style={{ color: "#7E8C82" }}>끝나면 알려드릴게요 — 다른 일 보셔도 됩니다</p>
         </div>
       )}

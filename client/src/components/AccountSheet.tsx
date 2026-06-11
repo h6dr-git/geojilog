@@ -22,7 +22,7 @@ export default function AccountSheet({ onClose }: { onClose: () => void }) {
   const kakaoEnabled = authConfig?.kakaoEnabled ?? false;
 
   const isKakao = user?.loginMethod === "kakao";
-  const displayName = user?.name || "회장님";
+  const displayName = user?.name || "CEO";
 
   const [editing, setEditing] = useState(false);
   const [draftName, setDraftName] = useState("");
@@ -30,7 +30,7 @@ export default function AccountSheet({ onClose }: { onClose: () => void }) {
   const { standalone, canPrompt, promptInstall } = useInstall();
   const [showInstallGuide, setShowInstallGuide] = useState(false);
 
-  // ── 웹 푸시 — 김집사의 저녁 보고 (금액 없는 알림) ──
+  // ── 웹 푸시 — 회시생의 저녁 보고 (금액 없는 알림) ──
   const { data: pushConfig } = trpc.push.config.useQuery();
   const subscribePush = trpc.push.subscribe.useMutation();
   const unsubscribePush = trpc.push.unsubscribe.useMutation();
@@ -93,7 +93,7 @@ export default function AccountSheet({ onClose }: { onClose: () => void }) {
           auth: json.keys?.auth ?? "",
         });
         setPushState("on");
-        toast.success("매일 저녁, 김집사가 보고를 올립니다");
+        toast.success("매일 저녁, 회시생이 보고를 올립니다");
       }
     } catch {
       setPushState(prev);
@@ -134,7 +134,7 @@ export default function AccountSheet({ onClose }: { onClose: () => void }) {
           </button>
         </div>
 
-        {/* 정체성 — 자르르 + 닉네임 */}
+        {/* 정체성 — 쌀집군 + 닉네임 */}
         <div className="text-center mb-5">
           <div className="flex justify-center mb-2">
             <Jarureu level={0.6} size={72} />
@@ -150,7 +150,7 @@ export default function AccountSheet({ onClose }: { onClose: () => void }) {
                   if (e.key === "Escape") setEditing(false);
                 }}
                 maxLength={20}
-                placeholder="회장님"
+                placeholder="CEO"
                 className="w-40 text-center text-title font-semibold text-ink bg-white border border-gold/50 rounded-lg px-2 py-1 outline-none focus:border-gold"
               />
               <button onClick={saveName} aria-label="저장" className="w-8 h-8 rounded-lg bg-emerald-500 text-white flex items-center justify-center active:scale-95 transition-transform">
@@ -205,7 +205,7 @@ export default function AccountSheet({ onClose }: { onClose: () => void }) {
               ) : (
                 <BellOff size={17} className="text-ink-soft" />
               )}
-              김집사의 저녁 보고
+              회시생의 저녁 보고
             </span>
             <span className={`text-caption font-medium ${pushState === "on" ? "text-emerald-600" : "text-ink-faint"}`}>
               {pushState === "on" ? "받는 중" : pushState === "busy" ? "" : "꺼짐"}

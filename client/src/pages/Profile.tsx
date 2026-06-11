@@ -15,7 +15,7 @@ import ShareCardSheet from "@/components/ShareCardSheet";
 import ShelfCardViewer, { type ShelfCard } from "@/components/ShelfCardViewer";
 import { themeById } from "@/components/cardSkin";
 import { SavingsEntry, fmt } from "@/lib/ledger";
-import { butlerWeeklyComment, dosaLineOfDay } from "@/lib/voice";
+import { cpaWeeklyComment, dosaLineOfDay } from "@/lib/voice";
 import { dayOfWeekRhythm, weeklyTrend, monthlyTrend, monthHeatmap, allTimeRecords, cumulativeCurve } from "@/lib/stats";
 import { WeekRhythm, TrendBars, MonthHeat, RecordsRow, CumulativeCurve } from "@/components/StatsBlocks";
 import { ChevronLeft, ChevronRight, Sparkles, BookMarked } from "lucide-react";
@@ -121,7 +121,7 @@ export default function Profile({ onOpenWeekly }: { onOpenWeekly: () => void }) 
   // 집사 코멘트 — 기간별
   const comment = useMemo(() => {
     if (count === 0) return period === "week" && offset === 0 ? "이번 주는 아직 조용하군요." : "이 기간엔 기록이 없습니다.";
-    if (period === "week") return butlerWeeklyComment(count, profit);
+    if (period === "week") return cpaWeeklyComment(count, profit);
     if (period === "month") return `${count}건을 정리해 두었습니다.`;
     return `지금까지 ${count}건, 전부 장부에 있습니다.`;
   }, [period, offset, count, profit]);
@@ -175,7 +175,7 @@ export default function Profile({ onOpenWeekly }: { onOpenWeekly: () => void }) 
     <div className="min-h-dvh max-w-lg mx-auto px-5 pt-12 pb-24 bg-cream">
       <header className="pb-4">
         <p className="text-title font-semibold text-ink">서재</p>
-        <p className="text-caption text-ink-soft mt-0.5">김집사가 정리해 둔 보고서</p>
+        <p className="text-caption text-ink-soft mt-0.5">회시생이 정리해 둔 보고서</p>
       </header>
 
       {list.length === 0 ? (
@@ -231,7 +231,7 @@ export default function Profile({ onOpenWeekly }: { onOpenWeekly: () => void }) 
           <div className="bg-butler border border-butler-line rounded-card p-5">
             <div className="flex items-center justify-between mb-2.5">
               <div className="flex items-center gap-2">
-                <SpeakerBadge speaker="butler" size={22} />
+                <SpeakerBadge speaker="cpa" size={22} />
                 <p className="text-micro text-gold tracking-wide font-medium">
                   {period === "week" ? "주간 보고" : period === "month" ? "월간 보고" : "총람"}
                 </p>

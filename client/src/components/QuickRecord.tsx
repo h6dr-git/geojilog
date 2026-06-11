@@ -237,7 +237,7 @@ export default function QuickRecord({ data, onClose, onSaved }: Props) {
         {/* AI 근거 */}
         {aiReason && (
           <p className="text-micro text-ink-soft leading-relaxed mb-3 bg-cream rounded-card px-3 py-2">
-            <span className="text-emerald-500">자르르</span> {aiReason}
+            <span className="text-emerald-500">회시생</span> {aiReason}
           </p>
         )}
 

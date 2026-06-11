@@ -17,7 +17,7 @@ import { sha256File } from "@/lib/fingerprint";
 import { getExifDate } from "@/lib/exif";
 import type { Draft } from "@/lib/drafts";
 import { Loader2, Check, Copy } from "lucide-react";
-import Jarureu from "@/components/Jarureu";
+import SsalCalc from "@/components/SsalCalc";
 import { onAnalyzingCount } from "@/lib/analyzing";
 
 const ONBOARDED_KEY = "geojilog:onboarded";
@@ -251,15 +251,15 @@ export default function Shell() {
             </div>
           </main>
 
-          {/* 전역 분석 인디케이터 — 자르르가 어느 탭에서든 살펴보는 중 (#32) */}
+          {/* 전역 분석 인디케이터 — 자르르가 어느 탭에서든 계산하는 중 (#32) */}
           {(analyzingCount > 0 || (job && job.status === "analyzing")) && (
             <button
               onClick={() => (job && job.status === "analyzing" ? changeTab("home") : changeTab("records"))}
               aria-label="분석 진행 보기"
               className="fixed right-3 bottom-[92px] z-40 flex items-center gap-1.5 pl-1.5 pr-3 py-1.5 rounded-full bg-white/95 border border-line shadow-lg active:scale-95 transition-transform"
             >
-              <Jarureu level={0.5} size={34} analyzing />
-              <span className="text-micro font-medium text-ink-soft">살펴보는 중{analyzingCount > 1 ? ` ${analyzingCount}` : ""}</span>
+              <SsalCalc level={0.5} size={30} analyzing />
+              <span className="text-micro font-medium text-ink-soft">계산하는 중{analyzingCount > 1 ? ` ${analyzingCount}` : ""}</span>
             </button>
           )}
 
@@ -272,7 +272,7 @@ export default function Shell() {
               {job.status === "analyzing" ? (
                 <>
                   <Loader2 size={15} className="animate-spin text-emerald-500" />
-                  <span className="text-ink">자르르가 분석 중…</span>
+                  <span className="text-ink">쌀집군이 계산 중…</span>
                 </>
               ) : job.status === "duplicate" ? (
                 <>

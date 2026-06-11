@@ -25,7 +25,7 @@ export default function ReportShareCard({
   amount: number;       // +수익 합계
   subline?: string;     // 예: "5끼 기록 · 최고의 한 수 학식"
   topSource?: { name: string; profit: number } | null;
-  comment: string;      // 김집사 평
+  comment: string;      // 회시생 평
   quote?: string;       // 도사 어록 (없으면 생략)
 }) {
   const has = (id: StickerId) => stickers.includes(id);

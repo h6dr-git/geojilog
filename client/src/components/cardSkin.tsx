@@ -27,7 +27,7 @@ export const CARD_THEMES: CardTheme[] = [
 export const CARD_STICKERS = [
   { id: "crown", name: "왕관" },
   { id: "won", name: "₩ 반짝" },
-  { id: "jar", name: "자르르" },
+  { id: "jar", name: "쌀집군" }, // id는 localStorage 호환 위해 유지
   { id: "seal", name: "수익 인장" }, // '지켜냄' 워딩 폐기(2026-06-10 확정) → 김집사 레지스터 '수익 실현'
 ] as const;
 export type StickerId = (typeof CARD_STICKERS)[number]["id"];
@@ -65,18 +65,17 @@ export function CrownSticker({ color = "#E0A92E" }: { color?: string }) {
 }
 
 export function JarSticker({ size = 34 }: { size?: number }) {
+  // #41 v3 — 쌀집군 미니 계산기 (이전 단지 스티커 대체, export명은 호환 유지)
   return (
-    <svg width={size} height={Math.round(size * (37 / 34))} viewBox="0 0 100 108" style={{ display: "block" }}>
-      <path d="M27,27 C9,36 9,72 22,88 C31,98 69,98 78,88 C91,72 91,36 73,27 Z" fill="#ece0c8" stroke="#a3744a" strokeWidth="3" />
-      <rect x="14" y="60" width="72" height="34" rx="14" fill="#f2c94c" />
-      <ellipse cx="50" cy="27" rx="23" ry="6.5" fill="#cda35f" stroke="#8f6336" strokeWidth="2.5" />
-      <ellipse cx="50" cy="21" rx="19" ry="5.8" fill="#b9854f" stroke="#8f6336" strokeWidth="2.5" />
-      <circle cx="50" cy="15" r="3.5" fill="#e8b84a" stroke="#8f6336" strokeWidth="2" />
-      <circle cx="42" cy="64" r="4" fill="#2b2b2b" />
-      <circle cx="58" cy="64" r="4" fill="#2b2b2b" />
-      <path d="M42,70.5 Q50,78 58,70.5" fill="none" stroke="#8a5a3a" strokeWidth="2.5" strokeLinecap="round" />
-      <ellipse cx="33" cy="73" rx="4.6" ry="2.9" fill="#f4a7a0" opacity="0.7" />
-      <ellipse cx="67" cy="73" rx="4.6" ry="2.9" fill="#f4a7a0" opacity="0.7" />
+    <svg width={size} height={Math.round(size * (118 / 100))} viewBox="0 0 100 118" style={{ display: "block" }}>
+      <rect x="10" y="8" width="80" height="102" rx="12" fill="#3a3a40" stroke="#1b1b1f" strokeWidth="4" />
+      <rect x="20" y="20" width="60" height="22" rx="5" fill="#cfd9c4" stroke="#171a14" strokeWidth="2" />
+      <text x="74" y="36" textAnchor="end" fontSize="13" fontWeight="700" fill="#243024" fontFamily="'JetBrains Mono', ui-monospace, monospace">1004</text>
+      {[0, 1, 2].map((r) =>
+        [0, 1, 2].map((c) => (
+          <rect key={`${r}${c}`} x={20 + c * 22} y={52 + r * 19} width="16" height="13" rx="4" fill={r === 2 && c === 2 ? "#E0A92E" : "#5a5a64"} />
+        ))
+      )}
     </svg>
   );
 }

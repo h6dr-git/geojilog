@@ -1,7 +1,7 @@
 // #50 — 결산 계산 헬퍼: 기간 메타(periodType+startDate)만 저장하고, 내용은 장부에서 재계산한다.
 // (장부가 원본 원칙 — 기록을 고치면 소장 카드도 따라 바뀐다)
 import { SavingsEntry } from "@/lib/ledger";
-import { butlerWeeklyComment } from "@/lib/voice";
+import { cpaWeeklyComment } from "@/lib/voice";
 
 const pad = (n: number) => String(n).padStart(2, "0");
 const iso = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
@@ -60,7 +60,7 @@ export function computeReport(
     count === 0
       ? "이 기간엔 기록이 없습니다."
       : periodType === "week"
-        ? butlerWeeklyComment(count, profit)
+        ? cpaWeeklyComment(count, profit)
         : `${count}건을 정리해 두었습니다.`;
 
   return { start, end, cardLabel, cardPeriod, shelfLabel, profit, count, best, topSource, comment };

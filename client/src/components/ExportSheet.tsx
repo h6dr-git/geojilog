@@ -1,4 +1,4 @@
-// 데이터 내보내기 시트 — 장부·회장님 어디서든 같은 내보내기 UI. (Notion MD 복사 / CSV 다운로드)
+// 데이터 내보내기 시트 — 장부·서재 어디서든 같은 내보내기 UI. (Notion MD 복사 / CSV 다운로드)
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Download, Copy, Check, X } from "lucide-react";

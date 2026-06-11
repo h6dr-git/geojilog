@@ -83,7 +83,7 @@ export default function AlbumKit({
 
       <div style={{ position: "relative", marginTop: "14px", minHeight: "14px" }}>
         <div style={{ textAlign: "center", fontSize: "8px", color: theme.footer, letterSpacing: "2px" }}>GEOJILOG · {year}{mm}</div>
-        {/* 스티커: 자르르 도장 */}
+        {/* 스티커: 쌀집군 도장 */}
         {has("jar") && (
           <div style={{ position: "absolute", right: "0px", bottom: "-2px" }}>
             <JarSticker />
