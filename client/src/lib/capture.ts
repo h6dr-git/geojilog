@@ -1,4 +1,5 @@
 // 캡처/분석 작업 공용 타입
+import type { DupInfo } from "@/lib/fingerprint";
 export type Prefill = {
   imageUrl: string;
   title: string;
@@ -19,9 +20,13 @@ export type Prefill = {
   aiOriginalAmount?: number;
   /** 있으면 저장된 미완성을 완성하는 중 */
   draftId?: string;
+  /** #48 — 원본 사진 sha256 (중복 감지용, 저장 시 함께 기록) */
+  imageSig?: string;
 };
 
 export type CaptureJob =
   | { status: "analyzing"; preview: string }
   | { status: "ready"; preview: string; data: Prefill }
-  | { status: "error"; preview: string; data: Prefill };
+  | { status: "error"; preview: string; data: Prefill }
+  // #48 — 이미 기록한 사진: 사용자가 '그래도 기록'을 눌러야 분석이 진행된다
+  | { status: "duplicate"; preview: string; dup: DupInfo };

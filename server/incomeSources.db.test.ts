@@ -81,4 +81,17 @@ describe("수익원 DB 라운드트립 (마이그레이션·백필·중앙값)",
     expect(after.find((e) => e.id === e3.id)?.incomeSource).toBeNull(); // 미선택 건 불변
     expect(after.find((e) => e.id === e3.id)?.category).toBe("식비");
   });
+
+  // #48 — 사진 지문으로 크로스 세션 중복 감지
+  it("findEntryByImageSig가 같은 지문의 기존 기록을 찾는다", async () => {
+    const db = await import("./db");
+    const userId = 80;
+    const sig = "a".repeat(64);
+    await db.createSavingsEntry({ userId, date: "2026-06-09", title: "학식 김치찌개", category: "식비", ticker: "FOOD-001", originalAmount: 8000, actualAmount: 3000, profit: 5000, aiEstimated: "yes", imageSig: sig });
+    const hit = await db.findEntryByImageSig(userId, sig);
+    expect(hit?.title).toBe("학식 김치찌개");
+    expect(hit?.profit).toBe(5000);
+    expect(await db.findEntryByImageSig(userId, "b".repeat(64))).toBeNull(); // 다른 지문
+    expect(await db.findEntryByImageSig(userId + 1, sig)).toBeNull(); // 다른 사용자
+  });
 });

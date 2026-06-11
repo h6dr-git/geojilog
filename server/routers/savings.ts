@@ -45,6 +45,7 @@ export const savingsRouter = router({
         aiGroupOriginalAmount: z.number().int().positive().optional(),
         aiGroupActualAmount: z.number().int().min(0).optional(),
         imageUrl: z.string().optional(),
+        imageSig: z.string().regex(/^[0-9a-f]{64}$/).optional(), // #48 — 중복 감지 지문
         memo: z.string().optional(),
       }))
       .mutation(async ({ ctx, input }) => {
@@ -69,6 +70,7 @@ export const savingsRouter = router({
           aiGroupOriginalAmount: input.aiGroupOriginalAmount,
           aiGroupActualAmount: input.aiGroupActualAmount,
           imageUrl: input.imageUrl,
+          imageSig: input.imageSig,
           memo: input.memo,
         });
         await logUsageEvent(ctx.user.id, "entry_create");

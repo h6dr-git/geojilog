@@ -187,3 +187,19 @@ export async function backfillIncomeSources(userId: number) {
   }
   return { classified, remaining: rows.length - classified };
 }
+
+
+// ── #48 크로스 세션 중복 감지 ───────────────────────────────
+// 같은 원본 파일(sha256)이 이미 기록돼 있으면 그 기록을 돌려준다 — 분석 전에 호출(LLM 비용 0).
+export async function findEntryByImageSig(userId: number, imageSig: string) {
+  const db = await getDb();
+  if (!db) return null;
+  const { and } = await import("drizzle-orm");
+  const rows = await db
+    .select()
+    .from(savingsEntries)
+    .where(and(eq(savingsEntries.userId, userId), eq(savingsEntries.imageSig, imageSig)))
+    .orderBy(desc(savingsEntries.date), desc(savingsEntries.createdAt))
+    .limit(1);
+  return rows[0] ?? null;
+}

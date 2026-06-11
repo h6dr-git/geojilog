@@ -12,9 +12,10 @@ import SaveReveal from "@/components/SaveReveal";
 import QuickRecord from "@/components/QuickRecord";
 import { trpc } from "@/lib/trpc";
 import type { CaptureJob, Prefill } from "@/lib/capture";
+import { sha256File } from "@/lib/fingerprint";
 import { getExifDate } from "@/lib/exif";
 import type { Draft } from "@/lib/drafts";
-import { Loader2, Check } from "lucide-react";
+import { Loader2, Check, Copy } from "lucide-react";
 import Jarureu from "@/components/Jarureu";
 import { onAnalyzingCount } from "@/lib/analyzing";
 
@@ -80,6 +81,9 @@ export default function Shell() {
     window.location.href = "/api/auth/kakao";
   }
 
+  // #48 — 중복 경고에서 '그래도 기록'을 위한 재시도 컨텍스트
+  const retryCtx = useRef<{ base64: string; mimeType: string; preview: string; exifDate: string | null; imageSig: string | null } | null>(null);
+
   async function onPick(e: ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0] ?? null;
     e.target.value = "";
@@ -91,6 +95,7 @@ export default function Shell() {
 
     // 지난 사진이면 촬영 날짜를 그대로 쓴다 (장부 업로드 경로와 동일 — EXIF 일관성 버그 수정)
     const exifDate = await getExifDate(file).catch(() => null);
+    const imageSig = await sha256File(file); // #48
 
     let base64 = "";
     try {
@@ -99,8 +104,27 @@ export default function Shell() {
       setJob({ status: "error", preview, data: emptyData("", exifDate ?? undefined) });
       return;
     }
+    retryCtx.current = { base64, mimeType: file.type || "image/jpeg", preview, exifDate, imageSig };
+    await runAnalyze(false);
+  }
+
+  // 분석 실행 — ignoreDup=true면 중복 경고를 통과한 재시도 (#48)
+  async function runAnalyze(ignoreDup: boolean) {
+    const c = retryCtx.current;
+    if (!c) return;
+    const { base64, mimeType, preview, exifDate, imageSig } = c;
+    if (ignoreDup) setJob({ status: "analyzing", preview });
     try {
-      const r = await analyzeImage.mutateAsync({ imageBase64: base64, mimeType: file.type || "image/jpeg" });
+      const r = await analyzeImage.mutateAsync({
+        imageBase64: base64,
+        mimeType,
+        imageSig: imageSig ?? undefined,
+        ignoreDuplicate: ignoreDup,
+      });
+      if (r.duplicate) {
+        setJob({ status: "duplicate", preview, dup: r.duplicate }); // 사용자 선택 대기
+        return;
+      }
       setJob({
         status: "ready",
         preview,
@@ -119,12 +143,13 @@ export default function Shell() {
           incomeSource: r.incomeSource, // #37+#38 — AI 분류 수익원
           sourceUsualActual: r.sourceUsual?.usualActual, // 유형 평소가 (보너스 기준)
           aiOriginalAmount: r.estimatedOriginalAmount,
+          imageSig: imageSig ?? undefined, // #48
         },
       });
     } catch {
       let imageUrl = "";
       try {
-        const u = await uploadImage.mutateAsync({ imageBase64: base64, mimeType: file.type || "image/jpeg" });
+        const u = await uploadImage.mutateAsync({ imageBase64: base64, mimeType });
         imageUrl = u.imageUrl;
       } catch {
         /* 사진 저장도 실패 */
@@ -134,7 +159,15 @@ export default function Shell() {
   }
 
   function openConfirmFromJob() {
-    if (job && job.status !== "analyzing") setConfirmData(job.data);
+    if (job && (job.status === "ready" || job.status === "error")) setConfirmData(job.data);
+  }
+  // #48 — 중복 경고 카드의 두 갈래
+  function ignoreDupAndAnalyze() {
+    void runAnalyze(true);
+  }
+  function dismissDupJob() {
+    setJob(null);
+    retryCtx.current = null;
   }
   function completeDraft(d: Draft) {
     setConfirmData({
@@ -193,6 +226,8 @@ export default function Shell() {
                 job={job}
                 onOpenConfirm={openConfirmFromJob}
                 onCompleteDraft={completeDraft}
+                onIgnoreDup={ignoreDupAndAnalyze}
+                onDismissDup={dismissDupJob}
               />
             </div>
             <div className={tab === "records" ? "" : "hidden"}>
@@ -218,13 +253,18 @@ export default function Shell() {
           {/* 다른 탭에 있을 때 비차단 알림 칩 — 탭바 위로 띄운다 */}
           {job && tab !== "home" && (
             <button
-              onClick={() => (job.status === "analyzing" ? setTab("home") : openConfirmFromJob())}
+              onClick={() => (job.status === "ready" || job.status === "error" ? openConfirmFromJob() : setTab("home"))}
               className="fixed left-1/2 -translate-x-1/2 bottom-[76px] z-40 flex items-center gap-2 px-4 py-2.5 rounded-full shadow-lg text-body font-medium bg-white border border-line active:scale-[0.98] transition-transform"
             >
               {job.status === "analyzing" ? (
                 <>
                   <Loader2 size={15} className="animate-spin text-emerald-500" />
                   <span className="text-ink">자르르가 분석 중…</span>
+                </>
+              ) : job.status === "duplicate" ? (
+                <>
+                  <Copy size={15} className="text-amber-500" />
+                  <span className="text-ink">이미 기록한 사진 · 확인하기</span>
                 </>
               ) : (
                 <>

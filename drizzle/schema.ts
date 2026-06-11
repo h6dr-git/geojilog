@@ -53,6 +53,7 @@ export const savingsEntries = sqliteTable("savings_entries", {
   aiGroupOriginalAmount: integer("aiGroupOriginalAmount"),
   aiGroupActualAmount: integer("aiGroupActualAmount"), // AI가 기준가를 추정한 근거
   imageUrl: text("imageUrl"), // 저장된 사진 경로/URL
+  imageSig: text("imageSig"), // #48 — 원본 파일 sha256 (크로스 세션 중복 감지)
   memo: text("memo"), // 사용자 메모
 
   createdAt: integer("createdAt", { mode: "timestamp" })

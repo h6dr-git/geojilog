@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { protectedProcedure, router } from "../trpc";
-import { countAiCallsToday, logUsageEvent, getLatestEntryByTitle, getItemByName, getIncomeSourceUsual } from "../db";
+import { countAiCallsToday, logUsageEvent, getLatestEntryByTitle, getItemByName, getIncomeSourceUsual, findEntryByImageSig } from "../db";
 import { INCOME_SOURCES, isIncomeSource } from "@shared/incomeSources";
 import { invokeLLM } from "../llm";
 import { storagePut, storageGetSignedUrl } from "../storage";
@@ -17,8 +17,19 @@ export const aiRouter = router({
       .input(z.object({
         imageBase64: z.string(),
         mimeType: z.string().default("image/jpeg"),
+        imageSig: z.string().regex(/^[0-9a-f]{64}$/).optional(), // #48 — 원본 sha256 (클라 계산)
+        ignoreDuplicate: z.boolean().default(false), // 중복 경고 무시하고 진행
       }))
       .mutation(async ({ ctx, input }) => {
+        // #48 — 분석 전 중복 대조: LLM 호출도, 한도 차감도, 스토리지 업로드도 하기 전.
+        if (input.imageSig && !input.ignoreDuplicate) {
+          const dup = await findEntryByImageSig(ctx.user.id, input.imageSig).catch(() => null);
+          if (dup) {
+            return {
+              duplicate: { entryId: dup.id, date: dup.date, title: dup.title, profit: dup.profit },
+            } as const;
+          }
+        }
         const used = await countAiCallsToday(ctx.user.id);
         if (used >= AI_DAILY_LIMIT) {
           throw new TRPCError({
@@ -162,7 +173,7 @@ export const aiRouter = router({
                 peopleCount: headcount,
               }
             : null;
-        return { ...parsed, imageUrl: `/manus-storage/${key}`, prior, myShare, sourceUsual };
+        return { ...parsed, imageUrl: `/manus-storage/${key}`, prior, myShare, sourceUsual, duplicate: null };
       }),
 
     uploadImage: protectedProcedure

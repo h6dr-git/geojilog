@@ -70,6 +70,7 @@ export default function QuickRecord({ data, onClose, onSaved }: Props) {
         aiEstimated: isCompleting ? "no" : "yes",
         aiReason: aiReason || undefined,
         imageUrl: data.imageUrl || undefined,
+        imageSig: data.imageSig, // #48
         memo: memo.trim() || undefined,
       });
       if (data.draftId) removeDraft(data.draftId);

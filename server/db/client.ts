@@ -35,6 +35,7 @@ CREATE TABLE IF NOT EXISTS savings_entries (
   aiEstimated TEXT NOT NULL DEFAULT 'no',
   aiReason TEXT,
   imageUrl TEXT,
+  imageSig TEXT,
   memo TEXT,
   createdAt INTEGER NOT NULL DEFAULT (unixepoch())
 );
@@ -104,6 +105,8 @@ export async function getDb() {
           "ALTER TABLE savings_entries ADD COLUMN aiGroupOriginalAmount INTEGER",
           "ALTER TABLE savings_entries ADD COLUMN aiGroupActualAmount INTEGER",
           "ALTER TABLE savings_entries ADD COLUMN incomeSource TEXT",
+          "ALTER TABLE savings_entries ADD COLUMN imageSig TEXT",
+          "CREATE INDEX IF NOT EXISTS idx_savings_user_sig ON savings_entries(userId, imageSig)",
         ]) {
           try { await client.execute(ddl); } catch { /* duplicate column — 무시 */ }
         }

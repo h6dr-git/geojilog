@@ -8,6 +8,7 @@ import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import { getExifDate } from "@/lib/exif";
+import { sha256File, type DupInfo } from "@/lib/fingerprint";
 import { smartCropToSquare } from "@/lib/smartCrop";
 import {
   Upload, Camera, PenLine, Loader2,
@@ -35,7 +36,7 @@ interface QueueItem {
   fileName: string;
   sig: string;
   dup?: boolean;
-  status: "analyzing" | "ready" | "error";
+  status: "analyzing" | "ready" | "error" | "duplicate"; // duplicate = #48 이미 기록한 사진
   submitting: boolean;
   title: string;
   category: string;
@@ -46,6 +47,8 @@ interface QueueItem {
   memo: string;
   incomeSource: string | null; // #37+#38 수익원 (AI 분류 → 사용자 수정)
   imageUrl?: string;
+  imageSig?: string; // #48 — 원본 sha256
+  dupInfo?: DupInfo; // #48 — 중복된 기존 기록 정보
   priorDate?: string; // P2 — 지난 확정가가 적용된 경우
   nSplit?: string;     // #33 엔빵 — 인원 (원가=총 추정액÷n, 실제는 청구액 직접 입력)
   priorUsualActual?: number; // 단골 평소가 (#37)
@@ -242,11 +245,14 @@ export default function Ledger({ weekFocusNonce = 0 }: { weekFocusNonce?: number
   const incomeSourceList = useIncomeSourceList();
 
   // ── AI 이미지 처리 ──
-  const processFile = useCallback(async (file: File, itemId: string) => {
+  const processFile = useCallback(async (file: File, itemId: string, opts?: { ignoreDup?: boolean }) => {
     analyzingStart(); // 전역 분석 표시 (모든 탭에서 보임)
     try {
     const exifDate = await getExifDate(file);
     const date = exifDate ?? todayStr();
+
+    // #48 — 원본 지문 (실패하면 null: 중복 감지만 꺼짐)
+    const imageSig = await sha256File(file);
 
     const base64 = await new Promise<string>((resolve, reject) => {
       const reader = new FileReader();
@@ -258,7 +264,20 @@ export default function Ledger({ weekFocusNonce = 0 }: { weekFocusNonce?: number
       reader.readAsDataURL(file);
     });
 
-    const result = await analyzeImage.mutateAsync({ imageBase64: base64, mimeType: file.type });
+    const result = await analyzeImage.mutateAsync({
+      imageBase64: base64,
+      mimeType: file.type,
+      imageSig: imageSig ?? undefined,
+      ignoreDuplicate: opts?.ignoreDup ?? false,
+    });
+
+    // #48 — 이미 기록한 사진: 분석은 서버에서 멈췄다 (LLM 비용·한도 0). 사용자 선택을 기다린다.
+    if (result.duplicate) {
+      setQueue(prev => prev.map(it => it.id === itemId
+        ? { ...it, status: "duplicate" as const, dupInfo: result.duplicate!, imageSig: imageSig ?? undefined }
+        : it));
+      return;
+    }
 
     let finalImageUrl = result.imageUrl;
     try {
@@ -297,6 +316,7 @@ export default function Ledger({ weekFocusNonce = 0 }: { weekFocusNonce?: number
       imageUrl: finalImageUrl,
       aiOriginalAmount: result.estimatedOriginalAmount,
       aiActualAmount: result.estimatedActualAmount,
+      imageSig: imageSig ?? undefined, // #48
     } : it));
     } finally {
       analyzingEnd();
@@ -372,6 +392,7 @@ export default function Ledger({ weekFocusNonce = 0 }: { weekFocusNonce?: number
         aiGroupOriginalAmount: item.groupOriginal,
         aiGroupActualAmount: item.groupActual,
         imageUrl: item.imageUrl,
+        imageSig: item.imageSig, // #48
         memo: item.memo || undefined,
       });
       const saved = Math.max(0, Number(item.originalAmount) - Number(item.actualAmount));
@@ -983,6 +1004,43 @@ export default function Ledger({ weekFocusNonce = 0 }: { weekFocusNonce?: number
                         <button onClick={() => removeQueueItem(item.id)} className="p-1 text-ink-faint active:text-ink-soft">
                           <X size={14} />
                         </button>
+                      </div>
+                    )}
+                    {item.status === "duplicate" && item.dupInfo && (
+                      <div className="p-3">
+                        <div className="flex items-center gap-3">
+                          <img src={item.previewUrl} alt="" className="w-14 h-14 rounded-lg object-cover flex-shrink-0" />
+                          <div className="flex-1 min-w-0">
+                            <p className="text-caption font-medium text-amber-700 flex items-center gap-1">
+                              <Copy size={12} /> 이미 기록한 사진이에요
+                            </p>
+                            <p className="text-caption text-ink-soft truncate mt-0.5">
+                              {item.dupInfo.date.slice(5).replace("-", ".")} · {item.dupInfo.title} · <span className="font-mono text-emerald-600">+₩{fmt(item.dupInfo.profit)}</span>
+                            </p>
+                          </div>
+                          <button onClick={() => removeQueueItem(item.id)} className="p-1 text-ink-faint active:text-ink-soft flex-shrink-0" aria-label="빼기">
+                            <X size={14} />
+                          </button>
+                        </div>
+                        <div className="flex gap-2 mt-2.5">
+                          <button
+                            onClick={() => removeQueueItem(item.id)}
+                            className="flex-1 py-2 text-caption text-ink-soft border border-line rounded-lg active:bg-cream transition-colors"
+                          >
+                            빼기
+                          </button>
+                          <button
+                            onClick={() => {
+                              setQueue(prev => prev.map(it => it.id === item.id ? { ...it, status: "analyzing" as const, dupInfo: undefined } : it));
+                              processFile(item.file, item.id, { ignoreDup: true }).catch(() => {
+                                setQueue(prev => prev.map(it => it.id === item.id ? { ...it, status: "error" as const } : it));
+                              });
+                            }}
+                            className="flex-1 py-2 text-caption text-amber-700 border border-amber-200 bg-amber-50 rounded-lg active:bg-amber-100 transition-colors"
+                          >
+                            그래도 기록
+                          </button>
+                        </div>
                       </div>
                     )}
                     {item.status === "error" && (

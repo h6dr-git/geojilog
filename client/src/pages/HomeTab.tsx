@@ -44,11 +44,13 @@ function lobbyBg(): string {
 type Props = {
   onGoRecords: () => void;
   job: CaptureJob | null;
+  onIgnoreDup?: () => void; // #48 — 중복 경고에서 "그래도 기록"
+  onDismissDup?: () => void; // #48 — 중복 경고 닫기
   onOpenConfirm: () => void;
   onCompleteDraft: (d: Draft) => void;
 };
 
-export default function HomeTab({ onGoRecords, job, onOpenConfirm, onCompleteDraft }: Props) {
+export default function HomeTab({ onGoRecords, job, onOpenConfirm, onCompleteDraft, onIgnoreDup, onDismissDup }: Props) {
   // 계정 시트 — 프로필 칩에서 (구조 재편: 계정 기능은 탭이 아니라 칩 뒤로)
   const [showAccount, setShowAccount] = useState(false);
 
@@ -80,6 +82,7 @@ export default function HomeTab({ onGoRecords, job, onOpenConfirm, onCompleteDra
   const analyzingJob = job && job.status === "analyzing" ? job : null;
   const readyJob = job && job.status === "ready" ? job : null;
   const errorJob = job && job.status === "error" ? job : null;
+  const dupJob = job && job.status === "duplicate" ? job : null; // #48
 
   // 자르르 말풍선 — 탭하면 김집사 인사 대신 자르르가 한 마디(3.2초). 오늘 기록 여부로 톤이 갈린다.
   const today = (() => {
@@ -232,6 +235,26 @@ export default function HomeTab({ onGoRecords, job, onOpenConfirm, onCompleteDra
           </div>
           <ChevronRight size={16} className="text-emerald-400 shrink-0" />
         </button>
+      ) : dupJob ? (
+        <div className="mt-7 w-full border border-amber-200 bg-amber-50 rounded-card p-3 shadow-sm">
+          <div className="flex items-center gap-3">
+            <img src={dupJob.preview} alt="" className="w-12 h-12 rounded-card object-cover shrink-0" />
+            <div className="flex-1 min-w-0">
+              <p className="text-body font-medium text-amber-800">이미 기록한 사진이에요</p>
+              <p className="text-micro text-amber-700 truncate">
+                {dupJob.dup.date.slice(5).replace("-", ".")} · {dupJob.dup.title} · +₩{dupJob.dup.profit.toLocaleString("ko-KR")}
+              </p>
+            </div>
+          </div>
+          <div className="flex gap-2 mt-2.5">
+            <button onClick={onDismissDup} className="flex-1 py-2 text-caption text-ink-soft border border-amber-200 rounded-lg active:bg-amber-100 transition-colors">
+              괜찮아요, 안 올릴게요
+            </button>
+            <button onClick={onIgnoreDup} className="flex-1 py-2 text-caption font-medium text-amber-800 border border-amber-300 bg-white rounded-lg active:bg-amber-100 transition-colors">
+              그래도 기록
+            </button>
+          </div>
+        </div>
       ) : errorJob ? (
         <button onClick={onOpenConfirm} className="mt-7 w-full flex items-center gap-3 border border-line bg-white rounded-card p-3 text-left shadow-sm active:bg-cream transition-colors">
           <img src={errorJob.preview} alt="" className="w-12 h-12 rounded-card object-cover shrink-0" />
