@@ -97,6 +97,26 @@ export async function deleteSavingsEntry(id: number, userId: number) {
     .where(and(eq(savingsEntries.id, id), eq(savingsEntries.userId, userId)));
 }
 
+// #46 — 일괄 수정 (다중 선택 → 수익원/카테고리 한 번에). 금액은 단건 수정만 (실수 방지).
+export async function updateMultipleSavingsEntries(
+  ids: number[],
+  userId: number,
+  data: { incomeSource?: string | null; category?: string }
+) {
+  if (ids.length === 0) return;
+  const set: Record<string, unknown> = {};
+  if (data.incomeSource !== undefined) set.incomeSource = data.incomeSource;
+  if (data.category !== undefined) set.category = data.category;
+  if (Object.keys(set).length === 0) return;
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const { and, inArray } = await import("drizzle-orm");
+  await db
+    .update(savingsEntries)
+    .set(set as never)
+    .where(and(inArray(savingsEntries.id, ids), eq(savingsEntries.userId, userId)));
+}
+
 export async function deleteMultipleSavingsEntries(ids: number[], userId: number) {
   if (ids.length === 0) return;
   const db = await getDb();

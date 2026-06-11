@@ -64,4 +64,21 @@ describe("수익원 DB 라운드트립 (마이그레이션·백필·중앙값)",
     expect(entries78[0].incomeSource).toBeNull();
     expect(await db.listUserIncomeSources(userId)).toHaveLength(0);
   });
+
+  // #46 — 일괄 수정: 다중 선택 → 수익원/카테고리 한 번에
+  it("updateMultipleSavingsEntries가 선택 건만 바꾼다", async () => {
+    const db = await import("./db");
+    const userId = 79;
+    await db.createSavingsEntry({ userId, date: "2026-06-01", title: "a", category: "식비", ticker: "FOOD-001", originalAmount: 5000, actualAmount: 1000, profit: 4000, aiEstimated: "no" });
+    await db.createSavingsEntry({ userId, date: "2026-06-02", title: "b", category: "식비", ticker: "FOOD-002", originalAmount: 5000, actualAmount: 1000, profit: 4000, aiEstimated: "no" });
+    await db.createSavingsEntry({ userId, date: "2026-06-03", title: "c", category: "식비", ticker: "FOOD-003", originalAmount: 5000, actualAmount: 1000, profit: 4000, aiEstimated: "no" });
+    const all = await db.getSavingsEntries(userId);
+    const [e1, e2, e3] = all; // 최신순 c, b, a
+    await db.updateMultipleSavingsEntries([e1.id, e2.id], userId, { incomeSource: "학식/구내", category: "기타" });
+    const after = await db.getSavingsEntries(userId);
+    expect(after.find((e) => e.id === e1.id)?.incomeSource).toBe("학식/구내");
+    expect(after.find((e) => e.id === e2.id)?.category).toBe("기타");
+    expect(after.find((e) => e.id === e3.id)?.incomeSource).toBeNull(); // 미선택 건 불변
+    expect(after.find((e) => e.id === e3.id)?.category).toBe("식비");
+  });
 });

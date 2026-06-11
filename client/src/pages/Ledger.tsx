@@ -12,9 +12,10 @@ import { smartCropToSquare } from "@/lib/smartCrop";
 import {
   Upload, Camera, PenLine, Loader2,
   Copy, ChevronDown, ChevronUp, ChevronRight, ChevronLeft,
-  X, RotateCw, Plus, CalendarDays,
+  X, RotateCw, Plus, CalendarDays, Search, CheckSquare, CheckCircle2, Circle, Trash2,
 } from "lucide-react";
 import EntryDetailSheet from "@/components/EntryDetailSheet";
+import ConfirmDialog from "@/components/ConfirmDialog";
 import IncomeSourceChips, { useIncomeSourceList } from "@/components/IncomeSourceChips";
 import IncomeSourceSheet, { UNCLASSIFIED_KEY } from "@/components/IncomeSourceSheet";
 import { UNCLASSIFIED, FIXED_ACTUAL } from "@shared/incomeSources";
@@ -65,6 +66,8 @@ export default function Ledger({ weekFocusNonce = 0 }: { weekFocusNonce?: number
   const createEntry = trpc.savings.create.useMutation({
     onSuccess: () => utils.savings.list.invalidate(),
   });
+  const updateBulk = trpc.savings.updateBulk.useMutation({ onSuccess: () => utils.savings.list.invalidate() });
+  const deleteBulk = trpc.savings.deleteBulk.useMutation({ onSuccess: () => utils.savings.list.invalidate() });
   const analyzeImage = trpc.ai.analyzeImage.useMutation();
   const uploadCroppedImage = trpc.ai.uploadImage.useMutation();
 
@@ -118,23 +121,56 @@ export default function Ledger({ weekFocusNonce = 0 }: { weekFocusNonce?: number
     return monthEntries;
   }, [entries, monthEntries, weekFilter, filterDate]);
 
-  // ── #37+#38 수익원 필터 — 날짜 스코프 위에 겹친다 ──
+  // ── #46 검색 — 제목·메모 부분일치 (날짜 스코프 위, 수익원 필터 아래 레이어) ──
+  const [showSearch, setShowSearch] = useState(false);
+  const [search, setSearch] = useState("");
+  const searched = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return dateScoped;
+    return dateScoped.filter(
+      (e) => e.title.toLowerCase().includes(q) || (e.memo ?? "").toLowerCase().includes(q)
+    );
+  }, [dateScoped, search]);
+
+  // ── #37+#38 수익원 필터 — 검색 결과 위에 겹친다 ──
   const [sourceFilter, setSourceFilter] = useState<string | null>(null);
   const [showSources, setShowSources] = useState(false);
   const sourceCounts = useMemo(() => {
     const m = new Map<string, number>();
-    for (const e of dateScoped) {
+    for (const e of searched) {
       const k = e.incomeSource ?? UNCLASSIFIED_KEY;
       m.set(k, (m.get(k) ?? 0) + 1);
     }
     return m;
-  }, [dateScoped]);
+  }, [searched]);
   const displayEntries = useMemo(() => {
-    if (!sourceFilter) return dateScoped;
-    return dateScoped.filter((e) =>
+    if (!sourceFilter) return searched;
+    return searched.filter((e) =>
       sourceFilter === UNCLASSIFIED_KEY ? !e.incomeSource : e.incomeSource === sourceFilter
     );
-  }, [dateScoped, sourceFilter]);
+  }, [searched, sourceFilter]);
+
+  // ── #46 선택 모드 — 다중 선택 → 일괄 삭제/수익원/카테고리 ──
+  const [selectMode, setSelectMode] = useState(false);
+  const [selected, setSelected] = useState<Set<number>>(new Set());
+  const [bulkAction, setBulkAction] = useState<null | "source" | "category" | "delete">(null);
+  const exitSelect = () => { setSelectMode(false); setSelected(new Set()); setBulkAction(null); };
+  const toggleSelect = (id: number) =>
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  const allVisibleIds = useMemo(() => displayEntries.map((e) => e.id), [displayEntries]);
+  const runBulk = async (data: { incomeSource?: string | null; category?: string }) => {
+    try {
+      await updateBulk.mutateAsync({ ids: Array.from(selected), ...data });
+      toast.success(`${selected.size}건을 바꿨어요`);
+      exitSelect();
+    } catch (e) {
+      toast.error((e as Error)?.message || "일괄 변경에 실패했어요");
+    }
+  };
 
   // 날짜별 그룹 (장부의 본질: "언제, 얼마")
   const groups = useMemo(() => {
@@ -518,9 +554,33 @@ export default function Ledger({ weekFocusNonce = 0 }: { weekFocusNonce?: number
         </div>
       )}
 
+      {/* ── #46 선택 모드 헤더 ── */}
+      {selectMode && (
+        <div className="flex items-center gap-2 pb-2 mb-1 px-1">
+          <span className="text-caption font-medium text-ink">{selected.size}개 선택</span>
+          <button
+            onClick={() => setSelected(new Set(selected.size === allVisibleIds.length ? [] : allVisibleIds))}
+            className="text-caption text-emerald-600 font-medium active:opacity-70"
+          >
+            {selected.size === allVisibleIds.length ? "전체 해제" : "전체 선택"}
+          </button>
+          <div className="flex-1" />
+          <button onClick={exitSelect} className="text-caption text-ink-soft active:text-ink">취소</button>
+        </div>
+      )}
+
       {/* ── #37+#38 수익원 필터 칩 — 현재 기간에 있는 유형만, 끝에 '관리' ── */}
-      {(dateScoped.length > 0 || sourceFilter) && (
+      {!selectMode && (dateScoped.length > 0 || sourceFilter) && (
         <div className="flex gap-1.5 overflow-x-auto pb-2 mb-1 -mx-1 px-1" style={{ scrollbarWidth: "none" }}>
+          <button
+            onClick={() => { setShowSearch((v) => { if (v) setSearch(""); return !v; }); }}
+            aria-label="검색"
+            className={`shrink-0 w-8 h-8 flex items-center justify-center rounded-full transition-colors ${
+              showSearch || search ? "bg-ink text-white" : "bg-white border border-line text-ink-soft active:bg-cream"
+            }`}
+          >
+            <Search size={13} />
+          </button>
           <button
             onClick={() => setSourceFilter(null)}
             className={`shrink-0 px-3 py-1.5 rounded-full text-caption transition-colors ${
@@ -556,6 +616,32 @@ export default function Ledger({ weekFocusNonce = 0 }: { weekFocusNonce?: number
           >
             관리
           </button>
+          <button
+            onClick={() => setSelectMode(true)}
+            aria-label="선택 모드"
+            className="shrink-0 w-8 h-8 flex items-center justify-center rounded-full bg-white border border-line text-ink-soft active:bg-cream transition-colors"
+          >
+            <CheckSquare size={13} />
+          </button>
+        </div>
+      )}
+
+      {/* ── #46 검색 입력 ── */}
+      {!selectMode && showSearch && (
+        <div className="flex items-center gap-2 mb-2 px-3 py-2 bg-white border border-line rounded-card">
+          <Search size={14} className="text-ink-faint shrink-0" />
+          <input
+            autoFocus
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="제목·메모 검색"
+            className="flex-1 text-body focus:outline-none bg-transparent"
+          />
+          {search && (
+            <button onClick={() => setSearch("")} aria-label="지우기" className="text-ink-faint active:text-ink-soft shrink-0">
+              <X size={14} />
+            </button>
+          )}
         </div>
       )}
 
@@ -679,9 +765,14 @@ export default function Ledger({ weekFocusNonce = 0 }: { weekFocusNonce?: number
                       {items.map((entry, i) => (
                         <button
                           key={entry.id}
-                          onClick={() => setDetailEntry(entry)}
-                          className={`w-full flex items-center gap-3 px-3 py-2.5 text-left active:bg-cream transition-colors ${i > 0 ? "border-t border-line" : ""}`}
+                          onClick={() => (selectMode ? toggleSelect(entry.id) : setDetailEntry(entry))}
+                          className={`w-full flex items-center gap-3 px-3 py-2.5 text-left active:bg-cream transition-colors ${i > 0 ? "border-t border-line" : ""} ${selectMode && selected.has(entry.id) ? "bg-emerald-50/60" : ""}`}
                         >
+                          {selectMode && (
+                            selected.has(entry.id)
+                              ? <CheckCircle2 size={18} className="text-emerald-500 flex-shrink-0" />
+                              : <Circle size={18} className="text-ink-faint flex-shrink-0" />
+                          )}
                           {entry.imageUrl
                             ? <img src={entry.imageUrl} alt="" className="w-10 h-10 rounded-lg object-cover flex-shrink-0" />
                             : <div className="w-10 h-10 rounded-lg bg-line flex-shrink-0" />}
@@ -698,7 +789,7 @@ export default function Ledger({ weekFocusNonce = 0 }: { weekFocusNonce?: number
                               <span className="mx-0.5">→</span>₩{fmt(entry.actualAmount)}
                             </p>
                           </div>
-                          <ChevronRight size={14} className="text-ink-faint flex-shrink-0" />
+                          {!selectMode && <ChevronRight size={14} className="text-ink-faint flex-shrink-0" />}
                         </button>
                       ))}
                     </div>
@@ -719,6 +810,91 @@ export default function Ledger({ weekFocusNonce = 0 }: { weekFocusNonce?: number
             </div>
           )}
         </section>
+      )}
+
+      {/* ── #46 일괄 작업 바 — 선택 모드에서 탭바 자리 위에 ── */}
+      {selectMode && (
+        <div
+          className="fixed left-1/2 -translate-x-1/2 z-50 w-[calc(100%-2.5rem)] max-w-md"
+          style={{ bottom: "max(0.9rem, env(safe-area-inset-bottom))" }}
+        >
+          <div className="flex items-center gap-1.5 bg-white border border-line rounded-2xl px-2 py-2 shadow-lg">
+            <button
+              onClick={() => setBulkAction("source")}
+              disabled={selected.size === 0 || updateBulk.isPending}
+              className="flex-1 py-2.5 text-caption font-medium text-ink rounded-xl bg-gold/10 active:bg-gold/20 disabled:opacity-40 transition-colors"
+            >
+              수익원 지정
+            </button>
+            <button
+              onClick={() => setBulkAction("category")}
+              disabled={selected.size === 0 || updateBulk.isPending}
+              className="flex-1 py-2.5 text-caption font-medium text-ink rounded-xl bg-emerald-50 active:bg-emerald-100 disabled:opacity-40 transition-colors"
+            >
+              카테고리
+            </button>
+            <button
+              onClick={() => setBulkAction("delete")}
+              disabled={selected.size === 0 || deleteBulk.isPending}
+              aria-label="일괄 삭제"
+              className="px-4 py-2.5 text-red-400 rounded-xl bg-red-50 active:bg-red-100 disabled:opacity-40 transition-colors"
+            >
+              <Trash2 size={15} />
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* #46 — 일괄 수익원/카테고리 선택 시트 */}
+      {bulkAction === "source" && (
+        <div className="fixed inset-0 z-[60] flex items-end justify-center bg-black/40" onClick={() => setBulkAction(null)}>
+          <div className="w-full max-w-lg bg-white rounded-t-3xl px-5 pt-4 pb-8" onClick={(e) => e.stopPropagation()}>
+            <p className="text-body font-medium text-ink text-center mb-1">선택한 {selected.size}건의 수익원</p>
+            <p className="text-micro text-ink-faint text-center mb-3">미분류로 되돌리려면 맨 아래 버튼</p>
+            <IncomeSourceChips value={null} onChange={(v) => { if (v) runBulk({ incomeSource: v }); }} />
+            <button
+              onClick={() => runBulk({ incomeSource: null })}
+              className="mt-3 w-full py-2.5 text-caption text-ink-soft border border-line rounded-xl active:bg-cream transition-colors"
+            >
+              {UNCLASSIFIED}로 되돌리기
+            </button>
+          </div>
+        </div>
+      )}
+      {bulkAction === "category" && (
+        <div className="fixed inset-0 z-[60] flex items-end justify-center bg-black/40" onClick={() => setBulkAction(null)}>
+          <div className="w-full max-w-lg bg-white rounded-t-3xl px-5 pt-4 pb-8" onClick={(e) => e.stopPropagation()}>
+            <p className="text-body font-medium text-ink text-center mb-3">선택한 {selected.size}건의 카테고리</p>
+            <div className="flex flex-wrap gap-1.5">
+              {categoryNames.map((c: string) => (
+                <button
+                  key={c}
+                  onClick={() => runBulk({ category: c })}
+                  className="px-3 py-1.5 rounded-full text-caption bg-cream text-ink-soft active:bg-line transition-colors"
+                >
+                  {c}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+      {bulkAction === "delete" && (
+        <ConfirmDialog
+          title={`${selected.size}건을 삭제할까요?`}
+          description="선택한 기록이 장부에서 사라져요. 되돌릴 수 없어요."
+          confirmLabel="삭제"
+          onConfirm={async () => {
+            try {
+              await deleteBulk.mutateAsync({ ids: Array.from(selected) });
+              toast.success(`${selected.size}건을 삭제했어요`);
+              exitSelect();
+            } catch {
+              toast.error("삭제에 실패했어요");
+            }
+          }}
+          onCancel={() => setBulkAction(null)}
+        />
       )}
 
       {/* ══════════ 기록 추가 시트 ══════════ */}

@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { protectedProcedure, router } from "../trpc";
-import { getSavingsEntries, createSavingsEntry, deleteSavingsEntry, deleteMultipleSavingsEntries, deleteAllSavingsEntries, countSavingsEntriesByCategory, updateSavingsEntry, logUsageEvent, upsertItemFromEntry, backfillIncomeSources, isValidIncomeSourceFor } from "../db";
+import { getSavingsEntries, createSavingsEntry, deleteSavingsEntry, deleteMultipleSavingsEntries, deleteAllSavingsEntries, countSavingsEntriesByCategory, updateSavingsEntry, updateMultipleSavingsEntries, logUsageEvent, upsertItemFromEntry, backfillIncomeSources, isValidIncomeSourceFor } from "../db";
 import { TRPCError } from "@trpc/server";
 import { CUSTOM_SOURCE_NAME_MAX } from "@shared/incomeSources";
 
@@ -120,6 +120,22 @@ export const savingsRouter = router({
       .input(z.object({ id: z.number().int() }))
       .mutation(async ({ ctx, input }) => {
         await deleteSavingsEntry(input.id, ctx.user.id);
+        return { success: true };
+      }),
+
+    // #46 — 일괄 수정: 다중 선택한 기록의 수익원/카테고리를 한 번에
+    updateBulk: protectedProcedure
+      .input(z.object({
+        ids: z.array(z.number().int()).min(1).max(200),
+        incomeSource: incomeSourceInput.nullable().optional(),
+        category: z.string().min(1).optional(),
+      }).refine((v) => v.incomeSource !== undefined || v.category !== undefined, { message: "바꿀 값이 없어요" }))
+      .mutation(async ({ ctx, input }) => {
+        await assertIncomeSource(ctx.user.id, input.incomeSource);
+        await updateMultipleSavingsEntries(input.ids, ctx.user.id, {
+          incomeSource: input.incomeSource,
+          category: input.category,
+        });
         return { success: true };
       }),
 
