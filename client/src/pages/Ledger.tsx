@@ -45,6 +45,8 @@ interface QueueItem {
   priorDate?: string; // P2 — 지난 확정가가 적용된 경우
   nSplit?: string;     // #33 엔빵 — 인원 (원가=총 추정액÷n, 실제는 청구액 직접 입력)
   priorUsualActual?: number; // 단골 평소가 (#37)
+  groupOriginal?: number;    // #43 — AI 전체 원가 추정 (단체)
+  groupActual?: number;      // #43 — AI 전체 실제 추정 (단체)
   aiOriginalAmount?: number;
   aiActualAmount?: number;
 }
@@ -259,13 +261,14 @@ export default function Ledger({ weekFocusNonce = 0 }: { weekFocusNonce?: number
       status: "ready" as const,
       title: autoTitle,
       category: result.category,
-      // P2 — 지난 확정가 우선 (기준가 일관성)
-      originalAmount: String(result.prior?.originalAmount ?? result.estimatedOriginalAmount),
+      // #43 — 단체면 '내 몫'이 바로 꽂힌다 (서버가 균등 분배 계산). 단독이면 단골 우선(P2).
+      originalAmount: String(result.myShare?.originalAmount ?? result.prior?.originalAmount ?? result.estimatedOriginalAmount),
       priorDate: result.prior?.date,
       priorUsualActual: result.prior?.usualActual,
-      // #33 — AI가 2인분 이상으로 보면 엔빵 인원 프리필 (1인 몫 적용은 사용자가 탭)
-      nSplit: (result.estimatedPeopleCount ?? 1) >= 2 ? String(result.estimatedPeopleCount) : undefined,
-      actualAmount: String(result.estimatedActualAmount),
+      nSplit: result.myShare ? String(result.myShare.peopleCount) : undefined,
+      groupOriginal: result.myShare?.groupOriginalAmount,
+      groupActual: result.myShare?.groupActualAmount,
+      actualAmount: String(result.myShare?.actualAmount ?? result.estimatedActualAmount),
       aiReason: result.reason,
       date,
       imageUrl: finalImageUrl,
@@ -340,6 +343,10 @@ export default function Ledger({ weekFocusNonce = 0 }: { weekFocusNonce?: number
         aiOriginalAmount: item.aiOriginalAmount,
         aiActualAmount: item.aiActualAmount,
         aiReason: item.aiReason,
+        // #43 — 전체 추론값 보존 (파인튜닝·데이터 해자)
+        aiPeopleCount: item.nSplit ? Number(item.nSplit) || undefined : undefined,
+        aiGroupOriginalAmount: item.groupOriginal,
+        aiGroupActualAmount: item.groupActual,
         imageUrl: item.imageUrl,
         memo: item.memo || undefined,
       });
@@ -859,8 +866,8 @@ export default function Ledger({ weekFocusNonce = 0 }: { weekFocusNonce?: number
                           </span>
                         </div>
 
+                        {/* #43 — 객관 지표 라벨 (AI가 추정해 채워둔 값, 사용자가 확정) */}
                         <div className="flex items-center gap-2 px-1 text-micro text-ink-soft">
-                          <span className="font-mono uppercase tracking-wider text-ink-faint">AI 추정</span>
                           <span className="flex items-center gap-1">원가
                             <input type="number" value={item.originalAmount}
                               onChange={e => updateQueueItem(item.id, { originalAmount: e.target.value })}
@@ -878,38 +885,38 @@ export default function Ledger({ weekFocusNonce = 0 }: { weekFocusNonce?: number
                           <p className="text-micro text-emerald-600/80">원가는 지난번 확정가 기준 ({item.priorDate.slice(5).replace("-", ".")})</p>
                         )}
 
-                        {/* #33 엔빵 — 한 테이블을 찍었을 때: 원가(총 추정액)÷인원, 실제는 청구액을 직접 */}
+                        {/* #43 — 인원: 객관 지표. AI가 채워두고, 바꾸면 내 몫이 즉시 재계산된다 (적용 버튼 없음) */}
                         <div className="flex items-center gap-2 px-1 text-micro text-ink-soft">
-                          <span className="font-mono uppercase tracking-wider text-ink-faint">엔빵</span>
-                          <input
-                            type="number"
-                            min={2}
-                            max={30}
-                            placeholder="인원"
-                            value={item.nSplit ?? ""}
-                            onChange={e => updateQueueItem(item.id, { nSplit: e.target.value })}
-                            className="w-12 border-0 border-b border-line bg-transparent text-right tabular-nums text-ink-soft focus:border-emerald-400 focus:outline-none"
-                          />
-                          명
-                          {Number(item.nSplit) >= 2 && (
-                            <button
-                              onClick={() => {
-                                const n = Number(item.nSplit);
-                                const baseO = item.aiOriginalAmount ?? (Number(item.originalAmount) || 0);
-                                const baseA = item.aiActualAmount ?? (Number(item.actualAmount) || 0);
-                                updateQueueItem(item.id, {
-                                  originalAmount: String(Math.round(baseO / n)),
-                                  actualAmount: String(Math.round(baseA / n)),
-                                });
+                          <span className="flex items-center gap-1">인원
+                            <input
+                              type="number"
+                              min={1}
+                              max={30}
+                              value={item.nSplit ?? "1"}
+                              onChange={e => {
+                                const v = e.target.value;
+                                const n = Number(v);
+                                const baseO = item.groupOriginal ?? item.aiOriginalAmount ?? (Number(item.originalAmount) || 0);
+                                const baseA = item.groupActual ?? item.aiActualAmount ?? (Number(item.actualAmount) || 0);
+                                if (n >= 1 && Number.isFinite(n)) {
+                                  updateQueueItem(item.id, {
+                                    nSplit: v,
+                                    originalAmount: String(Math.round(baseO / n)),
+                                    actualAmount: String(Math.round(baseA / n)),
+                                  });
+                                } else {
+                                  updateQueueItem(item.id, { nSplit: v });
+                                }
                               }}
-                              className="px-2 py-1 rounded-full border border-emerald-200 text-emerald-600 active:bg-emerald-50 transition-colors"
-                            >
-                              1인 몫 적용
-                            </button>
-                          )}
+                              className="w-12 border-0 border-b border-line bg-transparent text-right tabular-nums text-ink-soft focus:border-emerald-400 focus:outline-none"
+                            />
+                          </span>
+                          명
                         </div>
-                        {Number(item.nSplit) >= 2 && (
-                          <p className="text-micro text-ink-faint px-1">자르르가 약 {item.nSplit}인분으로 봤어요. '1인 몫 적용'을 누르면 총 추정액 ÷ {item.nSplit}. 실제 지출은 엔빵 청구액으로 직접.</p>
+                        {item.groupOriginal != null && Number(item.nSplit) >= 2 && (
+                          <p className="text-micro text-ink-faint px-1">
+                            전체 약 ₩{fmt(item.groupOriginal)}(원가)·₩{fmt(item.groupActual ?? 0)}(실제)를 {item.nSplit}명 기준으로 나눈 내 몫이에요
+                          </p>
                         )}
 
                         <input

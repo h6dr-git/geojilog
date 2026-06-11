@@ -89,6 +89,15 @@ export async function getDb() {
       try {
         const client = createClient(DB_AUTH ? { url: DB_URL, authToken: DB_AUTH } : { url: DB_URL });
         await client.executeMultiple(CREATE_TABLES_SQL);
+        // #43 — 기존 테이블에 단체 추론값 컬럼 추가 (이미 있으면 무시).
+        // CREATE IF NOT EXISTS는 기존 테이블을 못 바꾸므로 ALTER를 개별 try로.
+        for (const ddl of [
+          "ALTER TABLE savings_entries ADD COLUMN aiPeopleCount INTEGER",
+          "ALTER TABLE savings_entries ADD COLUMN aiGroupOriginalAmount INTEGER",
+          "ALTER TABLE savings_entries ADD COLUMN aiGroupActualAmount INTEGER",
+        ]) {
+          try { await client.execute(ddl); } catch { /* duplicate column — 무시 */ }
+        }
         _db = drizzle(client);
         return _db;
       } catch (e) {

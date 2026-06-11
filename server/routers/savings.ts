@@ -28,6 +28,10 @@ export const savingsRouter = router({
         aiActualAmount: z.number().int().min(0).optional(),
         aiEstimated: z.enum(["yes", "no"]).default("no"),
         aiReason: z.string().optional(),
+        // #43 — AI 단체 추론값 (파인튜닝·데이터 해자용 보존)
+        aiPeopleCount: z.number().int().min(1).max(50).optional(),
+        aiGroupOriginalAmount: z.number().int().positive().optional(),
+        aiGroupActualAmount: z.number().int().min(0).optional(),
         imageUrl: z.string().optional(),
         memo: z.string().optional(),
       }))
@@ -47,6 +51,9 @@ export const savingsRouter = router({
           profit,
           aiEstimated: input.aiEstimated,
           aiReason: input.aiReason,
+          aiPeopleCount: input.aiPeopleCount,
+          aiGroupOriginalAmount: input.aiGroupOriginalAmount,
+          aiGroupActualAmount: input.aiGroupActualAmount,
           imageUrl: input.imageUrl,
           memo: input.memo,
         });

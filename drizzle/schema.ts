@@ -45,7 +45,11 @@ export const savingsEntries = sqliteTable("savings_entries", {
   aiEstimated: text("aiEstimated", { enum: ["yes", "no"] })
     .notNull()
     .default("no"),
-  aiReason: text("aiReason"), // AI가 기준가를 추정한 근거
+  aiReason: text("aiReason"),
+  // #43 — AI 단체 추론값 보존 (전체 원가·전체 실제·인원). 내 몫은 클라 표시값(originalAmount 등)에.
+  aiPeopleCount: integer("aiPeopleCount"),
+  aiGroupOriginalAmount: integer("aiGroupOriginalAmount"),
+  aiGroupActualAmount: integer("aiGroupActualAmount"), // AI가 기준가를 추정한 근거
   imageUrl: text("imageUrl"), // 저장된 사진 경로/URL
   memo: text("memo"), // 사용자 메모
 

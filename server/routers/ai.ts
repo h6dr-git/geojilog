@@ -140,7 +140,19 @@ export const aiRouter = router({
           }
           }
         } catch { /* 조회 실패해도 분석 결과는 정상 반환 */ }
-        return { ...parsed, imageUrl: `/manus-storage/${key}`, prior };
+        // #43 — 단체 사진이면 '내 몫'까지 서버가 계산해 내려준다 (균등 분배 가정, 클라 폼에 바로 꽂힘)
+        const headcount = parsed.estimatedPeopleCount;
+        const myShare =
+          headcount >= 2
+            ? {
+                originalAmount: Math.round(parsed.estimatedOriginalAmount / headcount),
+                actualAmount: Math.round(parsed.estimatedActualAmount / headcount),
+                groupOriginalAmount: parsed.estimatedOriginalAmount,
+                groupActualAmount: parsed.estimatedActualAmount,
+                peopleCount: headcount,
+              }
+            : null;
+        return { ...parsed, imageUrl: `/manus-storage/${key}`, prior, myShare };
       }),
 
     uploadImage: protectedProcedure
