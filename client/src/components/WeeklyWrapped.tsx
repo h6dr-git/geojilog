@@ -50,6 +50,13 @@ export default function WeeklyWrapped({
     const arr = Object.entries(m).sort((a, b) => b[1] - a[1]);
     return arr[0]?.[0] ?? null;
   }, [week]);
+  // #37+#38 — 주력 수익원(이번 주 수익 합 1위, 미분류 제외)
+  const topSource = useMemo(() => {
+    const m: Record<string, number> = {};
+    week.forEach((e) => { if (e.incomeSource) m[e.incomeSource] = (m[e.incomeSource] ?? 0) + e.profit; });
+    const arr = Object.entries(m).sort((a, b) => b[1] - a[1]);
+    return arr[0] ? { name: arr[0][0], profit: arr[0][1] } : null;
+  }, [week]);
   const butler = useMemo(() => butlerWeeklyComment(week.length, profit), [week.length, profit]);
   const dosa = useMemo(dosaLineOfDay, []);
 
@@ -79,6 +86,11 @@ export default function WeeklyWrapped({
               <div style={{ fontSize: "11px", color: "#5E6A60", textAlign: "left", fontFamily: "'JetBrains Mono', ui-monospace, monospace" }}>{mmdd(start)} – {mmdd(end)}</div>
               <div style={{ fontSize: "34px", fontWeight: 800, color: "#10B981", fontFamily: "'JetBrains Mono', ui-monospace, monospace", textAlign: "left", marginTop: "10px" }}>+₩{fmt(profit)}</div>
               <div style={{ fontSize: "11px", color: "#9aa89e", textAlign: "left", marginTop: "2px" }}>{week.length}끼 기록{best ? ` · 최고의 한 수 ${best.title}` : ""}</div>
+              {topSource && (
+                <div style={{ fontSize: "11px", color: "#E0A92E", textAlign: "left", marginTop: "4px" }}>
+                  주력 수익원 {topSource.name} <span style={{ fontFamily: "'JetBrains Mono', ui-monospace, monospace" }}>+₩{fmt(topSource.profit)}</span>
+                </div>
+              )}
               <div style={{ borderTop: "1px solid rgba(255,255,255,0.1)", margin: "14px 0" }} />
               <div style={{ fontSize: "12px", color: "#d8cfae", textAlign: "left", lineHeight: 1.6 }}>{butler}</div>
               <div style={{ fontSize: "11px", color: "#8C7B5A", textAlign: "left", marginTop: "10px", fontStyle: "italic", lineHeight: 1.6 }}>“{dosa}” — 무일푼 도사</div>
@@ -157,7 +169,12 @@ export default function WeeklyWrapped({
             <p className="text-title leading-relaxed max-w-[19rem]" style={{ color: "#F4EFE3" }}>{butler}</p>
             <div className="mt-8 space-y-1.5">
               <p className="text-caption" style={{ color: "#9aa89e" }}>기록 {week.length}건</p>
-              {topCat && <p className="text-caption" style={{ color: "#9aa89e" }}>가장 많이 지킨 곳 — {topCat}</p>}
+              {topSource && (
+                <p className="text-caption" style={{ color: "#d8cfae" }}>
+                  주력 수익원 — <span style={{ color: "#E0A92E" }}>{topSource.name}</span> <span className="font-mono tabular-nums">+₩{fmt(topSource.profit)}</span>
+                </p>
+              )}
+              {topCat && <p className="text-caption" style={{ color: "#9aa89e" }}>가장 많이 번 카테고리 — {topCat}</p>}
             </div>
           </div>
         )}

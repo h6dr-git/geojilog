@@ -3,6 +3,7 @@
 //       원본 관리는 장부(상세 시트)가 전담. 톤·개연성을 해치는 것은 두지 않는다.
 // 보류(배선 해제, 코드 보존): 이달의 카드 꾸미기(AlbumKit) → #23 카드 스킨 프로젝트에서 명분 있게 재진입.
 import { useMemo, useState } from "react";
+import { UNCLASSIFIED } from "@shared/incomeSources";
 import { trpc } from "@/lib/trpc";
 import { won } from "@/lib/format";
 import { useAuth } from "@/hooks/useAuth";
@@ -97,6 +98,20 @@ export default function Profile({ onOpenWeekly }: { onOpenWeekly: () => void }) 
     return Object.entries(map).sort((a, b) => b[1] - a[1]);
   }, [monthList]);
 
+  // #37+#38 — 수익원 구성 ("어떻게 벌었나"가 거지로그의 본질 축 — 기본 보기)
+  const monthBySource = useMemo(() => {
+    const map: Record<string, number> = {};
+    monthList.forEach((e) => {
+      const k = e.incomeSource ?? UNCLASSIFIED;
+      map[k] = (map[k] ?? 0) + e.profit;
+    });
+    // 미분류는 맨 뒤로 (수익 순 정렬 후)
+    return Object.entries(map).sort((a, b) =>
+      a[0] === UNCLASSIFIED ? 1 : b[0] === UNCLASSIFIED ? -1 : b[1] - a[1]
+    );
+  }, [monthList]);
+  const [compBy, setCompBy] = useState<"source" | "category">("source");
+
   const [showWrapped, setShowWrapped] = useState(false);
 
   return (
@@ -136,22 +151,48 @@ export default function Profile({ onOpenWeekly }: { onOpenWeekly: () => void }) 
                 : `${monthList.length}건을 정리해 두었습니다.`
             }
           >
-            {monthByCategory.length > 0 && (
-              <div className="space-y-1.5 mt-3">
-                {monthByCategory.map(([cat, profit]) => {
-                  const pct = monthTotal > 0 ? Math.round((profit / monthTotal) * 100) : 0;
-                  return (
-                    <div key={cat}>
-                      <div className="flex justify-between text-caption mb-0.5">
-                        <span style={{ color: "#5c5647" }}>{cat}</span>
-                        <span className="tabular-nums" style={{ color: "#5c5647" }}>+₩{fmt(profit)} ({pct}%)</span>
+            {monthList.length > 0 && (
+              <div className="mt-3">
+                {/* 구성 기준 토글 — 수익원(어떻게 벌었나, 기본) / 카테고리(어디에 쓴 돈) */}
+                <div className="flex gap-1 mb-2.5">
+                  {([["source", "수익원"], ["category", "카테고리"]] as const).map(([key, label]) => (
+                    <button
+                      key={key}
+                      onClick={(e) => { e.stopPropagation(); setCompBy(key); }}
+                      className="px-2.5 py-1 rounded-full text-micro transition-colors"
+                      style={
+                        compBy === key
+                          ? { background: "#5c5647", color: "#F4EFE3" }
+                          : { background: "#efe4cd", color: "#8a7f63" }
+                      }
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+                <div className="space-y-1.5">
+                  {(compBy === "source" ? monthBySource : monthByCategory).map(([name, profit]) => {
+                    const pct = monthTotal > 0 ? Math.round((profit / monthTotal) * 100) : 0;
+                    const dim = name === UNCLASSIFIED;
+                    return (
+                      <div key={name} style={dim ? { opacity: 0.55 } : undefined}>
+                        <div className="flex justify-between text-caption mb-0.5">
+                          <span style={{ color: "#5c5647" }}>{name}</span>
+                          <span className="tabular-nums" style={{ color: "#5c5647" }}>+₩{fmt(profit)} ({pct}%)</span>
+                        </div>
+                        <div className="h-1 rounded-full overflow-hidden" style={{ background: "#efe4cd" }}>
+                          <div
+                            className="h-full rounded-full transition-all"
+                            style={{
+                              width: `${pct}%`,
+                              background: dim ? "#cdbfa0" : compBy === "source" ? "rgba(224,169,46,0.85)" : "rgba(52,211,153,0.8)",
+                            }}
+                          />
+                        </div>
                       </div>
-                      <div className="h-1 rounded-full overflow-hidden" style={{ background: "#efe4cd" }}>
-                        <div className="h-full bg-emerald-400/80 rounded-full transition-all" style={{ width: `${pct}%` }} />
-                      </div>
-                    </div>
-                  );
-                })}
+                    );
+                  })}
+                </div>
               </div>
             )}
           </ReportCard>
