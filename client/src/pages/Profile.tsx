@@ -12,9 +12,11 @@ import { useAuth } from "@/hooks/useAuth";
 import WeeklyWrapped from "@/components/WeeklyWrapped";
 import SpeakerBadge from "@/components/SpeakerBadge";
 import ShareCardSheet from "@/components/ShareCardSheet";
+import ShelfCardViewer, { type ShelfCard } from "@/components/ShelfCardViewer";
+import { themeById } from "@/components/cardSkin";
 import { SavingsEntry, fmt } from "@/lib/ledger";
 import { butlerWeeklyComment, dosaLineOfDay } from "@/lib/voice";
-import { ChevronLeft, ChevronRight, Sparkles, ImageDown } from "lucide-react";
+import { ChevronLeft, ChevronRight, Sparkles, BookMarked } from "lucide-react";
 
 type Period = "week" | "month" | "all";
 
@@ -53,6 +55,7 @@ export default function Profile({ onOpenWeekly }: { onOpenWeekly: () => void }) 
         label: offset === 0 ? "이번 주" : `${mmdd(iso(mon))} ~ ${mmdd(iso(sun))}`,
         cardLabel: "거지로그 주간 결산",
         cardPeriod: `${mmdd(iso(mon))} – ${mmdd(iso(endD))}`,
+        shelfKey: { periodType: "week" as const, startDate: iso(mon) },
       };
     }
     if (period === "month") {
@@ -64,9 +67,10 @@ export default function Profile({ onOpenWeekly }: { onOpenWeekly: () => void }) 
         label: offset === 0 ? `${m.getMonth() + 1}월` : isThisYear ? `${m.getMonth() + 1}월` : `${m.getFullYear()}.${pad(m.getMonth() + 1)}`,
         cardLabel: `거지로그 ${m.getMonth() + 1}월 결산`,
         cardPeriod: `${m.getFullYear()}.${pad(m.getMonth() + 1)}`,
+        shelfKey: { periodType: "month" as const, startDate: iso(m) },
       };
     }
-    return { start: "0000-01-01", end: "9999-12-31", label: "전체", cardLabel: "거지로그 총결산", cardPeriod: "ALL TIME" };
+    return { start: "0000-01-01", end: "9999-12-31", label: "전체", cardLabel: "거지로그 총결산", cardPeriod: "ALL TIME", shelfKey: null };
   }, [period, offset, today]);
 
   // ── 기간 데이터 ──
@@ -130,6 +134,11 @@ export default function Profile({ onOpenWeekly }: { onOpenWeekly: () => void }) 
 
   const [showWrapped, setShowWrapped] = useState(false);
   const [showShare, setShowShare] = useState(false);
+
+  // ── #50 서가 — 소장된 결산 카드 (완결된 세계: 만든 카드는 앱 안에 남는다) ──
+  const { data: shelf = [] } = trpc.reportCards.list.useQuery(undefined, { enabled: isAuthenticated });
+  const [shelfCard, setShelfCard] = useState<ShelfCard | null>(null);
+  const [briefingRange, setBriefingRange] = useState<{ start: string; end: string } | null>(null);
 
   const segBtn = (key: Period, label: string) => (
     <button
@@ -283,15 +292,41 @@ export default function Profile({ onOpenWeekly }: { onOpenWeekly: () => void }) 
             <p className="text-caption mt-4" style={{ color: "#5c5647" }}>{comment}</p>
           </div>
 
-          {/* 결산 카드 — 공유 직행 (스토리 통과 불필요) */}
+          {/* 결산 카드 — 만들어 서가에 소장 (#50 완결된 세계) */}
           {count > 0 && period !== "all" && (
             <button
               onClick={() => setShowShare(true)}
               className="mt-3 w-full flex items-center justify-center gap-2 py-3 rounded-card border border-line bg-white text-body text-ink font-medium active:bg-cream transition-colors"
             >
-              <ImageDown size={15} className="text-gold" />
+              <BookMarked size={15} className="text-gold" />
               결산 카드 만들기
             </button>
+          )}
+
+          {/* ── #50 서가 — 소장 카드들 ── */}
+          {(shelf as ShelfCard[]).length > 0 && (
+            <section className="mt-6">
+              <p className="text-caption font-mono text-ink-soft tracking-widest uppercase mb-2 px-1">서가</p>
+              <div className="flex gap-2 overflow-x-auto pb-2 -mx-1 px-1" style={{ scrollbarWidth: "none" }}>
+                {(shelf as ShelfCard[]).map((c) => {
+                  const t = themeById(c.theme);
+                  const d = new Date(c.startDate + "T00:00:00");
+                  const lbl = c.periodType === "week" ? `${d.getMonth() + 1}.${d.getDate()}~ 주간` : `${d.getMonth() + 1}월`;
+                  return (
+                    <button
+                      key={c.id}
+                      onClick={() => setShelfCard(c)}
+                      className="shrink-0 w-24 rounded-xl px-3 py-3 text-left active:scale-95 transition-transform"
+                      style={{ background: t.bg, border: `1px solid ${t.border}` }}
+                    >
+                      <p style={{ fontSize: "8px", letterSpacing: "2px", color: t.label }}>GEOJILOG</p>
+                      <p className="text-caption font-medium mt-1.5" style={{ color: t.title }}>{lbl}</p>
+                      <p className="text-micro mt-0.5" style={{ color: t.sub }}>{c.periodType === "week" ? "주간 결산" : "월간 결산"}</p>
+                    </button>
+                  );
+                })}
+              </div>
+            </section>
           )}
         </>
       )}
@@ -307,10 +342,35 @@ export default function Profile({ onOpenWeekly }: { onOpenWeekly: () => void }) 
         />
       )}
 
-      {showShare && (
+      {/* #50 — 지난 주 브리핑 재생 (서가에서) */}
+      {briefingRange && (
+        <WeeklyWrapped
+          entries={list}
+          range={briefingRange}
+          onClose={() => setBriefingRange(null)}
+          onGoDetail={() => setBriefingRange(null)}
+        />
+      )}
+
+      {/* #50 — 서가 카드 뷰어 */}
+      {shelfCard && (
+        <ShelfCardViewer
+          card={shelfCard}
+          entries={list}
+          onClose={() => setShelfCard(null)}
+          onPlayBriefing={(r) => {
+            setShelfCard(null);
+            setBriefingRange(r);
+          }}
+        />
+      )}
+
+      {showShare && range.shelfKey && (
         <ShareCardSheet
           label={range.cardLabel}
           period={range.cardPeriod}
+          periodType={range.shelfKey.periodType}
+          startDate={range.shelfKey.startDate}
           amount={profit}
           subline={`${count}${period === "week" ? "끼" : "건"} 기록${best && best.profit > 0 ? ` · 최고의 한 수 ${best.title}` : ""}`}
           topSource={topSource}

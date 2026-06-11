@@ -1,7 +1,9 @@
-// 결산 카드 시트 (#45) — 서재에서 스토리를 거치지 않고 바로: 카드 미리보기 + 스킨 + 캡처.
-// "공유 동선은 짧게, 연출(Wrapped)은 이벤트로" — Spotify 문법 적용의 직행 절반.
+// 결산 카드 시트 (#45·#50) — 카드 미리보기 + 스킨 + "서가에 소장"(주 행동) + 크게 보기(캡처는 부산물).
+// 완결된 세계 원칙: 만든 카드는 앱 안(서가)에 남는다. 명시적 추출 동선은 두지 않는다.
 import { useEffect, useState } from "react";
-import { X, Maximize2 } from "lucide-react";
+import { trpc } from "@/lib/trpc";
+import { toast } from "sonner";
+import { X, Maximize2, BookMarked, Loader2 } from "lucide-react";
 import CaptureView from "@/components/CaptureView";
 import ReportShareCard from "@/components/ReportShareCard";
 import {
@@ -17,6 +19,8 @@ export default function ShareCardSheet({
   topSource,
   comment,
   quote,
+  periodType,
+  startDate,
   onClose,
 }: {
   label: string;
@@ -26,8 +30,20 @@ export default function ShareCardSheet({
   topSource?: { name: string; profit: number } | null;
   comment: string;
   quote?: string;
+  /** #50 — 서가 소장 키 (주=월요일, 월=1일) */
+  periodType: "week" | "month";
+  startDate: string;
   onClose: () => void;
 }) {
+  const utils = trpc.useUtils();
+  const saveCard = trpc.reportCards.save.useMutation({
+    onSuccess: (r) => {
+      utils.reportCards.list.invalidate();
+      toast.success(r.updated ? "서가의 소장본을 새 스킨으로 갈았습니다" : "서가에 꽂아두었습니다");
+      onClose();
+    },
+    onError: () => toast.error("소장에 실패했어요"),
+  });
   const [themeId, setThemeId] = useState(() => loadKit().theme);
   const [stickers, setStickers] = useState<StickerId[]>(() => loadKit().stickers);
   const [captureMode, setCaptureMode] = useState(false);
@@ -102,12 +118,21 @@ export default function ShareCardSheet({
           ))}
         </div>
 
+        {/* 주 행동 = 소장 (완결된 세계). 크게 보기는 보조 — 캡처는 그 안에서 자연스럽게. */}
+        <button
+          onClick={() => saveCard.mutate({ periodType, startDate, theme: themeId, stickers })}
+          disabled={saveCard.isPending}
+          className="mt-6 w-full flex items-center justify-center gap-2 py-3.5 bg-emerald-500 text-white text-body font-medium rounded-xl active:scale-[0.98] disabled:opacity-50 transition-transform"
+        >
+          {saveCard.isPending ? <Loader2 size={16} className="animate-spin" /> : <BookMarked size={16} />}
+          서가에 소장
+        </button>
         <button
           onClick={() => setCaptureMode(true)}
-          className="mt-6 w-full flex items-center justify-center gap-2 py-3.5 bg-emerald-500 text-white text-body font-medium rounded-xl active:scale-[0.98] transition-transform"
+          className="mt-2 w-full flex items-center justify-center gap-2 py-3 border border-line text-ink-soft text-body font-medium rounded-xl active:bg-cream transition-colors"
         >
-          <Maximize2 size={16} />
-          크게 보기 · 캡처
+          <Maximize2 size={15} />
+          크게 보기
         </button>
       </div>
 

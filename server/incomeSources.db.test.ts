@@ -94,4 +94,20 @@ describe("수익원 DB 라운드트립 (마이그레이션·백필·중앙값)",
     expect(await db.findEntryByImageSig(userId, "b".repeat(64))).toBeNull(); // 다른 지문
     expect(await db.findEntryByImageSig(userId + 1, sig)).toBeNull(); // 다른 사용자
   });
+
+  // #50 — 서가: 같은 기간 재소장 = 스킨 갱신(1장 유지)
+  it("reportCards upsert가 기간당 1장을 유지한다", async () => {
+    const db = await import("./db");
+    const userId = 81;
+    const a = await db.upsertReportCard(userId, { periodType: "week", startDate: "2026-06-08", theme: "forest", stickers: '["jar"]' });
+    expect(a.updated).toBe(false);
+    const b = await db.upsertReportCard(userId, { periodType: "week", startDate: "2026-06-08", theme: "gold", stickers: '["crown","seal"]' });
+    expect(b.updated).toBe(true);
+    expect(b.id).toBe(a.id);
+    const cards = await db.listReportCards(userId);
+    expect(cards).toHaveLength(1);
+    expect(cards[0].theme).toBe("gold");
+    await db.deleteReportCard(userId, a.id);
+    expect(await db.listReportCards(userId)).toHaveLength(0);
+  });
 });

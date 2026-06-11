@@ -64,6 +64,16 @@ CREATE TABLE IF NOT EXISTS push_subscriptions (
   createdAt INTEGER NOT NULL DEFAULT (unixepoch())
 );
 CREATE INDEX IF NOT EXISTS idx_push_user ON push_subscriptions(userId);
+CREATE TABLE IF NOT EXISTS report_cards (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  userId INTEGER NOT NULL,
+  periodType TEXT NOT NULL,
+  startDate TEXT NOT NULL,
+  theme TEXT NOT NULL DEFAULT 'forest',
+  stickers TEXT NOT NULL DEFAULT '[]',
+  createdAt INTEGER NOT NULL DEFAULT (unixepoch()),
+  UNIQUE(userId, periodType, startDate)
+);
 CREATE TABLE IF NOT EXISTS user_income_sources (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   userId INTEGER NOT NULL,

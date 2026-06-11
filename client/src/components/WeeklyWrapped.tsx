@@ -31,10 +31,13 @@ export default function WeeklyWrapped({
   entries,
   onClose,
   onGoDetail,
+  range,
 }: {
   entries: SavingsEntry[];
   onClose: () => void;
   onGoDetail: () => void;
+  /** #50 — 지난 주 브리핑 재생용 기간 (없으면 이번 주) */
+  range?: { start: string; end: string };
 }) {
   const [step, setStep] = useState(0);
   const [n, setN] = useState(0);
@@ -51,7 +54,7 @@ export default function WeeklyWrapped({
     saveKit({ theme: themeId, stickers });
   }, [themeId, stickers]);
 
-  const { start, end } = useMemo(weekRange, []);
+  const { start, end } = useMemo(() => range ?? weekRange(), [range]);
   const week = useMemo(
     () => entries.filter((e) => e.date >= start && e.date <= end),
     [entries, start, end]

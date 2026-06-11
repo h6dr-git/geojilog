@@ -65,6 +65,21 @@ export type SavingsEntry = typeof savingsEntries.$inferSelect;
 export type InsertSavingsEntry = typeof savingsEntries.$inferInsert;
 
 // ── 사용자 커스텀 카테고리 ──────────────────────────────────────────
+// #50 — 서가: 소장된 결산 카드 (완결된 세계 — 만든 카드는 앱 안에 남는다)
+// 데이터는 기간 메타+스킨만: 금액·구성은 열 때 장부에서 재계산 (장부가 원본 원칙)
+export const reportCards = sqliteTable("report_cards", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  userId: integer("userId").notNull(),
+  periodType: text("periodType", { enum: ["week", "month"] }).notNull(),
+  startDate: text("startDate").notNull(), // 주=월요일, 월=1일 (YYYY-MM-DD)
+  theme: text("theme").notNull().default("forest"),
+  stickers: text("stickers").notNull().default("[]"), // JSON 배열
+  createdAt: integer("createdAt", { mode: "timestamp" })
+    .notNull()
+    .default(sql`(unixepoch())`),
+});
+export type ReportCard = typeof reportCards.$inferSelect;
+
 // #47 — 사용자 커스텀 수익원 (기본 9종은 shared/incomeSources.ts 상수, 여기는 추가분만)
 export const userIncomeSources = sqliteTable("user_income_sources", {
   id: integer("id").primaryKey({ autoIncrement: true }),
