@@ -16,6 +16,8 @@ import ShelfCardViewer, { type ShelfCard } from "@/components/ShelfCardViewer";
 import { themeById } from "@/components/cardSkin";
 import { SavingsEntry, fmt } from "@/lib/ledger";
 import { butlerWeeklyComment, dosaLineOfDay } from "@/lib/voice";
+import { dayOfWeekRhythm, weeklyTrend, monthlyTrend, monthHeatmap, allTimeRecords, cumulativeCurve } from "@/lib/stats";
+import { WeekRhythm, TrendBars, MonthHeat, RecordsRow, CumulativeCurve } from "@/components/StatsBlocks";
 import { ChevronLeft, ChevronRight, Sparkles, BookMarked } from "lucide-react";
 
 type Period = "week" | "month" | "all";
@@ -132,6 +134,23 @@ export default function Profile({ onOpenWeekly }: { onOpenWeekly: () => void }) 
   }, [list, today]);
   const showBanner = (dow === 0 || dow === 1) && thisWeekCount > 0;
 
+  // ── #51 통계 다원화 — 전부 클라 계산. 기간 탭별로 맞는 것만 보여 과밀을 피한다 ──
+  const rhythm = useMemo(() => (period === "week" && offset === 0 ? dayOfWeekRhythm(list) : null), [period, offset, list]);
+  const weekTrend = useMemo(
+    () => (period === "week" && offset === 0 ? weeklyTrend(list).map((w) => ({ label: `${Number(w.start.slice(5, 7))}.${Number(w.start.slice(8, 10))}`, profit: w.profit, current: w.current })) : null),
+    [period, offset, list]
+  );
+  const monthTrendData = useMemo(
+    () => (period === "month" && offset === 0 ? monthlyTrend(list).map((mo) => ({ label: mo.label, profit: mo.profit, current: mo.current })) : null),
+    [period, offset, list]
+  );
+  const heat = useMemo(
+    () => (period === "month" ? monthHeatmap(list, range.start.slice(0, 7)) : null),
+    [period, list, range.start]
+  );
+  const records = useMemo(() => (period === "all" ? allTimeRecords(list) : null), [period, list]);
+  const curve = useMemo(() => (period === "all" ? cumulativeCurve(list) : null), [period, list]);
+
   const [showWrapped, setShowWrapped] = useState(false);
   const [showShare, setShowShare] = useState(false);
 
@@ -232,6 +251,13 @@ export default function Profile({ onOpenWeekly }: { onOpenWeekly: () => void }) 
               )}
             </p>
 
+            {/* #51 — 누적 우상향 곡선 (전체 탭의 얼굴) */}
+            {curve && curve.length > 1 && (
+              <div className="mt-4">
+                <CumulativeCurve points={curve} />
+              </div>
+            )}
+
             {/* 구성 — 수익원(기본)/카테고리 */}
             {count > 0 && (
               <div className="mt-4">
@@ -271,6 +297,33 @@ export default function Profile({ onOpenWeekly }: { onOpenWeekly: () => void }) 
                     );
                   })}
                 </div>
+              </div>
+            )}
+
+            {/* #51 — 기간별 통계: 주간=요일 리듬+8주 추이 / 월간=히트맵+6개월 추이 / 전체=기록 지표 */}
+            {rhythm && rhythm.some((r) => r.avg > 0) && (
+              <div className="mt-4 pt-4" style={{ borderTop: "1px solid #efe4cd" }}>
+                <WeekRhythm data={rhythm} />
+              </div>
+            )}
+            {weekTrend && weekTrend.some((w) => w.profit > 0) && (
+              <div className="mt-4">
+                <TrendBars title="최근 8주 추이" data={weekTrend} />
+              </div>
+            )}
+            {heat && heat.some((h) => h.profit > 0) && (
+              <div className="mt-4 pt-4" style={{ borderTop: "1px solid #efe4cd" }}>
+                <MonthHeat ym={range.start.slice(0, 7)} data={heat} />
+              </div>
+            )}
+            {monthTrendData && monthTrendData.some((m2) => m2.profit > 0) && (
+              <div className="mt-4">
+                <TrendBars title="최근 6개월 추이" data={monthTrendData} />
+              </div>
+            )}
+            {records && count > 0 && (
+              <div className="mt-4 pt-4" style={{ borderTop: "1px solid #efe4cd" }}>
+                <RecordsRow avgPerEntry={records.avgPerEntry} bestWeek={records.bestWeek} longestStreak={records.longestStreak} />
               </div>
             )}
 
