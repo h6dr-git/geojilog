@@ -38,6 +38,27 @@ export function registerStorageProxy(app: Express) {
       return;
     }
     if (!fs.existsSync(filePath)) {
+      // 로컬 개발 폴백 (#34): 같은 DB(Turso)를 보지만 사진 파일은 배포 서버 디스크에만 있다.
+      // ASSET_FALLBACK_BASE(배포 주소)가 설정된 개발 환경이면 배포에서 받아와 로컬에 캐시.
+      const base = process.env.ASSET_FALLBACK_BASE;
+      if (base && process.env.NODE_ENV === "development") {
+        try {
+          const r = await fetch(`${base.replace(/\/+$/, "")}/manus-storage/${key}`, {
+            headers: req.headers.cookie ? { cookie: req.headers.cookie } : undefined, // 소유자 검사 통과용(JWT 시크릿 동일 전제)
+          });
+          if (r.ok) {
+            const buf = Buffer.from(await r.arrayBuffer());
+            try {
+              fs.mkdirSync(path.dirname(filePath), { recursive: true });
+              fs.writeFileSync(filePath, buf); // 다음부턴 로컬에서 바로
+            } catch { /* 캐시 실패해도 응답은 정상 */ }
+            res.setHeader("Content-Type", r.headers.get("content-type") || mimeFromPath(filePath));
+            res.setHeader("Cache-Control", "private, max-age=31536000");
+            res.send(buf);
+            return;
+          }
+        } catch { /* 폴백 실패 → 404 */ }
+      }
       res.status(404).send("Not found");
       return;
     }

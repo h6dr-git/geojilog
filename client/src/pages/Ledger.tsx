@@ -18,6 +18,7 @@ import EntryDetailSheet from "@/components/EntryDetailSheet";
 import Jarureu from "@/components/Jarureu";
 import { SavingsEntry, fmt, todayStr, makeDefaultTitle, KO_DAYS } from "@/lib/ledger";
 import { celebrateSave } from "@/lib/celebrate";
+import { analyzingStart, analyzingEnd } from "@/lib/analyzing";
 
 // 파일 시그니처(이름|크기|수정시각) — 같은 사진 중복 업로드 감지용
 const fileSig = (f: File) => `${f.name}|${f.size}|${f.lastModified}`;
@@ -201,6 +202,8 @@ export default function Ledger({ weekFocusNonce = 0 }: { weekFocusNonce?: number
 
   // ── AI 이미지 처리 ──
   const processFile = useCallback(async (file: File, itemId: string) => {
+    analyzingStart(); // 전역 분석 표시 (모든 탭에서 보임)
+    try {
     const exifDate = await getExifDate(file);
     const date = exifDate ?? todayStr();
 
@@ -249,6 +252,9 @@ export default function Ledger({ weekFocusNonce = 0 }: { weekFocusNonce?: number
       aiOriginalAmount: result.estimatedOriginalAmount,
       aiActualAmount: result.estimatedActualAmount,
     } : it));
+    } finally {
+      analyzingEnd();
+    }
   }, [analyzeImage, uploadCroppedImage]);
 
   const openCamera = useCallback(() => cameraRef.current?.click(), []);
@@ -685,32 +691,50 @@ export default function Ledger({ weekFocusNonce = 0 }: { weekFocusNonce?: number
               </section>
             )}
 
-            {/* 사진 업로드 영역 */}
-            <section className="mb-5">
-              <div
-                className="border-2 border-dashed border-line rounded-card p-6 text-center active:border-emerald-300 cursor-pointer transition-colors"
-                onClick={() => galleryRef.current?.click()}
-                onDragOver={(e) => e.preventDefault()}
-                onDrop={(e) => { e.preventDefault(); handleFiles(e.dataTransfer.files); }}
-              >
-                <Upload className="w-7 h-7 text-emerald-400 mx-auto mb-2" />
-                <p className="text-body font-medium text-ink">사진을 올리면 자르르가 번 돈을 계산해요</p>
-                <p className="text-caption text-ink-soft mt-1">한 번에 여러 장 · 탭해서 선택</p>
-              </div>
-              <button
-                onClick={openCamera}
-                className="mt-2 w-full flex items-center justify-center gap-1.5 py-2.5 text-caption text-ink-soft border border-line rounded-lg active:border-emerald-300 active:text-emerald-600 transition-colors"
-              >
-                <Camera size={14} /> 카메라로 촬영
-              </button>
-            </section>
+            {/* 사진 업로드 영역 — 업로드가 시작되면 큰 드롭존은 내려가고 컴팩트 행으로 (#31) */}
+            {queue.length === 0 ? (
+              <section className="mb-5">
+                <div
+                  className="border-2 border-dashed border-line rounded-card p-6 text-center active:border-emerald-300 cursor-pointer transition-colors"
+                  onClick={() => galleryRef.current?.click()}
+                  onDragOver={(e) => e.preventDefault()}
+                  onDrop={(e) => { e.preventDefault(); handleFiles(e.dataTransfer.files); }}
+                >
+                  <Upload className="w-7 h-7 text-emerald-400 mx-auto mb-2" />
+                  <p className="text-body font-medium text-ink">사진을 올리면 자르르가 번 돈을 계산해요</p>
+                  <p className="text-caption text-ink-soft mt-1">한 번에 여러 장 · 탭해서 선택</p>
+                </div>
+                <button
+                  onClick={openCamera}
+                  className="mt-2 w-full flex items-center justify-center gap-1.5 py-2.5 text-caption text-ink-soft border border-line rounded-lg active:border-emerald-300 active:text-emerald-600 transition-colors"
+                >
+                  <Camera size={14} /> 카메라로 촬영
+                </button>
+              </section>
+            ) : (
+              <section className="mb-4 flex gap-2">
+                <button
+                  onClick={() => galleryRef.current?.click()}
+                  className="flex-1 flex items-center justify-center gap-1.5 py-2.5 text-caption text-ink-soft border border-dashed border-line rounded-lg active:border-emerald-300 active:text-emerald-600 transition-colors"
+                >
+                  <Upload size={14} /> 사진 더 올리기
+                </button>
+                <button
+                  onClick={openCamera}
+                  aria-label="카메라로 촬영"
+                  className="px-4 py-2.5 text-ink-soft border border-line rounded-lg active:border-emerald-300 active:text-emerald-600 transition-colors"
+                >
+                  <Camera size={14} />
+                </button>
+              </section>
+            )}
 
             {/* 업로드 큐 */}
             {queue.length > 0 && (
               <section className="mb-5 space-y-3">
                 <p className="text-caption font-mono text-ink-soft tracking-widest uppercase">분석 대기열 ({queue.length})</p>
                 {queue.map(item => (
-                  <div key={item.id} className="border border-line rounded-card overflow-hidden">
+                  <div key={item.id} className="border border-line rounded-card overflow-hidden animate-bubble-in">
                     {item.dup && (
                       <div className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-50 border-b border-amber-100 text-micro text-amber-700">
                         <Copy size={12} /> 이미 추가한 사진과 같아 보여요

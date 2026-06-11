@@ -1,5 +1,5 @@
-// 하단 탭바 — 집무실 · 장부 · 회장님 (순수 탭 3개)
-// 사진 캡처는 탭바의 일이 아니다 — 집무실 메인 버튼과 장부의 '기록 추가'가 진입점.
+// 하단 탭바 — 떠 있는 글래스 필(반투명+블러) 1차 시도. (피드백 #35: 인스타 신UI/리퀴드 글래스 차용)
+// 참고: 실제 인스타 디자인은 미확인 — iOS 글래스 문법(반투명·블러·부유 필)으로 근사. 회장님 평가 후 조정.
 import { Home, BookText, Library } from "lucide-react";
 
 export type MainNavTab = "home" | "records" | "profile";
@@ -18,30 +18,45 @@ export default function BottomNav({
   onChange: (t: MainNavTab) => void;
 }) {
   return (
-    <nav className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-lg bg-white/95 backdrop-blur-sm border-t border-line flex z-40 pb-[env(safe-area-inset-bottom)]">
-      {TABS.map(({ key, label, Icon }) => {
-        const active = tab === key;
-        return (
-          <button
-            key={key}
-            onClick={() => onChange(key)}
-            aria-current={active ? "page" : undefined}
-            className={`relative flex-1 flex flex-col items-center gap-0.5 pt-2.5 pb-2 text-micro transition-colors ${
-              active ? "text-emerald-600 font-semibold" : "text-ink-soft"
-            }`}
-          >
-            {/* 활성 인디케이터 — 위쪽 짧은 바 */}
-            <span
-              className={`absolute top-0 h-0.5 w-8 rounded-full bg-emerald-500 transition-opacity duration-200 ${
-                active ? "opacity-100" : "opacity-0"
+    <nav
+      className="fixed left-1/2 -translate-x-1/2 z-40 w-[calc(100%-2.5rem)] max-w-sm"
+      style={{ bottom: "max(0.8rem, env(safe-area-inset-bottom))" }}
+    >
+      <div
+        className="flex p-1 rounded-full border"
+        style={{
+          background: "rgba(255, 255, 255, 0.68)",
+          backdropFilter: "blur(20px) saturate(1.7)",
+          WebkitBackdropFilter: "blur(20px) saturate(1.7)",
+          borderColor: "rgba(255, 255, 255, 0.55)",
+          boxShadow: "0 10px 32px rgba(26, 26, 23, 0.14), inset 0 1px 0 rgba(255, 255, 255, 0.65)",
+        }}
+      >
+        {TABS.map(({ key, label, Icon }) => {
+          const active = tab === key;
+          return (
+            <button
+              key={key}
+              onClick={() => onChange(key)}
+              aria-current={active ? "page" : undefined}
+              className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-full text-caption transition-all duration-200 ${
+                active ? "font-semibold text-emerald-700" : "text-ink-soft active:text-ink"
               }`}
-              aria-hidden="true"
-            />
-            <Icon size={21} strokeWidth={active ? 2.3 : 1.8} />
-            {label}
-          </button>
-        );
-      })}
+              style={
+                active
+                  ? {
+                      background: "rgba(255, 255, 255, 0.92)",
+                      boxShadow: "0 2px 10px rgba(26, 26, 23, 0.10), inset 0 1px 0 rgba(255,255,255,0.9)",
+                    }
+                  : undefined
+              }
+            >
+              <Icon size={17} strokeWidth={active ? 2.3 : 1.9} />
+              {label}
+            </button>
+          );
+        })}
+      </div>
     </nav>
   );
 }

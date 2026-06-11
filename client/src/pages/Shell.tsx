@@ -1,7 +1,7 @@
 // 앱 셸 — 온보딩(첫 방문) + 하단 탭(집무실/장부/회장님) + 사진 캡처를 앱 상단에서 관리.
 // 탭바는 순수 탭 3개 — 캡처 진입점은 집무실 메인 버튼·장부 '기록 추가'.
 // 분석은 백그라운드(비차단). 탭을 옮겨다녀도 분석이 끊기지 않고, 끝나면 막지 않고 '확인하기'로만 알린다.
-import { useRef, useState, type ChangeEvent } from "react";
+import { useEffect, useRef, useState, type ChangeEvent } from "react";
 import Ledger from "@/pages/Ledger";
 import HomeTab from "@/pages/HomeTab";
 import Profile from "@/pages/Profile";
@@ -15,6 +15,8 @@ import type { CaptureJob, Prefill } from "@/lib/capture";
 import { getExifDate } from "@/lib/exif";
 import type { Draft } from "@/lib/drafts";
 import { Loader2, Check } from "lucide-react";
+import Jarureu from "@/components/Jarureu";
+import { onAnalyzingCount } from "@/lib/analyzing";
 
 const ONBOARDED_KEY = "geojilog:onboarded";
 
@@ -35,6 +37,9 @@ export default function Shell() {
   const [tab, setTab] = useState<MainNavTab>("home");
   // 서재 '주간 보고' → 장부 주간 필터 딥링크 — keep-mounted 구조라 nonce 신호로 전달
   const [weekFocusNonce, setWeekFocusNonce] = useState(0);
+  // 전역 '분석 중' 카운트 (장부 큐 포함) — 어느 탭에서든 자르르가 보인다 (#32)
+  const [analyzingCount, setAnalyzingCount] = useState(0);
+  useEffect(() => onAnalyzingCount(setAnalyzingCount), []);
   const [job, setJob] = useState<CaptureJob | null>(null);
   const [confirmData, setConfirmData] = useState<Prefill | null>(null);
   const cameraRef = useRef<HTMLInputElement>(null);
@@ -194,6 +199,18 @@ export default function Shell() {
               <Profile onOpenWeekly={openWeeklyLedger} />
             </div>
           </main>
+
+          {/* 전역 분석 인디케이터 — 자르르가 어느 탭에서든 살펴보는 중 (#32) */}
+          {(analyzingCount > 0 || (job && job.status === "analyzing")) && (
+            <button
+              onClick={() => (job && job.status === "analyzing" ? changeTab("home") : changeTab("records"))}
+              aria-label="분석 진행 보기"
+              className="fixed right-3 bottom-[92px] z-40 flex items-center gap-1.5 pl-1.5 pr-3 py-1.5 rounded-full bg-white/95 border border-line shadow-lg active:scale-95 transition-transform"
+            >
+              <Jarureu level={0.5} size={34} analyzing />
+              <span className="text-micro font-medium text-ink-soft">살펴보는 중{analyzingCount > 1 ? ` ${analyzingCount}` : ""}</span>
+            </button>
+          )}
 
           {/* 다른 탭에 있을 때 비차단 알림 칩 — 탭바 위로 띄운다 */}
           {job && tab !== "home" && (
