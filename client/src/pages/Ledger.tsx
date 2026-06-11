@@ -57,7 +57,12 @@ export default function Ledger({ weekFocusNonce = 0 }: { weekFocusNonce?: number
   const { data: entries = [], isLoading } = trpc.savings.list.useQuery(undefined, { enabled: isAuthenticated });
   const { data: categories = [] } = trpc.categories.list.useQuery(undefined, { enabled: isAuthenticated });
 
-  const createEntry = trpc.savings.create.useMutation({ onSuccess: () => utils.savings.list.invalidate() });
+  const createEntry = trpc.savings.create.useMutation({
+    onSuccess: () => {
+      utils.savings.list.invalidate();
+      utils.items.list.invalidate(); // 단골 사전 즉시 갱신
+    },
+  });
   const analyzeImage = trpc.ai.analyzeImage.useMutation();
   const uploadCroppedImage = trpc.ai.uploadImage.useMutation();
 
@@ -146,6 +151,15 @@ export default function Ledger({ weekFocusNonce = 0 }: { weekFocusNonce?: number
 
   // ── 기록 추가 시트 ──
   const [showAdd, setShowAdd] = useState(false);
+  // #31 재작업 — 업로드하면 시트가 '내려가고', 분석 시작 연출이 잠깐 뜬다 (완료 리빌의 짝)
+  const [startFx, setStartFx] = useState(false);
+  const startFxTimer = useRef<number | undefined>(undefined);
+  function playStartFx() {
+    setShowAdd(false); // 업로드 창은 내려간다 — 분석은 백그라운드 (전역 자르르 필 + 진행 칩이 잇는다)
+    setStartFx(true);
+    window.clearTimeout(startFxTimer.current);
+    startFxTimer.current = window.setTimeout(() => setStartFx(false), 1500);
+  }
 
   // ── 업로드 큐 ──
   const [queue, setQueue] = useState<QueueItem[]>([]);
@@ -289,6 +303,9 @@ export default function Ledger({ weekFocusNonce = 0 }: { weekFocusNonce?: number
         setQueue(prev => prev.map(it => it.id === item.id ? { ...it, status: "error" as const } : it));
       });
     });
+
+    playStartFx(); // #31 — 시트 내려가고 시작 연출
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [processFile, categoryNames]);
 
   const retryQueueItem = useCallback((item: QueueItem) => {
@@ -361,7 +378,13 @@ export default function Ledger({ weekFocusNonce = 0 }: { weekFocusNonce?: number
         aiEstimated: "no",
       });
       const manualSaved = Number(manualForm.originalAmount) - Number(manualForm.actualAmount);
-      if (manualSaved > 0) celebrateSave({ profit: manualSaved, title: manualForm.title });
+      // #37 — 단골 평소가보다 더 아낀 날 보너스 (직접 입력 경로)
+      const manualActual = Number(manualForm.actualAmount);
+      const dictHit = (dictItems as { name: string; usualActual: number }[]).find(
+        (it) => it.name.trim().toLowerCase() === manualForm.title.trim().toLowerCase()
+      );
+      const manualBonus = dictHit && manualActual < dictHit.usualActual ? dictHit.usualActual - manualActual : undefined;
+      if (manualSaved > 0) celebrateSave({ profit: manualSaved, title: manualForm.title, bonus: manualBonus });
       else toast.success("등록됐습니다");
       const d = todayStr();
       setManualForm({ date: d, title: makeDefaultTitle(d, "식비"), category: "식비", originalAmount: "", actualAmount: "", description: "", memo: "" });
@@ -1014,6 +1037,20 @@ export default function Ledger({ weekFocusNonce = 0 }: { weekFocusNonce?: number
           categoryNames={categoryNames}
           onClose={() => setDetailEntry(null)}
         />
+      )}
+
+      {/* #31 — 분석 시작 연출 (1.5초, 완료 리빌의 짝) */}
+      {startFx && (
+        <div
+          className="fixed inset-0 z-[70] flex flex-col items-center justify-center pointer-events-none"
+          style={{ background: "rgba(22,32,26,0.85)", animation: "adFade .2s ease" }}
+        >
+          <div style={{ animation: "prop-in .5s cubic-bezier(.2,.8,.2,1) both" }}>
+            <Jarureu level={0.5} size={96} analyzing />
+          </div>
+          <p className="mt-4 text-body font-medium" style={{ color: "#d8cfae" }}>자르르가 살펴보기 시작했어요</p>
+          <p className="mt-1 text-caption" style={{ color: "#7E8C82" }}>끝나면 알려드릴게요 — 다른 일 보셔도 됩니다</p>
+        </div>
       )}
 
       {/* 단골 사전 관리 */}

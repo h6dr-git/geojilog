@@ -56,6 +56,7 @@ export default function SaveReveal() {
         @keyframes rvPop{0%{opacity:0;transform:scale(.8)}60%{transform:scale(1.04)}100%{opacity:1;transform:scale(1)}}
         @keyframes rvRise{0%{opacity:0;transform:translateY(14px)}100%{opacity:1;transform:translateY(0)}}
         @keyframes rvWon{0%{opacity:0;transform:translateY(10px) scale(.6) rotate(var(--rot))}25%{opacity:.85}100%{opacity:0;transform:translateY(-72px) scale(1.05) rotate(var(--rot))}}
+        @keyframes rvBar{from{width:100%}to{width:0%}}
         .rv-won{position:absolute;font-family:'JetBrains Mono',ui-monospace,monospace;color:#f2c94c;animation:rvWon 1.6s ease-out forwards;pointer-events:none}
       `}</style>
 
@@ -112,6 +113,14 @@ export default function SaveReveal() {
       </p>
 
       <p className="absolute bottom-8 text-micro" style={{ color: "#5E6A60" }}>탭해서 닫기</p>
+
+      {/* #39 — 자동으로 닫히기까지 남은 시간 표시 */}
+      <span
+        key={detail.title ?? String(detail.profit)}
+        className="absolute bottom-0 left-0 h-0.5"
+        style={{ background: "rgba(52,211,153,0.7)", animation: `rvBar ${AUTO_CLOSE_MS}ms linear forwards` }}
+        aria-hidden="true"
+      />
     </div>
   );
 }
