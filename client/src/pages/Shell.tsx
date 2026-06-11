@@ -116,6 +116,8 @@ export default function Shell() {
           priorOriginalAmount: r.prior?.originalAmount,
           priorDate: r.prior?.date,
           priorUsualActual: r.prior?.usualActual,
+          incomeSource: r.incomeSource, // #37+#38 — AI 분류 수익원
+          sourceUsualActual: r.sourceUsual?.usualActual, // 유형 평소가 (보너스 기준)
           aiOriginalAmount: r.estimatedOriginalAmount,
         },
       });

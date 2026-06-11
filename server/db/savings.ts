@@ -1,5 +1,6 @@
 import { desc, eq } from "drizzle-orm";
 import { savingsEntries, InsertSavingsEntry } from "../../drizzle/schema";
+import { guessIncomeSource, type IncomeSource } from "@shared/incomeSources";
 import { getDb } from "./client";
 
 // ── Savings Entries ──────────────────────────────────────────
@@ -55,6 +56,7 @@ export async function updateSavingsEntry(
     actualAmount?: number;
     memo?: string | null;
     imageUrl?: string;
+    incomeSource?: string | null;
   }
 ) {
   const db = await getDb();
@@ -70,6 +72,7 @@ export async function updateSavingsEntry(
   if (data.actualAmount !== undefined) updateData.actualAmount = data.actualAmount;
   if (data.memo !== undefined) updateData.memo = data.memo;
   if (data.imageUrl !== undefined) updateData.imageUrl = data.imageUrl;
+  if (data.incomeSource !== undefined) updateData.incomeSource = data.incomeSource;
   if (data.originalAmount !== undefined || data.actualAmount !== undefined) {
     const existing = await db.select().from(savingsEntries).where(eq(savingsEntries.id, id)).limit(1);
     if (existing[0]) {
@@ -119,4 +122,48 @@ export async function countSavingsEntriesByCategory(userId: number, category: st
     .from(savingsEntries)
     .where(and(eq(savingsEntries.userId, userId), eq(savingsEntries.category, category)));
   return row?.n ?? 0;
+}
+
+
+// ── 수익원 (#37+#38) ─────────────────────────────────────────
+
+// 평소가 = 해당 수익원의 최근 실지출 '중앙값'. 제목이 제각각이어도 유형으로 묶여 견고하다.
+// 표본 2건 미만이면 null — '평소'라 부를 근거가 없을 때는 보너스·세 층 가격을 띄우지 않는다.
+export async function getIncomeSourceUsual(userId: number, source: string) {
+  const db = await getDb();
+  if (!db) return null;
+  const { and } = await import("drizzle-orm");
+  const rows = await db
+    .select({ actualAmount: savingsEntries.actualAmount })
+    .from(savingsEntries)
+    .where(and(eq(savingsEntries.userId, userId), eq(savingsEntries.incomeSource, source)))
+    .orderBy(desc(savingsEntries.date), desc(savingsEntries.createdAt))
+    .limit(20);
+  if (rows.length < 2) return null;
+  const sorted = rows.map((r) => r.actualAmount).sort((a, b) => a - b);
+  const mid = Math.floor((sorted.length - 1) / 2);
+  const median = sorted.length % 2 === 1 ? sorted[mid] : Math.round((sorted[mid] + sorted[mid + 1]) / 2);
+  return { source, usualActual: median, sample: rows.length };
+}
+
+// 미분류 기록 1회 정리 — 제목·메모 키워드 휴리스틱 (LLM 호출 없음, 사용자 트리거).
+// 남은 미분류는 사용자가 상세 시트에서 직접 지정한다.
+export async function backfillIncomeSources(userId: number) {
+  const db = await getDb();
+  if (!db) return { classified: 0, remaining: 0 };
+  const { and, isNull } = await import("drizzle-orm");
+  const rows = await db
+    .select()
+    .from(savingsEntries)
+    .where(and(eq(savingsEntries.userId, userId), isNull(savingsEntries.incomeSource)));
+  let classified = 0;
+  for (const e of rows) {
+    const guess: IncomeSource | null =
+      guessIncomeSource(e.title) ?? guessIncomeSource(e.memo ?? "") ?? guessIncomeSource(e.description ?? "");
+    if (guess) {
+      await db.update(savingsEntries).set({ incomeSource: guess }).where(eq(savingsEntries.id, e.id));
+      classified += 1;
+    }
+  }
+  return { classified, remaining: rows.length - classified };
 }

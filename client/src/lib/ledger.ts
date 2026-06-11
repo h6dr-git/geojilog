@@ -6,6 +6,7 @@ export interface SavingsEntry {
   title: string;
   description?: string | null;
   category: string;
+  incomeSource?: string | null; // #37+#38 수익원 (null=미분류)
   ticker: string;
   originalAmount: number;
   actualAmount: number;
@@ -19,6 +20,30 @@ export interface SavingsEntry {
 }
 
 export type ExportRange = "all" | "month" | "week" | "custom";
+
+// #37+#38 — 평소가 = 해당 수익원의 최근 실지출 중앙값 (서버 getIncomeSourceUsual과 같은 규칙).
+// excludeId: 상세 시트에서 보고 있는 기록 자신은 '평소'에서 뺀다. 표본 2건 미만이면 null.
+export function incomeSourceUsual(
+  entries: SavingsEntry[],
+  source: string | null | undefined,
+  excludeId?: number
+): { usualActual: number; sample: number } | null {
+  if (!source) return null;
+  const pool = entries
+    .filter((e) => e.incomeSource === source && e.id !== excludeId)
+    .sort(
+      (a, b) =>
+        b.date.localeCompare(a.date) ||
+        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    )
+    .slice(0, 20);
+  if (pool.length < 2) return null;
+  const sorted = pool.map((e) => e.actualAmount).sort((a, b) => a - b);
+  const mid = Math.floor((sorted.length - 1) / 2);
+  const usualActual =
+    sorted.length % 2 === 1 ? sorted[mid] : Math.round((sorted[mid] + sorted[mid + 1]) / 2);
+  return { usualActual, sample: pool.length };
+}
 
 export const fmt = (n: number) => n.toLocaleString("ko-KR");
 export const todayStr = () => new Date().toISOString().split("T")[0];
@@ -54,10 +79,10 @@ export function filterByRange(entries: SavingsEntry[], range: ExportRange, from:
 
 
 export function toMarkdownTable(entries: SavingsEntry[]) {
-  const header = "| 날짜 | 항목 | 카테고리 | 원가 | 실제지출 | 절약수익 | 메모 |";
-  const sep = "|------|------|----------|------|----------|----------|------|";
+  const header = "| 날짜 | 항목 | 카테고리 | 수익원 | 원가 | 실제지출 | 절약수익 | 메모 |";
+  const sep = "|------|------|----------|--------|------|----------|----------|------|";
   const rows = entries.map(e =>
-    `| ${e.date} | ${e.title} | ${e.category} | ${fmt(e.originalAmount)}원 | ${fmt(e.actualAmount)}원 | ${fmt(e.profit)}원 | ${e.memo ?? ""} |`
+    `| ${e.date} | ${e.title} | ${e.category} | ${e.incomeSource ?? "미분류"} | ${fmt(e.originalAmount)}원 | ${fmt(e.actualAmount)}원 | ${fmt(e.profit)}원 | ${e.memo ?? ""} |`
   );
   const total = entries.reduce((s, e) => s + e.profit, 0);
   return [header, sep, ...rows].join("\n") + `\n\n**총 절약 수익: ${fmt(total)}원** (${entries.length}건)`;
@@ -65,10 +90,10 @@ export function toMarkdownTable(entries: SavingsEntry[]) {
 
 
 export function toCsv(entries: SavingsEntry[]) {
-  const header = "날짜,항목,카테고리,원가,실제지출,절약수익,메모,AI추정";
+  const header = "날짜,항목,카테고리,수익원,원가,실제지출,절약수익,메모,AI추정";
   const rows = entries.map(e =>
     [
-      e.date, `"${e.title}"`, e.category,
+      e.date, `"${e.title}"`, e.category, e.incomeSource ?? "미분류",
       e.originalAmount, e.actualAmount, e.profit,
       `"${(e.memo ?? "").replace(/"/g, '""')}"`,
       e.aiEstimated === "yes" ? "Y" : "N",

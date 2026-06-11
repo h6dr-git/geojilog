@@ -1,7 +1,8 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { protectedProcedure, router } from "../trpc";
-import { countAiCallsToday, logUsageEvent, getLatestEntryByTitle, getItemByName } from "../db";
+import { countAiCallsToday, logUsageEvent, getLatestEntryByTitle, getItemByName, getIncomeSourceUsual } from "../db";
+import { INCOME_SOURCES, isIncomeSource } from "@shared/incomeSources";
 import { invokeLLM } from "../llm";
 import { storagePut, storageGetSignedUrl } from "../storage";
 import { IMAGE_ANALYSIS_SYSTEM_PROMPT, SMS_PARSE_SYSTEM_PROMPT } from "../prompts";
@@ -64,6 +65,7 @@ export const aiRouter = router({
                 properties: {
                   title: { type: "string" },
                   category: { type: "string", enum: ["식비", "카페", "교통", "쇼핑", "문화/여가", "기타"] },
+                  incomeSource: { type: "string", enum: [...INCOME_SOURCES] }, // #37+#38 수익원 분류
                   estimatedOriginalAmount: { type: "integer" },
                   estimatedActualAmount: { type: "integer" },
                   estimatedPeopleCount: { type: "integer" }, // #33 — 보이는 음식이 약 몇 인분인지 (1인분=1)
@@ -79,7 +81,7 @@ export const aiRouter = router({
                     additionalProperties: false,
                   },
                 },
-                required: ["title", "category", "estimatedOriginalAmount", "estimatedActualAmount", "estimatedPeopleCount", "reason", "confidence", "cropBox"],
+                required: ["title", "category", "incomeSource", "estimatedOriginalAmount", "estimatedActualAmount", "estimatedPeopleCount", "reason", "confidence", "cropBox"],
                 additionalProperties: false,
               },
             },
@@ -109,6 +111,7 @@ export const aiRouter = router({
         const parsed = {
           title: typeof raw.title === "string" && raw.title.trim() ? raw.title.trim().slice(0, 30) : "이름 모를 한 끼",
           category: typeof raw.category === "string" && CATEGORIES.includes(raw.category) ? raw.category : "기타",
+          incomeSource: isIncomeSource(raw.incomeSource) ? raw.incomeSource : ("기타" as const), // 검증 실패 시 기타
           estimatedOriginalAmount: origAmt,
           estimatedActualAmount: actAmt,
           estimatedPeopleCount: people != null && people >= 1 && people <= 50 ? people : 1,
@@ -140,6 +143,13 @@ export const aiRouter = router({
           }
           }
         } catch { /* 조회 실패해도 분석 결과는 정상 반환 */ }
+        // #37+#38 — 평소가 = 이 수익원의 최근 실지출 중앙값 (제목과 무관하게 견고).
+        // 표본 2건 미만이면 null — 클라는 보너스·"평소보다" 문구를 띄우지 않는다.
+        let sourceUsual: { source: string; usualActual: number; sample: number } | null = null;
+        try {
+          sourceUsual = await getIncomeSourceUsual(ctx.user.id, parsed.incomeSource);
+        } catch { /* 조회 실패해도 분석 결과는 정상 반환 */ }
+
         // #43 — 단체 사진이면 '내 몫'까지 서버가 계산해 내려준다 (균등 분배 가정, 클라 폼에 바로 꽂힘)
         const headcount = parsed.estimatedPeopleCount;
         const myShare =
@@ -152,7 +162,7 @@ export const aiRouter = router({
                 peopleCount: headcount,
               }
             : null;
-        return { ...parsed, imageUrl: `/manus-storage/${key}`, prior, myShare };
+        return { ...parsed, imageUrl: `/manus-storage/${key}`, prior, myShare, sourceUsual };
       }),
 
     uploadImage: protectedProcedure

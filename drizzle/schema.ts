@@ -35,6 +35,8 @@ export const savingsEntries = sqliteTable("savings_entries", {
   title: text("title").notNull(),
   description: text("description"),
   category: text("category").notNull(),
+  // #37+#38 — 수익원("어떻게 번 돈인가"). null=미분류. 목록은 shared/incomeSources.ts
+  incomeSource: text("incomeSource"),
   ticker: text("ticker").notNull(),
 
   originalAmount: integer("originalAmount").notNull(), // 원래 지출 예정 금액

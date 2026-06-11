@@ -12,6 +12,7 @@ export type Draft = {
   actualAmount: number | null;
   aiReason?: string;
   memo?: string;
+  incomeSource?: string | null; // #37+#38 수익원
   date: string; // YYYY-MM-DD
   createdAt: number;
 };

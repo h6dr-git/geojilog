@@ -1,6 +1,9 @@
 import { z } from "zod";
 import { protectedProcedure, router } from "../trpc";
-import { getSavingsEntries, createSavingsEntry, deleteSavingsEntry, deleteMultipleSavingsEntries, deleteAllSavingsEntries, countSavingsEntriesByCategory, updateSavingsEntry, logUsageEvent, upsertItemFromEntry } from "../db";
+import { getSavingsEntries, createSavingsEntry, deleteSavingsEntry, deleteMultipleSavingsEntries, deleteAllSavingsEntries, countSavingsEntriesByCategory, updateSavingsEntry, logUsageEvent, upsertItemFromEntry, backfillIncomeSources } from "../db";
+import { INCOME_SOURCES } from "@shared/incomeSources";
+
+const incomeSourceEnum = z.enum(INCOME_SOURCES as unknown as [string, ...string[]]);
 
 function generateTicker(category: string, count: number): string {
   const prefixMap: Record<string, string> = {
@@ -21,6 +24,7 @@ export const savingsRouter = router({
         title: z.string().min(1),
         description: z.string().optional(),
         category: z.string(),
+        incomeSource: incomeSourceEnum.optional(), // #37+#38 수익원 (미지정=미분류)
         originalAmount: z.number().int().positive(),
         actualAmount: z.number().int().min(0),
         // AI가 처음 추정했던 기준가(있으면). 최종 확정값과 다르면 보정 데이터로 기록 → '실가격 데이터 해자'.
@@ -45,6 +49,7 @@ export const savingsRouter = router({
           title: input.title,
           description: input.description,
           category: input.category,
+          incomeSource: input.incomeSource,
           ticker,
           originalAmount: input.originalAmount,
           actualAmount: input.actualAmount,
@@ -90,6 +95,7 @@ export const savingsRouter = router({
         title: z.string().min(1).optional(),
         description: z.string().optional(),
         category: z.string().optional(),
+        incomeSource: incomeSourceEnum.nullable().optional(), // null = 미분류로 되돌림
         originalAmount: z.number().int().positive().optional(),
         actualAmount: z.number().int().min(0).optional(),
         memo: z.string().nullable().optional(),
@@ -113,6 +119,10 @@ export const savingsRouter = router({
         await deleteMultipleSavingsEntries(input.ids, ctx.user.id);
         return { success: true };
       }),
+
+    // #38 — 미분류 기록 1회 정리 (제목·메모 키워드 휴리스틱, LLM 비용 없음)
+    reclassifySources: protectedProcedure
+      .mutation(async ({ ctx }) => backfillIncomeSources(ctx.user.id)),
 
     deleteAll: protectedProcedure
       .mutation(async ({ ctx }) => {

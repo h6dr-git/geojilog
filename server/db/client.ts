@@ -27,6 +27,7 @@ CREATE TABLE IF NOT EXISTS savings_entries (
   title TEXT NOT NULL,
   description TEXT,
   category TEXT NOT NULL,
+  incomeSource TEXT,
   ticker TEXT NOT NULL,
   originalAmount INTEGER NOT NULL,
   actualAmount INTEGER NOT NULL,
@@ -95,6 +96,7 @@ export async function getDb() {
           "ALTER TABLE savings_entries ADD COLUMN aiPeopleCount INTEGER",
           "ALTER TABLE savings_entries ADD COLUMN aiGroupOriginalAmount INTEGER",
           "ALTER TABLE savings_entries ADD COLUMN aiGroupActualAmount INTEGER",
+          "ALTER TABLE savings_entries ADD COLUMN incomeSource TEXT",
         ]) {
           try { await client.execute(ddl); } catch { /* duplicate column — 무시 */ }
         }

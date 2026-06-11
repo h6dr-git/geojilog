@@ -1,5 +1,6 @@
-// 단골 사전 관리 시트 — 기록에서 자동 축적된 '내 항목'의 가격을 직접 관리한다. (P2 2차 · #37)
-// 고정(★)하면 가격 자동 갱신이 멈추고 사용자가 정한 기준가·평소가가 유지된다.
+// 단골 사전 관리 시트 — 원탭 재기록 칩에 쓰는 제목·가격을 관리한다. (#37+#38 재편 후 역할 축소)
+// '평소가' 개념은 수익원(유형별 중앙값)으로 이관 — 여기 가격은 원탭으로 꽂히는 값일 뿐이다.
+// 고정(★)하면 가격 자동 갱신이 멈추고 사용자가 정한 값이 유지된다.
 import { useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
@@ -67,7 +68,7 @@ export default function ItemDictSheet({ onClose }: { onClose: () => void }) {
           </button>
         </div>
         <p className="text-micro text-ink-faint text-center mb-4">
-          기록할수록 자동으로 쌓여요 · 가격을 직접 고치면 ★고정되어 그 값이 기준이 돼요
+          원탭 기록에 쓰이는 항목·가격이에요 · 직접 고치면 ★고정
         </p>
 
         {isLoading ? (

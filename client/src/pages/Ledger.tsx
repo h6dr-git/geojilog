@@ -15,9 +15,12 @@ import {
   X, RotateCw, Plus, Repeat, CalendarDays,
 } from "lucide-react";
 import EntryDetailSheet from "@/components/EntryDetailSheet";
+import IncomeSourceChips from "@/components/IncomeSourceChips";
+import IncomeSourceSheet, { UNCLASSIFIED_KEY } from "@/components/IncomeSourceSheet";
+import { INCOME_SOURCES, UNCLASSIFIED } from "@shared/incomeSources";
 import ItemDictSheet from "@/components/ItemDictSheet";
 import Jarureu from "@/components/Jarureu";
-import { SavingsEntry, fmt, todayStr, makeDefaultTitle, KO_DAYS } from "@/lib/ledger";
+import { SavingsEntry, fmt, todayStr, makeDefaultTitle, KO_DAYS, incomeSourceUsual } from "@/lib/ledger";
 import { celebrateSave } from "@/lib/celebrate";
 import { analyzingStart, analyzingEnd } from "@/lib/analyzing";
 
@@ -41,6 +44,7 @@ interface QueueItem {
   aiReason: string;
   date: string;
   memo: string;
+  incomeSource: string | null; // #37+#38 수익원 (AI 분류 → 사용자 수정)
   imageUrl?: string;
   priorDate?: string; // P2 — 지난 확정가가 적용된 경우
   nSplit?: string;     // #33 엔빵 — 인원 (원가=총 추정액÷n, 실제는 청구액 직접 입력)
@@ -112,11 +116,29 @@ export default function Ledger({ weekFocusNonce = 0 }: { weekFocusNonce?: number
     () => (entries as SavingsEntry[]).filter((e) => e.date.startsWith(ym)),
     [entries, ym]
   );
-  const displayEntries = useMemo(() => {
+  const dateScoped = useMemo(() => {
     if (weekFilter) return (entries as SavingsEntry[]).filter((e) => e.date >= weekFilter.start && e.date <= weekFilter.end);
     if (filterDate) return monthEntries.filter((e) => e.date === filterDate);
     return monthEntries;
   }, [entries, monthEntries, weekFilter, filterDate]);
+
+  // ── #37+#38 수익원 필터 — 날짜 스코프 위에 겹친다 ──
+  const [sourceFilter, setSourceFilter] = useState<string | null>(null);
+  const [showSources, setShowSources] = useState(false);
+  const sourceCounts = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const e of dateScoped) {
+      const k = e.incomeSource ?? UNCLASSIFIED_KEY;
+      m.set(k, (m.get(k) ?? 0) + 1);
+    }
+    return m;
+  }, [dateScoped]);
+  const displayEntries = useMemo(() => {
+    if (!sourceFilter) return dateScoped;
+    return dateScoped.filter((e) =>
+      sourceFilter === UNCLASSIFIED_KEY ? !e.incomeSource : e.incomeSource === sourceFilter
+    );
+  }, [dateScoped, sourceFilter]);
 
   // 날짜별 그룹 (장부의 본질: "언제, 얼마")
   const groups = useMemo(() => {
@@ -178,6 +200,7 @@ export default function Ledger({ weekFocusNonce = 0 }: { weekFocusNonce?: number
   const [showManual, setShowManual] = useState(false);
   const [manualTitleEdited, setManualTitleEdited] = useState(false);
   const [manualSplit, setManualSplit] = useState(""); // #33 엔빵 인원
+  const [manualSource, setManualSource] = useState<string | null>(null); // #37+#38 수익원
   const [manualForm, setManualForm] = useState(() => {
     const d = todayStr();
     return { date: d, title: makeDefaultTitle(d, "식비"), category: "식비", originalAmount: "", actualAmount: "", description: "", memo: "" };
@@ -205,9 +228,14 @@ export default function Ledger({ weekFocusNonce = 0 }: { weekFocusNonce?: number
     if (repeating) return;
     setRepeating(true);
     try {
+      // #37+#38 — 원탭 재기록은 같은 제목의 최근 기록에서 수익원을 그대로 잇는다 (entries = 최신순)
+      const lastSame = (entries as SavingsEntry[]).find(
+        (e) => e.title.trim().toLowerCase() === f.title.trim().toLowerCase()
+      );
       await createEntry.mutateAsync({
         date: todayStr(), title: f.title, category: f.category,
         originalAmount: f.originalAmount, actualAmount: f.actualAmount, aiEstimated: "no",
+        incomeSource: lastSame?.incomeSource ?? undefined,
       });
       const saved = f.originalAmount - f.actualAmount;
       if (saved > 0) celebrateSave({ profit: saved, title: f.title });
@@ -261,6 +289,7 @@ export default function Ledger({ weekFocusNonce = 0 }: { weekFocusNonce?: number
       status: "ready" as const,
       title: autoTitle,
       category: result.category,
+      incomeSource: result.incomeSource, // #37+#38 — AI 분류 (큐에서 수정 가능)
       // #43 — 단체면 '내 몫'이 바로 꽂힌다 (서버가 균등 분배 계산). 단독이면 단골 우선(P2).
       originalAmount: String(result.myShare?.originalAmount ?? result.prior?.originalAmount ?? result.estimatedOriginalAmount),
       priorDate: result.prior?.date,
@@ -297,7 +326,7 @@ export default function Ledger({ weekFocusNonce = 0 }: { weekFocusNonce?: number
       submitting: false,
       title: "", category: categoryNames[0] ?? "식비",
       originalAmount: "", actualAmount: "",
-      aiReason: "", date: todayStr(), memo: "",
+      aiReason: "", date: todayStr(), memo: "", incomeSource: null,
     }));
 
     setQueue(prev => {
@@ -337,6 +366,7 @@ export default function Ledger({ weekFocusNonce = 0 }: { weekFocusNonce?: number
         date: item.date,
         title: item.title || item.fileName,
         category: item.category,
+        incomeSource: item.incomeSource ?? undefined,
         originalAmount: Number(item.originalAmount),
         actualAmount: Number(item.actualAmount),
         aiEstimated: "yes",
@@ -352,7 +382,9 @@ export default function Ledger({ weekFocusNonce = 0 }: { weekFocusNonce?: number
       });
       const saved = Math.max(0, Number(item.originalAmount) - Number(item.actualAmount));
       const actualNum = Number(item.actualAmount);
-      const bonus = item.priorUsualActual != null && actualNum < item.priorUsualActual ? item.priorUsualActual - actualNum : undefined;
+      // #37+#38 — 보너스 기준은 유형 평소가(최근 실지출 중앙값). 유형을 바꿨어도 그 유형 기준으로 맞다.
+      const su = incomeSourceUsual(entries as SavingsEntry[], item.incomeSource);
+      const bonus = su != null && actualNum < su.usualActual ? su.usualActual - actualNum : undefined;
       if (saved > 0) celebrateSave({ profit: saved, title: item.title || item.fileName, bonus });
       else toast.success("기록됐어요", { description: `${item.title || item.fileName} 기록됨` });
       setQueue(prev => {
@@ -386,6 +418,7 @@ export default function Ledger({ weekFocusNonce = 0 }: { weekFocusNonce?: number
         date: manualForm.date,
         title: manualForm.title,
         category: manualForm.category,
+        incomeSource: manualSource ?? undefined,
         originalAmount: Number(manualForm.originalAmount),
         actualAmount: Number(manualForm.actualAmount),
         description: manualForm.description || undefined,
@@ -393,16 +426,15 @@ export default function Ledger({ weekFocusNonce = 0 }: { weekFocusNonce?: number
         aiEstimated: "no",
       });
       const manualSaved = Number(manualForm.originalAmount) - Number(manualForm.actualAmount);
-      // #37 — 단골 평소가보다 더 아낀 날 보너스 (직접 입력 경로)
+      // #37+#38 — 보너스 기준은 유형 평소가(최근 실지출 중앙값)
       const manualActual = Number(manualForm.actualAmount);
-      const dictHit = (dictItems as { name: string; usualActual: number }[]).find(
-        (it) => it.name.trim().toLowerCase() === manualForm.title.trim().toLowerCase()
-      );
-      const manualBonus = dictHit && manualActual < dictHit.usualActual ? dictHit.usualActual - manualActual : undefined;
+      const manualSu = incomeSourceUsual(entries as SavingsEntry[], manualSource);
+      const manualBonus = manualSu && manualActual < manualSu.usualActual ? manualSu.usualActual - manualActual : undefined;
       if (manualSaved > 0) celebrateSave({ profit: manualSaved, title: manualForm.title, bonus: manualBonus });
       else toast.success("등록됐습니다");
       const d = todayStr();
       setManualForm({ date: d, title: makeDefaultTitle(d, "식비"), category: "식비", originalAmount: "", actualAmount: "", description: "", memo: "" });
+      setManualSource(null);
       setManualTitleEdited(false);
       setShowManual(false);
     } catch {
@@ -525,6 +557,47 @@ export default function Ledger({ weekFocusNonce = 0 }: { weekFocusNonce?: number
               <X size={9} />
             </button>
           </span>
+        </div>
+      )}
+
+      {/* ── #37+#38 수익원 필터 칩 — 현재 기간에 있는 유형만, 끝에 '관리' ── */}
+      {(dateScoped.length > 0 || sourceFilter) && (
+        <div className="flex gap-1.5 overflow-x-auto pb-2 mb-1 -mx-1 px-1" style={{ scrollbarWidth: "none" }}>
+          <button
+            onClick={() => setSourceFilter(null)}
+            className={`shrink-0 px-3 py-1.5 rounded-full text-caption transition-colors ${
+              !sourceFilter ? "bg-ink text-white" : "bg-white border border-line text-ink-soft active:bg-cream"
+            }`}
+          >
+            전체
+          </button>
+          {INCOME_SOURCES.filter((src) => (sourceCounts.get(src) ?? 0) > 0 || sourceFilter === src).map((src) => (
+            <button
+              key={src}
+              onClick={() => setSourceFilter(sourceFilter === src ? null : src)}
+              className={`shrink-0 px-3 py-1.5 rounded-full text-caption transition-colors ${
+                sourceFilter === src ? "bg-gold text-white" : "bg-white border border-line text-ink-soft active:bg-cream"
+              }`}
+            >
+              {src} <span className="tabular-nums opacity-70">{sourceCounts.get(src) ?? 0}</span>
+            </button>
+          ))}
+          {((sourceCounts.get(UNCLASSIFIED_KEY) ?? 0) > 0 || sourceFilter === UNCLASSIFIED_KEY) && (
+            <button
+              onClick={() => setSourceFilter(sourceFilter === UNCLASSIFIED_KEY ? null : UNCLASSIFIED_KEY)}
+              className={`shrink-0 px-3 py-1.5 rounded-full text-caption transition-colors ${
+                sourceFilter === UNCLASSIFIED_KEY ? "bg-ink-soft text-white" : "bg-white border border-dashed border-line text-ink-faint active:bg-cream"
+              }`}
+            >
+              {UNCLASSIFIED} <span className="tabular-nums opacity-70">{sourceCounts.get(UNCLASSIFIED_KEY) ?? 0}</span>
+            </button>
+          )}
+          <button
+            onClick={() => setShowSources(true)}
+            className="shrink-0 px-3 py-1.5 rounded-full text-caption bg-white border border-line text-emerald-600 font-medium active:bg-emerald-50 transition-colors"
+          >
+            관리
+          </button>
         </div>
       )}
 
@@ -658,7 +731,7 @@ export default function Ledger({ weekFocusNonce = 0 }: { weekFocusNonce?: number
                             <p className="text-body font-medium text-ink truncate">{entry.title}</p>
                             {entry.memo
                               ? <p className="text-caption text-ink-soft truncate italic">{entry.memo}</p>
-                              : <p className="text-caption text-ink-faint">{entry.category}</p>}
+                              : <p className="text-caption text-ink-faint truncate">{entry.category}{entry.incomeSource ? ` · ${entry.incomeSource}` : ""}</p>}
                           </div>
                           <div className="text-right flex-shrink-0">
                             <p className="text-body font-mono font-semibold text-emerald-500 tabular-nums">+₩{fmt(entry.profit)}</p>
@@ -677,8 +750,12 @@ export default function Ledger({ weekFocusNonce = 0 }: { weekFocusNonce?: number
               {/* 월 합계 */}
               {!filterDate && !weekFilter && groups.length > 0 && (
                 <div className="flex justify-between items-center mt-4 px-1">
-                  <span className="text-caption text-ink-soft">{month + 1}월 합계 · {monthEntries.length}건</span>
-                  <span className="text-body font-mono font-semibold text-emerald-600 tabular-nums">+₩{fmt(monthTotal)}</span>
+                  <span className="text-caption text-ink-soft">
+                    {month + 1}월{sourceFilter ? ` ${sourceFilter === UNCLASSIFIED_KEY ? UNCLASSIFIED : sourceFilter}` : ""} 합계 · {displayEntries.length}건
+                  </span>
+                  <span className="text-body font-mono font-semibold text-emerald-600 tabular-nums">
+                    +₩{fmt(sourceFilter ? displayEntries.reduce((t, e) => t + e.profit, 0) : monthTotal)}
+                  </span>
                 </div>
               )}
             </div>
@@ -836,7 +913,7 @@ export default function Ledger({ weekFocusNonce = 0 }: { weekFocusNonce?: number
                               className="w-full text-body font-medium text-ink border-0 border-b border-line pb-0.5 focus:outline-none focus:border-emerald-400 bg-transparent"
                               placeholder="항목명"
                             />
-                            <div className="flex gap-2 mt-1.5">
+                            <div className="flex gap-2 mt-1.5 flex-wrap">
                               <input
                                 type="date"
                                 value={item.date}
@@ -849,6 +926,14 @@ export default function Ledger({ weekFocusNonce = 0 }: { weekFocusNonce?: number
                                 className="text-caption text-ink-soft border-0 border-b border-line focus:outline-none focus:border-emerald-300 bg-transparent"
                               >
                                 {categoryNames.map((c: string) => <option key={c} value={c}>{c}</option>)}
+                              </select>
+                              <select
+                                value={item.incomeSource ?? ""}
+                                onChange={e => updateQueueItem(item.id, { incomeSource: e.target.value || null })}
+                                className={`text-caption border-0 border-b border-line focus:outline-none focus:border-emerald-300 bg-transparent ${item.incomeSource ? "text-gold" : "text-ink-faint"}`}
+                              >
+                                <option value="">수익원 — {UNCLASSIFIED}</option>
+                                {INCOME_SOURCES.map((src) => <option key={src} value={src}>{src}</option>)}
                               </select>
                             </div>
                           </div>
@@ -973,6 +1058,10 @@ export default function Ledger({ weekFocusNonce = 0 }: { weekFocusNonce?: number
                     </div>
                   </div>
                   <div>
+                    <label className="text-caption text-ink-soft mb-1 block">수익원 (어떻게 번 돈인가요?)</label>
+                    <IncomeSourceChips value={manualSource} onChange={setManualSource} allowNone />
+                  </div>
+                  <div>
                     <label className="text-caption text-ink-soft mb-1 block">항목명</label>
                     <input type="text" value={manualForm.title}
                       onChange={e => {
@@ -1074,6 +1163,15 @@ export default function Ledger({ weekFocusNonce = 0 }: { weekFocusNonce?: number
 
       {/* 단골 사전 관리 */}
       {showDict && <ItemDictSheet onClose={() => setShowDict(false)} />}
+
+      {/* #37+#38 — 수익원 통계·관리 */}
+      {showSources && (
+        <IncomeSourceSheet
+          entries={entries as SavingsEntry[]}
+          onClose={() => setShowSources(false)}
+          onPick={(key) => { setSourceFilter(key); setShowSources(false); }}
+        />
+      )}
 
       {/* hidden file inputs */}
       <input ref={cameraRef} type="file" accept="image/*" capture="environment" multiple className="hidden"

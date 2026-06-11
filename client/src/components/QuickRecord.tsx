@@ -7,6 +7,7 @@ import { won } from "@/lib/format";
 import { toast } from "sonner";
 import { X, Loader2, Trash2 } from "lucide-react";
 import ConfirmDialog from "@/components/ConfirmDialog";
+import IncomeSourceChips from "@/components/IncomeSourceChips";
 import { celebrateSave } from "@/lib/celebrate";
 import type { Prefill } from "@/lib/capture";
 
@@ -30,6 +31,7 @@ export default function QuickRecord({ data, onClose, onSaved }: Props) {
 
   const [title, setTitle] = useState(data.title ?? "");
   const [category, setCategory] = useState(data.category || "식비");
+  const [incomeSource, setIncomeSource] = useState<string | null>(data.incomeSource ?? null);
   const [original, setOriginal] = useState(data.originalAmount != null ? String(data.originalAmount) : "");
   const [actual, setActual] = useState(data.actualAmount != null ? String(data.actualAmount) : "");
   const [memo, setMemo] = useState(data.memo ?? "");
@@ -61,6 +63,7 @@ export default function QuickRecord({ data, onClose, onSaved }: Props) {
         date,
         title: title.trim(),
         category,
+        incomeSource: incomeSource ?? undefined,
         originalAmount: o,
         actualAmount: a,
         aiEstimated: isCompleting ? "no" : "yes",
@@ -69,7 +72,8 @@ export default function QuickRecord({ data, onClose, onSaved }: Props) {
         memo: memo.trim() || undefined,
       });
       if (data.draftId) removeDraft(data.draftId);
-      const bonus = data.priorUsualActual != null && a < data.priorUsualActual ? data.priorUsualActual - a : undefined;
+      const usual = incomeSource === data.incomeSource ? data.sourceUsualActual : undefined;
+      const bonus = usual != null && a < usual ? usual - a : undefined;
       if (profit > 0) celebrateSave({ profit, title: title.trim(), bonus });
       else toast.success("기록됐어요");
       onSaved?.();
@@ -91,6 +95,7 @@ export default function QuickRecord({ data, onClose, onSaved }: Props) {
       actualAmount: actual ? a : null,
       aiReason: aiReason || undefined,
       memo: memo.trim() || undefined,
+      incomeSource,
       date,
     });
     toast.success("사진 저장됨 — 나중에 금액만 채우면 돼요");
@@ -162,6 +167,12 @@ export default function QuickRecord({ data, onClose, onSaved }: Props) {
               {c}
             </button>
           ))}
+        </div>
+
+        {/* 수익원 — 어떻게 번 돈인지 (AI가 짚고, 한 탭에 수정) */}
+        <label className="text-micro text-ink-soft block mb-1">수익원</label>
+        <div className="mb-3">
+          <IncomeSourceChips value={incomeSource} onChange={setIncomeSource} />
         </div>
 
         {/* 원가 / 실제 지출 */}

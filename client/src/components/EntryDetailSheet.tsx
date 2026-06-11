@@ -5,7 +5,9 @@ import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
 import { X, Pencil, Trash2, Loader2, Maximize2, ImagePlus } from "lucide-react";
 import ConfirmDialog from "@/components/ConfirmDialog";
-import { SavingsEntry, fmt } from "@/lib/ledger";
+import { SavingsEntry, fmt, incomeSourceUsual } from "@/lib/ledger";
+import IncomeSourceChips from "@/components/IncomeSourceChips";
+import { UNCLASSIFIED } from "@shared/incomeSources";
 
 export default function EntryDetailSheet({
   entry,
@@ -17,12 +19,11 @@ export default function EntryDetailSheet({
   onClose: () => void;
 }) {
   const utils = trpc.useUtils();
-  // #37 — 단골 사전의 '평소가'로 세 층 가격(시중가→평소가→오늘가) 표시
-  const { data: dictItems = [] } = trpc.items.list.useQuery();
-  const dictHit = (dictItems as { name: string; usualActual: number }[]).find(
-    (it) => it.name.trim().toLowerCase() === entry.title.trim().toLowerCase()
-  );
-  const usual = dictHit?.usualActual;
+  // #37+#38 — 평소가 = 이 기록 수익원의 최근 실지출 중앙값 (자기 자신 제외).
+  // 장부가 이미 불러온 savings.list 캐시를 그대로 쓴다 (추가 네트워크 없음).
+  const { data: allEntries = [] } = trpc.savings.list.useQuery();
+  const sourceUsual = incomeSourceUsual(allEntries as SavingsEntry[], entry.incomeSource, entry.id);
+  const usual = sourceUsual?.usualActual;
   // 평소가가 오늘가와 시중가 사이에 있을 때만 세 층이 의미 있다
   const threeLayer = usual != null && entry.actualAmount < usual && usual < entry.originalAmount;
   const updateEntry = trpc.savings.update.useMutation({ onSuccess: () => utils.savings.list.invalidate() });
@@ -62,6 +63,7 @@ export default function EntryDetailSheet({
     date: entry.date,
     title: entry.title,
     category: entry.category,
+    incomeSource: (entry.incomeSource ?? null) as string | null,
     originalAmount: String(entry.originalAmount),
     actualAmount: String(entry.actualAmount),
     memo: entry.memo ?? "",
@@ -75,6 +77,7 @@ export default function EntryDetailSheet({
         date: form.date,
         title: form.title,
         category: form.category,
+        incomeSource: form.incomeSource as never, // enum 검증은 서버 zod가
         originalAmount: Number(form.originalAmount),
         actualAmount: Number(form.actualAmount),
         memo: form.memo || null,
@@ -152,6 +155,9 @@ export default function EntryDetailSheet({
             <div className="flex items-center gap-2 text-caption text-ink-soft mb-1.5">
               <span className="font-mono">{entry.date.replace(/-/g, ".")}</span>
               <span className="px-2 py-0.5 rounded-full bg-cream">{entry.category}</span>
+              <span className={`px-2 py-0.5 rounded-full ${entry.incomeSource ? "bg-gold/10 text-gold" : "bg-cream text-ink-faint"}`}>
+                {entry.incomeSource ?? UNCLASSIFIED}
+              </span>
             </div>
 
             <p className="text-title font-semibold text-ink">{entry.title}</p>
@@ -174,7 +180,7 @@ export default function EntryDetailSheet({
               </div>
               {threeLayer && (
                 <p className="text-micro mt-1.5" style={{ color: "#B07F1E" }}>
-                  ✨ 평소(₩{fmt(usual!)})보다 ₩{fmt(usual! - entry.actualAmount)} 더 아낀 날
+                  ✨ 평소 {entry.incomeSource}(₩{fmt(usual!)})보다 ₩{fmt(usual! - entry.actualAmount)} 더 아낀 날
                 </p>
               )}
             </div>
@@ -220,6 +226,14 @@ export default function EntryDetailSheet({
             <div>
               <label className="text-caption text-ink-soft mb-1 block">항목명</label>
               <input value={form.title} onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))} className={inputCls} />
+            </div>
+            <div>
+              <label className="text-caption text-ink-soft mb-1 block">수익원 — 같은 칩을 다시 누르면 미분류</label>
+              <IncomeSourceChips
+                value={form.incomeSource}
+                onChange={(v) => setForm((f) => ({ ...f, incomeSource: v }))}
+                allowNone
+              />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
