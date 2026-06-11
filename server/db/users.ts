@@ -1,5 +1,5 @@
 import { eq } from "drizzle-orm";
-import { InsertUser, users, savingsEntries, userCategories } from "../../drizzle/schema";
+import { InsertUser, users, savingsEntries, userCategories, userItems, userIncomeSources, reportCards, pushSubscriptions, usageEvents } from "../../drizzle/schema";
 import { ENV } from "../env";
 import { getDb } from "./client";
 
@@ -76,6 +76,49 @@ export async function mergeUserData(fromUserId: number, toUserId: number): Promi
     .update(userCategories)
     .set({ userId: toUserId })
     .where(and(eq(userCategories.userId, fromUserId), eq(userCategories.isDefault, "no")));
+
+  // ── B1 수선 (2026-06-11): "기록 그대로 따라와" 약속을 전 테이블로 ──
+  // 유니크 제약이 있는 테이블은 to 쪽 기존 행 우선, 충돌하는 from 행은 삭제(고아 방지).
+
+  // 서가 소장 카드 (#50) — UNIQUE(userId, periodType, startDate)
+  const [fromCards, toCards] = await Promise.all([
+    db.select().from(reportCards).where(eq(reportCards.userId, fromUserId)),
+    db.select().from(reportCards).where(eq(reportCards.userId, toUserId)),
+  ]);
+  const cardKey = (c: { periodType: string; startDate: string }) => `${c.periodType}|${c.startDate}`;
+  const toCardKeys = new Set(toCards.map(cardKey));
+  const cardMove = fromCards.filter((c) => !toCardKeys.has(cardKey(c))).map((c) => c.id);
+  const cardDrop = fromCards.filter((c) => toCardKeys.has(cardKey(c))).map((c) => c.id);
+  if (cardMove.length) await db.update(reportCards).set({ userId: toUserId }).where(inArray(reportCards.id, cardMove));
+  if (cardDrop.length) await db.delete(reportCards).where(inArray(reportCards.id, cardDrop));
+
+  // 커스텀 수익원 (#47) — UNIQUE(userId, name)
+  const [fromSrc, toSrc] = await Promise.all([
+    db.select().from(userIncomeSources).where(eq(userIncomeSources.userId, fromUserId)),
+    db.select().from(userIncomeSources).where(eq(userIncomeSources.userId, toUserId)),
+  ]);
+  const toSrcNames = new Set(toSrc.map((r) => r.name));
+  const srcMove = fromSrc.filter((r) => !toSrcNames.has(r.name)).map((r) => r.id);
+  const srcDrop = fromSrc.filter((r) => toSrcNames.has(r.name)).map((r) => r.id);
+  if (srcMove.length) await db.update(userIncomeSources).set({ userId: toUserId }).where(inArray(userIncomeSources.id, srcMove));
+  if (srcDrop.length) await db.delete(userIncomeSources).where(inArray(userIncomeSources.id, srcDrop));
+
+  // 단골 사전 (UI는 동면, 서버 축적은 계속 — #47) — UNIQUE(userId, normName)
+  const [fromItems, toItems] = await Promise.all([
+    db.select().from(userItems).where(eq(userItems.userId, fromUserId)),
+    db.select().from(userItems).where(eq(userItems.userId, toUserId)),
+  ]);
+  const toNorm = new Set(toItems.map((r) => r.normName));
+  const itemMove = fromItems.filter((r) => !toNorm.has(r.normName)).map((r) => r.id);
+  const itemDrop = fromItems.filter((r) => toNorm.has(r.normName)).map((r) => r.id);
+  if (itemMove.length) await db.update(userItems).set({ userId: toUserId }).where(inArray(userItems.id, itemMove));
+  if (itemDrop.length) await db.delete(userItems).where(inArray(userItems.id, itemDrop));
+
+  // 푸시 구독 — endpoint가 전역 유니크라 userId만 바꾸면 됨 (같은 기기, 같은 사람)
+  await db.update(pushSubscriptions).set({ userId: toUserId }).where(eq(pushSubscriptions.userId, fromUserId));
+
+  // 사용 이벤트 — 계기판(D1/D7·활동일)의 연속성: 같은 사람의 행적을 한 줄로
+  await db.update(usageEvents).set({ userId: toUserId }).where(eq(usageEvents.userId, fromUserId));
 }
 
 /** 사용자 표시 이름(닉네임) 변경 */
