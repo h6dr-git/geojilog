@@ -28,7 +28,7 @@ export const CARD_STICKERS = [
   { id: "crown", name: "왕관" },
   { id: "won", name: "₩ 반짝" },
   { id: "jar", name: "쌀집군" }, // id는 localStorage 호환 위해 유지
-  { id: "seal", name: "수익 인장" }, // '지켜냄' 워딩 폐기(2026-06-10 확정) → 김집사 레지스터 '수익 실현'
+  { id: "seal", name: "수익 인장" }, // '지켜냄' 워딩 폐기(2026-06-10 확정) → 회시생 레지스터 '수익 실현'
 ] as const;
 export type StickerId = (typeof CARD_STICKERS)[number]["id"];
 

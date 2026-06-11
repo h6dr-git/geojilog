@@ -65,7 +65,7 @@ export default function SaveReveal() {
         .rv-won{position:absolute;font-family:'JetBrains Mono',ui-monospace,monospace;color:#f2c94c;animation:rvWon 1.6s ease-out forwards;pointer-events:none}
       `}</style>
 
-      {/* 금빛 ₩ 입자 — 자르르에게 쏟아진다 */}
+      {/* 금빛 ₩ 입자 — 쌀집군에게 쏟아진다 */}
       <div className="absolute inset-0 overflow-hidden" aria-hidden="true">
         {[
           { l: "32%", t: "52%", d: "0s", s: "15px", r: "-12deg" },
