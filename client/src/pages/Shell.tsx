@@ -11,6 +11,7 @@ import LoginFailNotice from "@/components/LoginFailNotice";
 import SaveReveal from "@/components/SaveReveal";
 import QuickRecord from "@/components/QuickRecord";
 import { trpc } from "@/lib/trpc";
+import { useAuth } from "@/hooks/useAuth";
 import type { CaptureJob, Prefill } from "@/lib/capture";
 import { sha256File } from "@/lib/fingerprint";
 import { getExifDate } from "@/lib/exif";
@@ -56,6 +57,18 @@ export default function Shell() {
 
   const analyzeImage = trpc.ai.analyzeImage.useMutation();
   const uploadImage = trpc.ai.uploadImage.useMutation();
+
+  // 검증 계기판 (#53) — 앱 열람 핑: 기록 없이 둘러본 재방문도 D1/D7에 잡히게.
+  const { isAuthenticated } = useAuth();
+  const ping = trpc.user.ping.useMutation();
+  const pinged = useRef(false);
+  useEffect(() => {
+    if (isAuthenticated && !pinged.current) {
+      pinged.current = true;
+      ping.mutate(undefined, { onError: () => { /* 측정 실패는 무해 */ } });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAuthenticated]);
 
   function triggerCapture() {
     cameraRef.current?.click();

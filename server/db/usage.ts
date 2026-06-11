@@ -24,6 +24,27 @@ export async function logUsageEvent(userId: number, type: string, meta?: string 
   }
 }
 
+/** 검증 계기판용 — 앱 열람 핑. 하루(KST) 1건만 남긴다 (D1/D7 재방문 측정의 재료).
+ *  기록 없이 둘러만 본 재방문도 잡기 위한 이벤트 — 없으면 리텐션이 과소측정된다. */
+export async function pingAppOpen(userId: number): Promise<void> {
+  const db = await getDb();
+  if (!db) return;
+  try {
+    const { and, count, gte } = await import("drizzle-orm");
+    const [row] = await db
+      .select({ n: count() })
+      .from(usageEvents)
+      .where(and(
+        eq(usageEvents.userId, userId),
+        eq(usageEvents.type, "app_open"),
+        gte(usageEvents.createdAt, kstStartOfToday()),
+      ));
+    if ((row?.n ?? 0) === 0) await db.insert(usageEvents).values({ userId, type: "app_open" });
+  } catch (e) {
+    console.warn("[usage] app_open 핑 실패:", e);
+  }
+}
+
 /** 오늘(KST) 이 유저의 AI 분석 호출 횟수. 하루 한도 체크에 사용. */
 export async function countAiCallsToday(userId: number): Promise<number> {
   const db = await getDb();

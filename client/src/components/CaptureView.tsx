@@ -2,6 +2,7 @@
 // 사용자가 폰 스크린샷으로 직접 캡처한다. (SSOT §2: 인앱 보관 + 캡처 기반 공유)
 // 힌트 문구는 2.2초 뒤 사라져서 스크린샷에 찍히지 않는다. 탭하면 닫힘.
 import { useEffect, useState, type ReactNode } from "react";
+import { trpc } from "@/lib/trpc";
 
 export default function CaptureView({
   bg,
@@ -13,9 +14,13 @@ export default function CaptureView({
   children: ReactNode;
 }) {
   const [hint, setHint] = useState(true);
+  // 검증 계기판 (#53) — 캡처 진입 = 공유 행동 프록시. 실패해도 무해(fire-and-forget).
+  const track = trpc.user.track.useMutation();
   useEffect(() => {
+    track.mutate({ type: "capture_view" }, { onError: () => { /* 무시 */ } });
     const t = window.setTimeout(() => setHint(false), 2400);
     return () => window.clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return (
