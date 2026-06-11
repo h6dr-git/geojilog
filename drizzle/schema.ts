@@ -64,6 +64,18 @@ export type SavingsEntry = typeof savingsEntries.$inferSelect;
 export type InsertSavingsEntry = typeof savingsEntries.$inferInsert;
 
 // ── 사용자 커스텀 카테고리 ──────────────────────────────────────────
+// #47 — 사용자 커스텀 수익원 (기본 9종은 shared/incomeSources.ts 상수, 여기는 추가분만)
+export const userIncomeSources = sqliteTable("user_income_sources", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  userId: integer("userId").notNull(),
+  name: text("name").notNull(),
+  createdAt: integer("createdAt", { mode: "timestamp" })
+    .notNull()
+    .default(sql`(unixepoch())`),
+});
+export type UserIncomeSource = typeof userIncomeSources.$inferSelect;
+export type InsertUserIncomeSource = typeof userIncomeSources.$inferInsert;
+
 export const userCategories = sqliteTable("user_categories", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   userId: integer("userId").notNull(),

@@ -34,4 +34,34 @@ describe("수익원 DB 라운드트립 (마이그레이션·백필·중앙값)",
     const after = await db.getSavingsEntries(userId);
     expect(after.find((e) => e.id === gimbap.id)?.incomeSource).toBe("참음/대체");
   });
+
+  // #47 — 커스텀 유형: 추가·검증·이름변경 전파·삭제 시 미분류 복귀
+  it("커스텀 유형 수명주기가 기록과 일관되게 돈다", async () => {
+    const db = await import("./db");
+    const userId = 78;
+
+    // 추가 + 유효성
+    await db.createUserIncomeSource(userId, "중고거래");
+    expect(await db.isValidIncomeSourceFor(userId, "중고거래")).toBe(true);
+    expect(await db.isValidIncomeSourceFor(userId, "없는유형")).toBe(false);
+    expect(await db.isValidIncomeSourceFor(userId, "천원아침")).toBe(true); // 기본 9종은 항상 유효
+    await expect(db.createUserIncomeSource(userId, "천원아침")).rejects.toThrow(); // 기본과 중복 금지
+    await expect(db.createUserIncomeSource(userId, "중고거래")).rejects.toThrow(); // 자기 중복 금지
+
+    // 커스텀 유형으로 기록 생성
+    await db.createSavingsEntry({ userId, date: "2026-06-05", title: "자전거 부품", category: "쇼핑", ticker: "SHOP-001", originalAmount: 30000, actualAmount: 12000, profit: 18000, aiEstimated: "no", incomeSource: "중고거래" });
+
+    // 이름변경 → 기록까지 전파
+    const list = await db.listUserIncomeSources(userId);
+    await db.renameUserIncomeSource(userId, list[0].id, "당근");
+    let entries78 = await db.getSavingsEntries(userId);
+    expect(entries78[0].incomeSource).toBe("당근");
+
+    // 삭제 → 기록은 미분류(null)로
+    const list2 = await db.listUserIncomeSources(userId);
+    await db.deleteUserIncomeSource(userId, list2[0].id);
+    entries78 = await db.getSavingsEntries(userId);
+    expect(entries78[0].incomeSource).toBeNull();
+    expect(await db.listUserIncomeSources(userId)).toHaveLength(0);
+  });
 });

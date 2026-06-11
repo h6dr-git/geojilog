@@ -18,6 +18,18 @@ export type IncomeSource = (typeof INCOME_SOURCES)[number];
 
 export const UNCLASSIFIED = "미분류"; // null 표시용 라벨 (DB엔 null로 저장)
 
+// #47 — 실지출이 사실상 고정인 유형: 생성 플로우에서 칩 선택 시 자동 채움(수정 가능).
+// 원가(시중가)는 매번 다르므로 건드리지 않는다. 기존 기록 '수정'에는 적용하지 않는다(이미 확정된 사실).
+export const FIXED_ACTUAL: Record<string, number> = {
+  "천원아침": 1000,
+  "공짜/이벤트": 0,
+  "얻어먹음": 0,
+};
+
+// #47 — 사용자 커스텀 유형 제약 (기본 9종 외 추가분)
+export const CUSTOM_SOURCE_MAX = 12; // 개수 상한 — 칩 UI가 무한히 길어지지 않게
+export const CUSTOM_SOURCE_NAME_MAX = 10; // 글자수 상한 — 칩 한 줄 유지
+
 export function isIncomeSource(v: unknown): v is IncomeSource {
   return typeof v === "string" && (INCOME_SOURCES as readonly string[]).includes(v);
 }

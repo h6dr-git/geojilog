@@ -12,13 +12,12 @@ import { smartCropToSquare } from "@/lib/smartCrop";
 import {
   Upload, Camera, PenLine, Loader2,
   Copy, ChevronDown, ChevronUp, ChevronRight, ChevronLeft,
-  X, RotateCw, Plus, Repeat, CalendarDays,
+  X, RotateCw, Plus, CalendarDays,
 } from "lucide-react";
 import EntryDetailSheet from "@/components/EntryDetailSheet";
-import IncomeSourceChips from "@/components/IncomeSourceChips";
+import IncomeSourceChips, { useIncomeSourceList } from "@/components/IncomeSourceChips";
 import IncomeSourceSheet, { UNCLASSIFIED_KEY } from "@/components/IncomeSourceSheet";
-import { INCOME_SOURCES, UNCLASSIFIED } from "@shared/incomeSources";
-import ItemDictSheet from "@/components/ItemDictSheet";
+import { UNCLASSIFIED, FIXED_ACTUAL } from "@shared/incomeSources";
 import Jarureu from "@/components/Jarureu";
 import { SavingsEntry, fmt, todayStr, makeDefaultTitle, KO_DAYS, incomeSourceUsual } from "@/lib/ledger";
 import { celebrateSave } from "@/lib/celebrate";
@@ -64,10 +63,7 @@ export default function Ledger({ weekFocusNonce = 0 }: { weekFocusNonce?: number
   const { data: categories = [] } = trpc.categories.list.useQuery(undefined, { enabled: isAuthenticated });
 
   const createEntry = trpc.savings.create.useMutation({
-    onSuccess: () => {
-      utils.savings.list.invalidate();
-      utils.items.list.invalidate(); // 단골 사전 즉시 갱신
-    },
+    onSuccess: () => utils.savings.list.invalidate(),
   });
   const analyzeImage = trpc.ai.analyzeImage.useMutation();
   const uploadCroppedImage = trpc.ai.uploadImage.useMutation();
@@ -206,46 +202,8 @@ export default function Ledger({ weekFocusNonce = 0 }: { weekFocusNonce?: number
     return { date: d, title: makeDefaultTitle(d, "식비"), category: "식비", originalAmount: "", actualAmount: "", description: "", memo: "" };
   });
 
-  // ── P1→P2 2차: '단골' 칩 — 클라 빈도 스캔에서 서버 단골 사전 기반으로 승격 ──
-  const { data: dictItems = [] } = trpc.items.list.useQuery(undefined, { enabled: isAuthenticated });
-  const frequents = useMemo(
-    () =>
-      (dictItems as { id: number; name: string; category: string; usualOriginal: number; usualActual: number; pinned: string }[])
-        .slice(0, 6)
-        .map((it) => ({
-          title: it.name,
-          category: it.category,
-          originalAmount: it.usualOriginal,
-          actualAmount: it.usualActual,
-          pinned: it.pinned === "yes",
-        })),
-    [dictItems]
-  );
-  const [showDict, setShowDict] = useState(false);
-
-  const [repeating, setRepeating] = useState(false);
-  const handleQuickRepeat = async (f: { title: string; category: string; originalAmount: number; actualAmount: number }) => {
-    if (repeating) return;
-    setRepeating(true);
-    try {
-      // #37+#38 — 원탭 재기록은 같은 제목의 최근 기록에서 수익원을 그대로 잇는다 (entries = 최신순)
-      const lastSame = (entries as SavingsEntry[]).find(
-        (e) => e.title.trim().toLowerCase() === f.title.trim().toLowerCase()
-      );
-      await createEntry.mutateAsync({
-        date: todayStr(), title: f.title, category: f.category,
-        originalAmount: f.originalAmount, actualAmount: f.actualAmount, aiEstimated: "no",
-        incomeSource: lastSame?.incomeSource ?? undefined,
-      });
-      const saved = f.originalAmount - f.actualAmount;
-      if (saved > 0) celebrateSave({ profit: saved, title: f.title });
-      else toast.success("기록됐습니다", { description: f.title });
-    } catch {
-      toast.error("등록에 실패했습니다");
-    } finally {
-      setRepeating(false);
-    }
-  };
+  // #47 — 수익원 목록 (기본 9종 + 내 커스텀) — 큐 select 옵션용
+  const incomeSourceList = useIncomeSourceList();
 
   // ── AI 이미지 처리 ──
   const processFile = useCallback(async (file: File, itemId: string) => {
@@ -571,7 +529,7 @@ export default function Ledger({ weekFocusNonce = 0 }: { weekFocusNonce?: number
           >
             전체
           </button>
-          {INCOME_SOURCES.filter((src) => (sourceCounts.get(src) ?? 0) > 0 || sourceFilter === src).map((src) => (
+          {incomeSourceList.filter((src) => (sourceCounts.get(src) ?? 0) > 0 || sourceFilter === src).map((src) => (
             <button
               key={src}
               onClick={() => setSourceFilter(sourceFilter === src ? null : src)}
@@ -784,35 +742,6 @@ export default function Ledger({ weekFocusNonce = 0 }: { weekFocusNonce?: number
               </button>
             </div>
 
-            {/* 단골 — 사전 기반 원탭 기록 (P2 2차). '관리'에서 가격 고정(★)·수정 */}
-            {frequents.length > 0 ? (
-              <section className="mb-5">
-                <div className="flex items-center justify-between mb-2">
-                  <p className="text-caption font-mono text-ink-soft tracking-widest uppercase">단골</p>
-                  <button onClick={() => setShowDict(true)} className="text-caption text-emerald-600 font-medium active:opacity-70">
-                    관리
-                  </button>
-                </div>
-                <div className="flex gap-2 flex-wrap">
-                  {frequents.map((f) => (
-                    <button
-                      key={f.title}
-                      onClick={() => handleQuickRepeat(f)}
-                      disabled={repeating}
-                      className="flex items-center gap-1.5 pl-3 pr-3.5 py-2 rounded-full border border-emerald-200 bg-emerald-50 text-caption text-emerald-700 font-medium active:scale-95 disabled:opacity-50 transition-transform"
-                    >
-                      <Repeat size={12} />
-                      <span className="max-w-[8rem] truncate">{f.pinned ? "★ " : ""}{f.title}</span>
-                      <span className="font-mono tabular-nums">+₩{fmt(Math.max(0, f.originalAmount - f.actualAmount))}</span>
-                    </button>
-                  ))}
-                </div>
-                <p className="text-micro text-ink-faint mt-1.5">탭하면 오늘 기록으로 바로 추가돼요 (단골 가격 기준 · 목록에서 수정 가능)</p>
-              </section>
-            ) : (
-              <p className="text-micro text-ink-faint mb-4 text-center">같은 항목을 기록하면 여기에 '단골' 원탭 버튼이 생겨요</p>
-            )}
-
             {/* 사진 업로드 영역 — 업로드가 시작되면 큰 드롭존은 내려가고 컴팩트 행으로 (#31) */}
             {queue.length === 0 ? (
               <section className="mb-5">
@@ -929,11 +858,17 @@ export default function Ledger({ weekFocusNonce = 0 }: { weekFocusNonce?: number
                               </select>
                               <select
                                 value={item.incomeSource ?? ""}
-                                onChange={e => updateQueueItem(item.id, { incomeSource: e.target.value || null })}
+                                onChange={e => {
+                                  const v = e.target.value || null;
+                                  // #47 — 고정가 유형은 실지출 자동 채움 (생성 플로우, 수정 가능)
+                                  const patch: Partial<QueueItem> = { incomeSource: v };
+                                  if (v != null && FIXED_ACTUAL[v] !== undefined) patch.actualAmount = String(FIXED_ACTUAL[v]);
+                                  updateQueueItem(item.id, patch);
+                                }}
                                 className={`text-caption border-0 border-b border-line focus:outline-none focus:border-emerald-300 bg-transparent ${item.incomeSource ? "text-gold" : "text-ink-faint"}`}
                               >
                                 <option value="">수익원 — {UNCLASSIFIED}</option>
-                                {INCOME_SOURCES.map((src) => <option key={src} value={src}>{src}</option>)}
+                                {incomeSourceList.map((src) => <option key={src} value={src}>{src}</option>)}
                               </select>
                             </div>
                           </div>
@@ -1059,7 +994,16 @@ export default function Ledger({ weekFocusNonce = 0 }: { weekFocusNonce?: number
                   </div>
                   <div>
                     <label className="text-caption text-ink-soft mb-1 block">수익원 (어떻게 번 돈인가요?)</label>
-                    <IncomeSourceChips value={manualSource} onChange={setManualSource} allowNone />
+                    <IncomeSourceChips
+                      value={manualSource}
+                      onChange={(v) => {
+                        setManualSource(v);
+                        // #47 — 고정가 유형은 실지출 자동 채움 (수정 가능)
+                        if (v != null && FIXED_ACTUAL[v] !== undefined)
+                          setManualForm((f) => ({ ...f, actualAmount: String(FIXED_ACTUAL[v]) }));
+                      }}
+                      allowNone
+                    />
                   </div>
                   <div>
                     <label className="text-caption text-ink-soft mb-1 block">항목명</label>
@@ -1160,9 +1104,6 @@ export default function Ledger({ weekFocusNonce = 0 }: { weekFocusNonce?: number
           <p className="mt-1 text-caption" style={{ color: "#7E8C82" }}>끝나면 알려드릴게요 — 다른 일 보셔도 됩니다</p>
         </div>
       )}
-
-      {/* 단골 사전 관리 */}
-      {showDict && <ItemDictSheet onClose={() => setShowDict(false)} />}
 
       {/* #37+#38 — 수익원 통계·관리 */}
       {showSources && (

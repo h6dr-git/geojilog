@@ -7,6 +7,7 @@ import { aiRouter } from "./ai";
 import { adminRouter } from "./admin";
 import { pushRouter } from "./push";
 import { itemsRouter } from "./items";
+import { incomeSourcesRouter } from "./incomeSources";
 
 export const appRouter = router({
   auth: authRouter,
@@ -17,6 +18,7 @@ export const appRouter = router({
   admin: adminRouter,
   push: pushRouter,
   items: itemsRouter,
+  incomeSources: incomeSourcesRouter,
 });
 
 export type AppRouter = typeof appRouter;

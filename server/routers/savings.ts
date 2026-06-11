@@ -1,9 +1,17 @@
 import { z } from "zod";
 import { protectedProcedure, router } from "../trpc";
-import { getSavingsEntries, createSavingsEntry, deleteSavingsEntry, deleteMultipleSavingsEntries, deleteAllSavingsEntries, countSavingsEntriesByCategory, updateSavingsEntry, logUsageEvent, upsertItemFromEntry, backfillIncomeSources } from "../db";
-import { INCOME_SOURCES } from "@shared/incomeSources";
+import { getSavingsEntries, createSavingsEntry, deleteSavingsEntry, deleteMultipleSavingsEntries, deleteAllSavingsEntries, countSavingsEntriesByCategory, updateSavingsEntry, logUsageEvent, upsertItemFromEntry, backfillIncomeSources, isValidIncomeSourceFor } from "../db";
+import { TRPCError } from "@trpc/server";
+import { CUSTOM_SOURCE_NAME_MAX } from "@shared/incomeSources";
 
-const incomeSourceEnum = z.enum(INCOME_SOURCES as unknown as [string, ...string[]]);
+// #47 — 커스텀 유형 허용: 형태는 zod, 실존 여부(기본 9종 ∪ 내 커스텀)는 서버에서 확인
+const incomeSourceInput = z.string().trim().min(1).max(CUSTOM_SOURCE_NAME_MAX);
+async function assertIncomeSource(userId: number, v: string | null | undefined) {
+  if (v == null) return;
+  if (!(await isValidIncomeSourceFor(userId, v))) {
+    throw new TRPCError({ code: "BAD_REQUEST", message: "알 수 없는 수익원이에요 — 수익원 시트에서 먼저 추가해 주세요" });
+  }
+}
 
 function generateTicker(category: string, count: number): string {
   const prefixMap: Record<string, string> = {
@@ -24,7 +32,7 @@ export const savingsRouter = router({
         title: z.string().min(1),
         description: z.string().optional(),
         category: z.string(),
-        incomeSource: incomeSourceEnum.optional(), // #37+#38 수익원 (미지정=미분류)
+        incomeSource: incomeSourceInput.optional(), // #37+#38 수익원 (미지정=미분류, 커스텀 허용 #47)
         originalAmount: z.number().int().positive(),
         actualAmount: z.number().int().min(0),
         // AI가 처음 추정했던 기준가(있으면). 최종 확정값과 다르면 보정 데이터로 기록 → '실가격 데이터 해자'.
@@ -40,6 +48,7 @@ export const savingsRouter = router({
         memo: z.string().optional(),
       }))
       .mutation(async ({ ctx, input }) => {
+        await assertIncomeSource(ctx.user.id, input.incomeSource);
         const count = await countSavingsEntriesByCategory(ctx.user.id, input.category);
         const ticker = generateTicker(input.category, count);
         const profit = input.originalAmount - input.actualAmount;
@@ -95,13 +104,14 @@ export const savingsRouter = router({
         title: z.string().min(1).optional(),
         description: z.string().optional(),
         category: z.string().optional(),
-        incomeSource: incomeSourceEnum.nullable().optional(), // null = 미분류로 되돌림
+        incomeSource: incomeSourceInput.nullable().optional(), // null = 미분류로 되돌림 (커스텀 허용 #47)
         originalAmount: z.number().int().positive().optional(),
         actualAmount: z.number().int().min(0).optional(),
         memo: z.string().nullable().optional(),
         imageUrl: z.string().optional(), // #24 — 사진 나중에 붙이기/교체
       }))
       .mutation(async ({ ctx, input }) => {
+        await assertIncomeSource(ctx.user.id, input.incomeSource);
         await updateSavingsEntry(input.id, ctx.user.id, input);
         return { success: true };
       }),
