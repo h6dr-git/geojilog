@@ -94,3 +94,31 @@ export function meaningOfTotal(total: number): string | null {
   if (chicken >= 1) return `환산하면 치킨 ${chicken}마리 — 또는 영화 ${movie}편, 천원아침 ${breakfast}끼.`;
   return `환산하면 영화 ${movie}편 — 또는 천원아침 ${breakfast}끼.`;
 }
+
+// ── 책상 메모 (#62) — 집무실 상주 보고. 회시생의 '서면 보고'라 매일 있어도 세계관 정합
+//    (육성이 희소한 것이지, 보고서 작성은 그의 업무다). 숫자 있으면 인텔, 없으면 상태 한 줄.
+export function intelDeskLine(entries: SavingsEntry[], fedToday: boolean): string {
+  if (entries.length < 3) {
+    return "장부가 자라는 중입니다. 기록이 쌓일수록 보고도 깊어집니다.";
+  }
+  if (fedToday) {
+    const st = streakWithToday(entries.filter((e) => e.date < iso(new Date())));
+    if (st >= 2) return `금일 계상 완료 — ${st}일 연속입니다.`;
+    // 이번 주 페이스 (지난주 같은 시점과 비교, 지난주 데이터 있을 때만)
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    const mon = new Date(today); mon.setDate(mon.getDate() - ((mon.getDay() + 6) % 7));
+    const pace = intelWeeklyLine(entries, { start: iso(mon), end: iso(today) });
+    if (pace) return `금일 계상 완료. ${pace}`;
+    return "금일 계상 완료. 장부 이상 없습니다.";
+  }
+  // 아직 기록 전
+  if (entries.length >= 10) {
+    const rhythm = dayOfWeekRhythm(entries);
+    const top = rhythm.reduce((a, b) => (b.avg > a.avg ? b : a));
+    const todayDow = (new Date().getDay() + 6) % 7;
+    if (top.avg > 0 && top.day === todayDow) {
+      return `오늘은 사장님의 황금 요일입니다. 장부가 기다립니다.`;
+    }
+  }
+  return "금일 계상 전입니다.";
+}

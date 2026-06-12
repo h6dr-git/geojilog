@@ -2,13 +2,15 @@
 // 말풍선 기본 화자는 쌀집이(숫자어) — 회시생 채널은 쪽지·결산·푸시. (#41 v3)
 // 안전 로비: 수익·통계·결산·내 기록(숫자) 절대 노출 금지.
 import { trpc } from "@/lib/trpc";
-import { APP_NAME } from "@/lib/brand";
+import { APP_NAME, CPA_NAME } from "@/lib/brand";
 import { useAuth } from "@/hooks/useAuth";
 import SsalCalc from "@/components/SsalCalc";
 import LoginChip from "@/components/LoginChip";
 import { useDrafts, type Draft } from "@/lib/drafts";
 import type { CaptureJob } from "@/lib/capture";
-import { deskNote, ssalDisplay } from "@/lib/voice";
+import type { SavingsEntry } from "@/lib/ledger";
+import { deskNote, ssalDisplay, type SsalCode } from "@/lib/voice";
+import { intelDeskLine } from "@/lib/intel";
 import JarureuShelf, { shelfScore, unlockedItems } from "@/components/JarureuShelf";
 import SpeakerBadge from "@/components/SpeakerBadge";
 import AccountSheet from "@/components/AccountSheet";
@@ -74,7 +76,8 @@ export default function HomeTab({ onGoRecords, job, onOpenConfirm, onCompleteDra
       setShowInstallGuide(true);
     }
   }
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
+  const displayName = user?.name || "사장님";
   const { data: entries = [] } = trpc.savings.list.useQuery(undefined, { enabled: isAuthenticated });
   const level = Math.min(1, recentWeekProfit(entries as Entry[]) / WEEKLY_GOAL);
   const drafts = useDrafts();
@@ -99,7 +102,6 @@ export default function HomeTab({ onGoRecords, job, onOpenConfirm, onCompleteDra
 
   // 이번 달 수익 — 탭 투 리빌(#36 확정): 기본 마스킹, 탭하면 3초 노출 후 다시 가림.
   // 동기부여(매일 보고 싶은 숫자)와 안전 로비(어깨너머 방어)의 절충 — 잔액 숨김은 핀테크 문법 그대로.
-  const [revealed, setRevealed] = useState(false);
   const [revealHintDone, setRevealHintDone] = useState<boolean>(() => {
     try { return localStorage.getItem("geo_reveal_hint_done") === "1"; } catch { return true; }
   });
@@ -108,16 +110,7 @@ export default function HomeTab({ onGoRecords, job, onOpenConfirm, onCompleteDra
     setRevealHintDone(true);
     try { localStorage.setItem("geo_reveal_hint_done", "1"); } catch {}
   }
-  const revealTimer = useRef<number | undefined>(undefined);
-  function toggleReveal() {
-    window.clearTimeout(revealTimer.current);
-    if (revealed) {
-      setRevealed(false);
-      return;
-    }
-    setRevealed(true);
-    revealTimer.current = window.setTimeout(() => setRevealed(false), 3000);
-  }
+
 
   // 이번 주(월~일) 기록 점 7개 — 돈 액수 없는 상태 표시 (집무실 안 A · 스트릭은 보류)
   const weekDots = (() => {
@@ -138,34 +131,31 @@ export default function HomeTab({ onGoRecords, job, onOpenConfirm, onCompleteDra
       };
     });
   })();
-  // 말풍선 — 기본 화자 쌀집이(숫자 코드), 살림 해금 알림만 회시생 텍스트. (#41 v3)
-  type Bubble = { speaker: "ssal" | "cpa"; text: string; meaning?: string; rare: boolean };
-  const [jarLine, setJarLine] = useState<Bubble | null>(null);
-  const [showMeaning, setShowMeaning] = useState(false); // 코드 탭 → 뜻 1.5초
-  const meaningTimer = useRef<number | undefined>(undefined);
-  const jarTimer = useRef<number | undefined>(undefined);
+  // #62 — 디스플레이 시퀀스: 탭 → 숫자어 코드 점등(뜻 캡션) → 이번 달 수익 점등 → 마스킹.
+  // 말풍선 폐지: 계산기는 디스플레이로 말한다 (치는 건 회시생이라는 설정 그대로 — 제4조 정합).
+  type CalcStage = "idle" | "code" | "amount";
+  const [calcStage, setCalcStage] = useState<CalcStage>("idle");
+  const [calcCode, setCalcCode] = useState<(SsalCode & { rare: boolean }) | null>(null);
+  const seqTimers = useRef<number[]>([]);
   const lastLine = useRef<string | null>(null);
-  function say(line: Bubble, ms: number) {
-    setJarLine(line);
-    setShowMeaning(false);
-    window.clearTimeout(jarTimer.current);
-    jarTimer.current = window.setTimeout(() => setJarLine(null), ms);
-  }
-  function pokeJarureu() {
-    if (jarLine?.rare) return; // 희귀 코드 표시 중엔 탭 잠금
+  function clearSeq() { seqTimers.current.forEach((t) => window.clearTimeout(t)); seqTimers.current = []; }
+  function tapCalc() {
+    if (calcStage !== "idle") return; // 시퀀스 중 재탭 무시
+    markRevealHintDone();
     const c = ssalDisplay(fedToday, lastLine.current);
     lastLine.current = c.code;
-    say({ speaker: "ssal", text: c.code, meaning: c.meaning, rare: c.rare }, c.rare ? 8000 : 3200);
+    setCalcCode(c);
+    setCalcStage("code");
+    clearSeq();
+    const codeMs = c.rare ? 2600 : 1300;
+    seqTimers.current.push(window.setTimeout(() => setCalcStage("amount"), codeMs));
+    seqTimers.current.push(window.setTimeout(() => { setCalcStage("idle"); setCalcCode(null); }, codeMs + 3000));
   }
-  function revealMeaning() {
-    if (!jarLine?.meaning) return;
-    setShowMeaning(true);
-    window.clearTimeout(meaningTimer.current);
-    meaningTimer.current = window.setTimeout(() => setShowMeaning(false), 1500);
-  }
+  useEffect(() => () => clearSeq(), []);
 
-  // 살림 해금 연출 — 새 소품이 생기면 자르르가 알리고 소품이 통통 튀며 등장 (월별 1회)
+  // 비품 해금 연출 — 새 비품이 생기면 메모에 한 줄 + 소품이 통통 (월별 1회)
   const [newProp, setNewProp] = useState<string | null>(null);
+  const [memoFlash, setMemoFlash] = useState<string | null>(null);
   const unlockedCount = unlockedItems(score).length;
   useEffect(() => {
     if (!isAuthenticated || monthEntries.length === 0) return;
@@ -178,7 +168,8 @@ export default function HomeTab({ onGoRecords, job, onOpenConfirm, onCompleteDra
         const newest = unlockedItems(score)[unlockedCount - 1];
         setNewProp(newest.key);
         window.setTimeout(() => setNewProp(null), 2600);
-        say({ speaker: "cpa", text: `비품이 추가되었습니다 — ${newest.name}. 사무소가 좋아지는군요.`, rare: true }, 8000);
+        setMemoFlash(`비품 추가 — ${newest.name}. 사무소가 좋아지는군요.`);
+        window.setTimeout(() => setMemoFlash(null), 8000);
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -190,77 +181,104 @@ export default function HomeTab({ onGoRecords, job, onOpenConfirm, onCompleteDra
       style={{ background: lobbyBg() }}
     >
       <header className="pt-12 pb-2 flex items-center justify-between">
-        <p className="text-caption font-mono text-ink-soft tracking-wider">{APP_NAME}</p>
+        {/* #62 — 회사 명패: 여긴 절약업 사무소다 */}
+        <div className="flex items-center gap-2">
+          <div className="rounded-lg px-3 py-1.5" style={{ background: "#2b241a", border: "1px solid rgba(224,169,46,0.35)" }}>
+            <p className="text-micro font-semibold tracking-wide" style={{ color: "#E0A92E" }}>{displayName} 절약사무소</p>
+          </div>
+          <span className="text-micro font-mono text-ink-faint tracking-widest">{APP_NAME}</span>
+        </div>
         <LoginChip onClick={() => setShowAccount(true)} />
       </header>
 
-      {/* 쌀집이 본체 — 디스플레이 = 이번 달 수익 (탭 투 리빌 #36과 융합: 기본 마스킹) */}
-      <div className="flex flex-col items-center mt-10">
+      {/* ══ #62 사장님의 책상 — 벽(시간대 톤) 아래 책상면, 그 위에 쌀집이와 비품 ══ */}
+      <div className="mt-8">
         <div
-          className="relative cursor-pointer select-none transition-transform duration-150 active:scale-[0.96]"
-          onClick={() => { toggleReveal(); pokeJarureu(); markRevealHintDone(); }}
+          className="relative rounded-t-[22px] px-4 pt-5 pb-4"
+          style={{
+            background: "linear-gradient(180deg, #d9c4a3 0%, #cdb58f 14%, #c2a87f 100%)",
+            boxShadow: "inset 0 2px 0 rgba(255,255,255,0.35), 0 -6px 18px rgba(120,90,40,0.10)",
+          }}
         >
-          <SsalCalc
-            level={level}
-            size={132}
-            analyzing={!!analyzingJob}
-            display={revealed ? `+${monthProfit.toLocaleString("ko-KR")}` : "-----"}
-          />
-          <div className="absolute left-1/2 -translate-x-1/2 -bottom-0.5 w-24 h-3.5 rounded-[50%] bg-black/10 blur-md" aria-hidden="true" />
-        </div>
+          {/* 책상 모서리 결 */}
+          <div className="absolute inset-x-0 top-0 h-[3px] rounded-t-[22px]" style={{ background: "rgba(120,90,40,0.25)" }} aria-hidden="true" />
 
-        {/* F7 — 첫 리빌 전까지만: 누르고 싶게 만드는 힌트 (이후 영구 숨김) */}
-        {!revealHintDone && (
-          <button
-            onClick={() => { toggleReveal(); markRevealHintDone(); }}
-            className="mt-2.5 text-micro font-mono text-ink-faint border border-dashed border-line rounded-full px-3 py-1 animate-pulse"
-          >
-            탭해서 이번 달 수익 보기
-          </button>
-        )}
-
-        {/* 살림 선반 — 기록이 쌓일수록 소품이 늘어난다 (숫자 미표기) */}
-        <div className="mt-3">
-          <JarureuShelf score={score} highlightKey={newProp} />
-        </div>
-
-        <div className="relative mt-7 w-full max-w-[19.5rem]">
-          <div className="absolute -top-1.5 left-1/2 -translate-x-1/2 w-3 h-3 bg-white border-l border-t border-line rotate-45" aria-hidden="true" />
-          <div
-            className="relative border rounded-card px-4 py-3 shadow-sm flex items-start gap-2.5 transition-colors overflow-hidden"
-            style={jarLine?.rare ? { background: "#FFFBEF", borderColor: "#E0A92E" } : { background: "#ffffff", borderColor: "#EFE9DC" }}
-          >
-            {/* 희귀 잔여시간 바 — 사라지기 전을 시각적으로 알림 */}
-            {jarLine?.rare && (
-              <span
-                key={jarLine.text + "-bar"}
-                className="absolute bottom-0 left-0 h-0.5 bg-gold/70"
-                style={{ animation: "rare-bar 8s linear forwards" }}
-                aria-hidden="true"
+          <div className="flex items-end justify-center gap-5">
+            {/* 쌀집이 — 책상 위 계산기 (탭: 코드 → 월 수익 → 마스킹) */}
+            <div
+              className="relative cursor-pointer select-none transition-transform duration-150 active:scale-[0.95]"
+              onClick={tapCalc}
+            >
+              <SsalCalc
+                level={level}
+                size={104}
+                analyzing={!!analyzingJob}
+                glow={calcStage === "code" && !!calcCode?.rare}
+                display={
+                  analyzingJob ? "······"
+                  : calcStage === "code" && calcCode ? calcCode.code
+                  : calcStage === "amount" ? `+${monthProfit.toLocaleString("ko-KR")}`
+                  : "-----"
+                }
               />
-            )}
-            <SpeakerBadge speaker={jarLine?.speaker ?? "ssal"} />
-            <span className="flex-1 text-left" onClick={revealMeaning}>
-              {jarLine?.rare && (
-                <span key={jarLine.text + "-tag"} className="block text-micro text-gold font-medium mb-0.5 animate-bubble-in">
-                  ✨ 희귀 코드
-                </span>
-              )}
-              {jarLine?.speaker === "cpa" ? (
-                <p key={jarLine.text} className="text-body text-ink/85 leading-relaxed animate-bubble-in">{jarLine.text}</p>
-              ) : (
-                <p key={(jarLine?.text ?? "idle") + (showMeaning ? "-m" : "")} className="font-mono text-body font-semibold tabular-nums text-ink/85 leading-relaxed animate-bubble-in">
-                  {analyzingJob && !jarLine
-                    ? "······"
-                    : showMeaning && jarLine?.meaning
-                      ? `${jarLine.text} — ${jarLine.meaning}`
-                      : jarLine?.text ?? (fedToday ? "1004" : "8282")}
-                </p>
-              )}
-            </span>
+              <div className="absolute left-1/2 -translate-x-1/2 -bottom-1 w-20 h-3 rounded-[50%] bg-black/15 blur-md" aria-hidden="true" />
+            </div>
+
+            {/* 비품 — 기록이 쌓일수록 책상이 풍성해진다 (investment) */}
+            <div className="pb-1">
+              <JarureuShelf score={score} highlightKey={newProp} />
+            </div>
+          </div>
+
+          {/* 디스플레이 캡션 — 코드 뜻(점등 동안) / 첫 리빌 힌트 */}
+          <div className="h-5 mt-2 text-center">
+            {calcStage === "code" && calcCode ? (
+              <p key={calcCode.code} className="text-micro font-mono animate-bubble-in" style={{ color: calcCode.rare ? "#B07F1E" : "#6b5b3e" }}>
+                {calcCode.rare ? "✨ " : ""}{calcCode.code} — {calcCode.meaning}
+              </p>
+            ) : !revealHintDone ? (
+              <p className="text-micro font-mono animate-pulse" style={{ color: "#6b5b3e" }}>쌀집이를 탭해 보세요</p>
+            ) : null}
           </div>
         </div>
+
+        {/* 책상 앞면 */}
+        <div className="h-3 rounded-b-xl" style={{ background: "linear-gradient(180deg, #a88c61 0%, #94794f 100%)" }} aria-hidden="true" />
       </div>
+
+      {/* ── #62 회시생의 책상 메모 — 인텔 상주(기록의 복리가 홈에 산다) + 장부 상태. 탭=장부 ── */}
+      <button
+        onClick={onGoRecords}
+        className="relative mt-4 w-full text-left rounded-card px-4 py-3.5 shadow-sm active:scale-[0.99] transition-transform"
+        style={{ background: "#FFFEF8", border: "1px solid #EFE9DC", transform: "rotate(-0.4deg)" }}
+      >
+        {/* 테이프 조각 */}
+        <span className="absolute -top-2 left-1/2 -translate-x-1/2 w-12 h-4 rounded-[3px]" style={{ background: "rgba(224,169,46,0.28)" }} aria-hidden="true" />
+        <span className="flex items-center gap-2 mb-1.5">
+          <SpeakerBadge speaker="cpa" size={20} />
+          <span className="text-micro text-gold tracking-wide font-medium">{CPA_NAME}의 책상 메모</span>
+          <ChevronRight size={12} className="text-ink-faint ml-auto" />
+        </span>
+        <p key={memoFlash ?? "memo"} className="text-body leading-relaxed animate-bubble-in" style={{ color: "#4a4437" }}>
+          {memoFlash ?? intelDeskLine(entries as unknown as SavingsEntry[], fedToday)}
+        </p>
+        <span className="flex items-center justify-between mt-2.5">
+          <span className="text-micro" style={{ color: "#8a7f63" }}>
+            {fedToday ? "금일 계상 ✓" : "금일 계상 전"}
+          </span>
+          <span className="flex items-end gap-1.5" aria-label="이번 주 기록 현황">
+            {weekDots.map((d) => (
+              <span key={d.ds} className="flex flex-col items-center gap-1">
+                <span
+                  className={`rounded-full transition-colors ${
+                    d.isToday ? "w-2 h-2 ring-2 ring-emerald-200" : "w-1.5 h-1.5"
+                  } ${d.has ? "bg-emerald-400" : d.future ? "bg-line/50" : "bg-line"}`}
+                />
+              </span>
+            ))}
+          </span>
+        </span>
+      </button>
 
       {/* 단일 액션 — 큰 기록 버튼 / 진행 상태칩 */}
       {analyzingJob ? (
@@ -322,38 +340,6 @@ export default function HomeTab({ onGoRecords, job, onOpenConfirm, onCompleteDra
         </button>
       )}
 
-      {/* 오늘의 장부 상태 — 안 A: 액수 없는 상태창 (민감정보 0 유지). 탭하면 장부로 */}
-      <button
-        onClick={onGoRecords}
-        className="mt-2.5 flex items-center justify-between bg-white border border-line rounded-card px-4 py-3 w-full active:bg-line/30 transition-colors"
-      >
-        <span className="text-caption text-ink-soft flex items-center gap-1.5">
-          {fedToday ? (
-            <>
-              <Check size={13} className="text-emerald-500" /> 오늘 수익 기록 완료
-            </>
-          ) : (
-            "오늘 수익은 아직 기록 전"
-          )}
-        </span>
-        <span className="flex items-end gap-1.5" aria-label="이번 주 기록 현황">
-          {weekDots.map((d, i) => (
-            <span key={d.ds} className="flex flex-col items-center gap-1">
-              <span
-                className={`rounded-full transition-colors ${
-                  d.isToday ? "w-2 h-2 ring-2 ring-emerald-200" : "w-1.5 h-1.5"
-                } ${d.has ? "bg-emerald-400" : d.future ? "bg-line/50" : "bg-line"}`}
-              />
-              <span
-                className={d.isToday ? "text-emerald-500 font-medium" : "text-ink-faint"}
-                style={{ fontSize: "9px", lineHeight: "10px" }}
-              >
-                {"월화수목금토일"[i]}
-              </span>
-            </span>
-          ))}
-        </span>
-      </button>
 
       {/* (F7, 2026-06-12) '이번 달 수익' 카드 제거 — 월 수익 표시면은 쌀집이 디스플레이가 유일 */}
 

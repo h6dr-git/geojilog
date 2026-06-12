@@ -14,6 +14,8 @@ type Props = {
   analyzing?: boolean;
   /** LCD 표시 내용 (기본 "-----") — 집무실은 이번 달 수익(마스킹/리빌), 장부 빈 상태는 "E" 등 */
   display?: string;
+  /** 희귀 코드 점등 — 골드 글로우 (#62) */
+  glow?: boolean;
 };
 
 const STYLE = `
@@ -33,7 +35,7 @@ const STYLE = `
 @keyframes sc-press{0%,100%{transform:translateY(0)}30%{transform:translateY(1.6px) scale(.96)}}
 `;
 
-export default function SsalCalc({ level = 0, size = 120, analyzing = false, display = "" }: Props) {
+export default function SsalCalc({ level = 0, size = 120, analyzing = false, display = "", glow = false }: Props) {
   const uid = useId().replace(/[:]/g, "");
   const lv = Math.max(0, Math.min(1, level));
   const text = analyzing ? "······" : display || "-----";
@@ -42,7 +44,7 @@ export default function SsalCalc({ level = 0, size = 120, analyzing = false, dis
   const keyRows = [0, 1, 2, 3];
   const keyCols = [0, 1, 2, 3];
   return (
-    <svg width={size} height={Math.round(size * 1.18)} viewBox="0 0 100 118" role="img" aria-label={`${CHARACTER_NAME} (${CALC_MODEL})`}>
+    <svg width={size} height={Math.round(size * 1.18)} viewBox="0 0 100 118" role="img" aria-label={`${CHARACTER_NAME} (${CALC_MODEL})`} style={glow ? { filter: "drop-shadow(0 0 14px rgba(224,169,46,0.65))" } : undefined}>
       <style>{STYLE}</style>
       <defs>
         <linearGradient id={`scBody${uid}`} x1="0" y1="0" x2="0" y2="1">
