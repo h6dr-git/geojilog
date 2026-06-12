@@ -2,7 +2,7 @@
 // 기준 출처: 사업화_자료/거지로그_객관적_가능성_평가.md §4 (가입→첫기록 40%+, D7 ≥15% 등).
 // 규모가 작으므로(수십 명) 이벤트를 통째로 당겨 JS로 계산 — 단순함이 정확성보다 깨지기 어렵다.
 import { gte } from "drizzle-orm";
-import { usageEvents, users, savingsEntries } from "../../drizzle/schema";
+import { usageEvents, users, savingsEntries, feedbacks } from "../../drizzle/schema";
 import { getDb } from "./client";
 
 const DAY = 24 * 60 * 60 * 1000;
@@ -42,6 +42,7 @@ export async function getOpsReport() {
     },
     daily: [] as { date: string; active: number; entries: number; signups: number }[],
     users: [] as OpsUserRow[],
+    inbox: [] as { name: string; text: string; when: string }[],
   };
   if (!db) return empty;
 
@@ -126,6 +127,16 @@ export async function getOpsReport() {
     daily.push({ date: d, active, entries: entriesN, signups });
   }
 
+  // #58 — 업무 지시 인박스 (최근 30)
+  const { desc } = await import("drizzle-orm");
+  const fb = await db.select().from(feedbacks).orderBy(desc(feedbacks.createdAt)).limit(30);
+  const nameOf = new Map(allUsers.map((u) => [u.id, u.name ?? `게스트${u.id}`]));
+  const inbox = fb.map((f) => ({
+    name: nameOf.get(f.userId) ?? `사용자${f.userId}`,
+    text: f.text,
+    when: kstDate(f.createdAt),
+  }));
+
   const totalEntries = entryCounts.length;
   return {
     today,
@@ -138,5 +149,6 @@ export async function getOpsReport() {
     },
     daily,
     users: rows,
+    inbox,
   };
 }

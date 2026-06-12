@@ -2,6 +2,7 @@
 // 닉네임 수정 · 카카오 로그인/로그아웃 · 데이터 내보내기. "크게 중요하지 않은 기능"이라 조용한 곳에.
 import { useState } from "react";
 import { trpc } from "@/lib/trpc";
+import FeedbackSheet from "@/components/FeedbackSheet";
 import { useAuth } from "@/hooks/useAuth";
 import { CHARACTER_NAME, josa } from "@/lib/brand";
 import Jarureu from "@/components/Jarureu";
@@ -9,7 +10,7 @@ import ExportSheet from "@/components/ExportSheet";
 import type { SavingsEntry } from "@/lib/ledger";
 import { useEffect } from "react";
 import { toast } from "sonner";
-import { X, Pencil, Check, LogOut, Download, ChevronRight, Bell, BellOff, Loader2, SquarePlus } from "lucide-react";
+import { MessageSquarePlus, X, Pencil, Check, LogOut, Download, ChevronRight, Bell, BellOff, Loader2, SquarePlus } from "lucide-react";
 import InstallGuideSheet from "@/components/InstallGuideSheet";
 import { useInstall } from "@/lib/install";
 
@@ -27,6 +28,7 @@ export default function AccountSheet({ onClose }: { onClose: () => void }) {
   const [editing, setEditing] = useState(false);
   const [draftName, setDraftName] = useState("");
   const [showExport, setShowExport] = useState(false);
+  const [showFeedback, setShowFeedback] = useState(false); // #58 업무 지시
   const { standalone, canPrompt, promptInstall } = useInstall();
   const [showInstallGuide, setShowInstallGuide] = useState(false);
 
@@ -191,6 +193,17 @@ export default function AccountSheet({ onClose }: { onClose: () => void }) {
           </a>
         )}
 
+        {/* #58 — 업무 지시 (서면 피드백 → /ops 인박스) */}
+        <button
+          onClick={() => setShowFeedback(true)}
+          className="w-full flex items-center justify-between bg-white border border-line rounded-card px-4 py-3.5 mb-2.5 active:bg-cream transition-colors"
+        >
+          <span className="flex items-center gap-2.5 text-body text-ink">
+            <MessageSquarePlus size={17} className="text-ink-soft" /> 업무 지시
+          </span>
+          <span className="text-micro text-ink-faint">불편·요청 적어 내리기</span>
+        </button>
+
         {/* 저녁 보고 알림 — 푸시 미지원/미설정 환경에선 숨김 */}
         {pushState !== "unsupported" && (
           <button
@@ -239,6 +252,7 @@ export default function AccountSheet({ onClose }: { onClose: () => void }) {
         </button>
       </div>
 
+      {showFeedback && <FeedbackSheet onClose={() => setShowFeedback(false)} />}
       {showExport && <ExportSheet entries={entries as SavingsEntry[]} onClose={() => setShowExport(false)} />}
       {showInstallGuide && <InstallGuideSheet onClose={() => setShowInstallGuide(false)} />}
     </div>

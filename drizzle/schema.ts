@@ -65,6 +65,16 @@ export type SavingsEntry = typeof savingsEntries.$inferSelect;
 export type InsertSavingsEntry = typeof savingsEntries.$inferInsert;
 
 // ── 사용자 커스텀 카테고리 ──────────────────────────────────────────
+// #58 — 사장님 업무 지시(서면 피드백). 베타 루프의 수집 창구 — /ops 계기판 인박스로 흐른다.
+export const feedbacks = sqliteTable("feedbacks", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  userId: integer("userId").notNull(),
+  text: text("text").notNull(),
+  createdAt: integer("createdAt", { mode: "timestamp" })
+    .notNull()
+    .default(sql`(unixepoch())`),
+});
+
 // #50 — 서가: 소장된 결산 카드 (완결된 세계 — 만든 카드는 앱 안에 남는다)
 // 데이터는 기간 메타+스킨만: 금액·구성은 열 때 장부에서 재계산 (장부가 원본 원칙)
 export const reportCards = sqliteTable("report_cards", {

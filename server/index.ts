@@ -49,56 +49,88 @@ async function startServer() {
     try {
       const r = await getOpsReport();
       const pct = (v: number) => `${Math.round(v * 100)}%`;
-      const ok = (good: boolean) => (good ? "✅" : "⚠️");
       const dot = (b: boolean | null) => (b === null ? "·" : b ? "●" : "○");
       const esc = (t: string) => t.replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]!));
+      const k = r.kill;
+      // 퍼널 단계: 가입 → 첫 기록 → D1 → D7 (운영자 제외 분모)
+      const stage = (label: string, num: number, den: number, rate: number | null, target?: number) => `
+        <div class="st">
+          <div class="sl">${label}${target != null ? `<span class="tg ${rate != null && rate >= target ? "ok" : "warn"}">기준 ${Math.round(target * 100)}%</span>` : ""}</div>
+          <div class="sv">${num}<span class="sd">/${den || "—"}</span></div>
+          <div class="sr">${rate == null ? "판정 전" : pct(rate)}</div>
+        </div>`;
+      const funnel = [
+        stage("가입", k.conversion.den, k.conversion.den, null),
+        stage("첫 기록", k.conversion.num, k.conversion.den, k.conversion.den ? k.conversion.value : null, k.conversion.target),
+        stage("D1 재방문", k.d1.num, k.d1.den, k.d1.den ? k.d1.value : null),
+        stage("D7 재방문", k.d7.num, k.d7.den, k.d7.den ? k.d7.value : null, k.d7.target),
+      ].join('<div class="arrow">→</div>');
       const userRows = r.users.map((u) => `
         <tr${u.isAdmin ? ' style="opacity:.45"' : ""}>
-          <td>${esc(u.name)}${u.isAdmin ? " 👑" : ""}</td>
-          <td>${u.joined.slice(5)}</td>
-          <td class="num">${u.entries}</td>
-          <td class="num">${u.activeDays}</td>
+          <td>${esc(u.name)}${u.isAdmin ? " 👑" : ""}</td><td>${u.joined.slice(5)}</td>
+          <td class="num">${u.entries}</td><td class="num">${u.activeDays}</td>
           <td>${u.lastActive ? u.lastActive.slice(5) : "—"}</td>
-          <td class="c">${u.firstRecord ? "●" : "○"}</td>
-          <td class="c">${dot(u.d1)}</td>
-          <td class="c">${dot(u.d7)}</td>
+          <td class="c">${u.firstRecord ? "●" : "○"}</td><td class="c">${dot(u.d1)}</td><td class="c">${dot(u.d7)}</td>
           <td class="c">${u.todayActive ? "🟢" : ""}</td>
         </tr>`).join("");
       const dailyRows = r.daily.map((d) => `
         <tr><td>${d.date.slice(5)}</td><td class="num">${d.signups || ""}</td><td class="num">${d.active}</td><td class="num">${d.entries}</td>
-        <td><div style="height:8px;width:${Math.min(160, d.active * 14)}px;background:#10B981;border-radius:4px"></div></td></tr>`).join("");
+        <td><div style="height:7px;width:${Math.min(150, d.active * 14)}px;background:#10B981;border-radius:4px"></div></td></tr>`).join("");
+      const inboxRows = r.inbox.length
+        ? r.inbox.map((f) => `<div class="fb"><div class="fbm">${esc(f.text)}</div><div class="fbw">${esc(f.name)} · ${f.when.slice(5)}</div></div>`).join("")
+        : '<div class="empty">아직 지시 없음 — 앱의 계정 시트 → 업무 지시로 들어옵니다</div>';
       res.send(`<!doctype html><html lang="ko"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex">
 <title>거지로그 계기판</title>
 <style>
-  body{font-family:-apple-system,system-ui,sans-serif;background:#16201A;color:#F4EFE3;margin:0;padding:20px 16px 60px;max-width:680px;margin:0 auto}
-  h1{font-size:16px;letter-spacing:2px;color:#E0A92E;margin:0 0 2px} .sub{font-size:11px;color:#7E8C82;margin-bottom:18px}
-  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;margin-bottom:18px}
-  .kpi{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.09);border-radius:12px;padding:12px}
-  .kpi .l{font-size:10px;color:#7E8C82;letter-spacing:1px} .kpi .v{font-size:20px;font-weight:800;font-family:ui-monospace,monospace;margin-top:3px}
-  .kpi .s{font-size:10px;color:#9aa89e;margin-top:2px}
-  h2{font-size:12px;color:#E0A92E;letter-spacing:2px;margin:22px 0 8px}
+  body{font-family:-apple-system,system-ui,sans-serif;background:#16201A;color:#F4EFE3;margin:0 auto;padding:20px 16px 60px;max-width:680px}
+  h1{font-size:16px;letter-spacing:2px;color:#E0A92E;margin:0 0 2px} .sub{font-size:11px;color:#7E8C82;margin-bottom:16px}
+  h2{font-size:11px;color:#E0A92E;letter-spacing:2px;margin:24px 0 8px;text-transform:uppercase}
+  h2 .d{color:#5E6A60;letter-spacing:0;font-weight:400;margin-left:6px;text-transform:none}
+  .funnel{display:flex;align-items:stretch;gap:4px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.09);border-radius:14px;padding:14px 10px}
+  .st{flex:1;text-align:center;min-width:0} .arrow{align-self:center;color:#5E6A60;font-size:12px}
+  .sl{font-size:9px;color:#7E8C82;letter-spacing:.5px;white-space:nowrap} .sv{font-size:22px;font-weight:800;font-family:ui-monospace,monospace;margin-top:3px}
+  .sd{font-size:11px;color:#5E6A60;font-weight:400} .sr{font-size:11px;color:#9aa89e;margin-top:1px;font-family:ui-monospace,monospace}
+  .tg{display:block;font-size:8px;margin-top:1px} .tg.ok{color:#34d399} .tg.warn{color:#E0A92E}
+  .row3{display:flex;gap:8px;margin-top:8px}
+  .mini{flex:1;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:10px;padding:9px 10px}
+  .mini .l{font-size:9px;color:#7E8C82} .mini .v{font-size:15px;font-weight:700;font-family:ui-monospace,monospace;margin-top:2px}
   table{width:100%;border-collapse:collapse;font-size:12px}
-  th{font-size:10px;color:#7E8C82;text-align:left;padding:4px 6px;border-bottom:1px solid rgba(255,255,255,.12)}
+  th{font-size:9px;color:#7E8C82;text-align:left;padding:4px 6px;border-bottom:1px solid rgba(255,255,255,.12)}
   td{padding:5px 6px;border-bottom:1px solid rgba(255,255,255,.05)} .num{text-align:right;font-family:ui-monospace,monospace} .c{text-align:center}
-  .note{font-size:10px;color:#5E6A60;line-height:1.6;margin-top:6px}
+  .fb{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:10px;padding:10px 12px;margin-bottom:6px}
+  .fbm{font-size:13px;line-height:1.5} .fbw{font-size:10px;color:#7E8C82;margin-top:4px}
+  .empty{font-size:11px;color:#5E6A60;padding:10px 2px}
+  .note{font-size:10px;color:#5E6A60;line-height:1.6;margin-top:8px}
 </style></head><body>
-<h1>거지로그 계기판</h1><div class="sub">${r.today} (KST) · 운영자 전용 · 킬 기준 출처: 가능성 평가 §4</div>
-<div class="grid">
-  <div class="kpi"><div class="l">가입 → 첫 기록 ${ok(r.kill.conversion.value >= r.kill.conversion.target || r.kill.conversion.den === 0)}</div>
-    <div class="v">${pct(r.kill.conversion.value)}</div><div class="s">${r.kill.conversion.num}/${r.kill.conversion.den} · 기준 40%+</div></div>
-  <div class="kpi"><div class="l">D1 재방문</div><div class="v">${pct(r.kill.d1.value)}</div><div class="s">${r.kill.d1.num}/${r.kill.d1.den} 판정 가능분</div></div>
-  <div class="kpi"><div class="l">D7 재방문 ${ok(r.kill.d7.value >= r.kill.d7.target || r.kill.d7.den === 0)}</div>
-    <div class="v">${pct(r.kill.d7.value)}</div><div class="s">${r.kill.d7.num}/${r.kill.d7.den} · 기준 15%+ (가입+6~8일 창)</div></div>
-  <div class="kpi"><div class="l">오늘 활성 / 7일 활성</div><div class="v">${r.kill.todayActive} / ${r.kill.last7dActive}</div><div class="s">전체 ${r.totals.users}명 · 기록 ${r.totals.entries}건</div></div>
-  <div class="kpi"><div class="l">AI 호출 (비용 감시)</div><div class="v">${r.totals.aiCallsToday} / ${r.totals.aiCalls7d}</div><div class="s">오늘 / 7일 · 누적 ${r.totals.aiCallsAll}</div></div>
-  <div class="kpi"><div class="l">공유 행동 / 가격 보정</div><div class="v">${r.totals.captureViews} / ${r.totals.priceCorrections}</div><div class="s">캡처 진입 · 데이터 해자 적립</div></div>
+<h1>거지로그 계기판</h1><div class="sub">${r.today} (KST) · 운영자 전용 · 새로고침 = 최신</div>
+
+<h2>① 퍼널 <span class="d">킬 기준: 첫 기록 40%+ · D7 15%+ (가능성 평가 §4, 운영자 제외)</span></h2>
+<div class="funnel">${funnel}</div>
+<div class="row3">
+  <div class="mini"><div class="l">오늘 활성</div><div class="v">${k.todayActive}</div></div>
+  <div class="mini"><div class="l">오늘 기록</div><div class="v">${r.totals.entries ? r.daily[r.daily.length - 1]?.entries ?? 0 : 0}</div></div>
+  <div class="mini"><div class="l">7일 활성</div><div class="v">${k.last7dActive}</div></div>
+  <div class="mini"><div class="l">전체 기록</div><div class="v">${r.totals.entries}</div></div>
 </div>
-<h2>일별 14일</h2>
+
+<h2>② 업무 지시 인박스 <span class="d">서면 피드백 — 반영하면 꼭 회신(루프 마감)</span></h2>
+${inboxRows}
+
+<h2>③ 일별 14일 <span class="d">가입·활성·기록</span></h2>
 <table><tr><th>날짜</th><th style="text-align:right">가입</th><th style="text-align:right">활성</th><th style="text-align:right">기록</th><th></th></tr>${dailyRows}</table>
-<h2>사용자 (${r.users.length})</h2>
+
+<h2>④ 사용자 (${r.users.length})</h2>
 <table><tr><th>이름</th><th>가입</th><th style="text-align:right">기록</th><th style="text-align:right">활동일</th><th>마지막</th><th>첫기록</th><th>D1</th><th>D7</th><th>오늘</th></tr>${userRows}</table>
-<div class="note">● 달성 · ○ 미달 · &nbsp;· = 아직 판정 불가 · 👑 운영자(킬 지표에서 제외) · 활동 = 앱 열람(app_open)·기록·AI 호출 등 모든 이벤트 · 새로고침하면 최신</div>
+
+<h2>⑤ 시스템 <span class="d">비용·자산 적립</span></h2>
+<div class="row3">
+  <div class="mini"><div class="l">AI 오늘/7일</div><div class="v">${r.totals.aiCallsToday} / ${r.totals.aiCalls7d}</div></div>
+  <div class="mini"><div class="l">AI 누적</div><div class="v">${r.totals.aiCallsAll}</div></div>
+  <div class="mini"><div class="l">캡처 진입</div><div class="v">${r.totals.captureViews}</div></div>
+  <div class="mini"><div class="l">가격 보정</div><div class="v">${r.totals.priceCorrections}</div></div>
+</div>
+<div class="note">● 달성 · ○ 미달 · &nbsp;· = 판정 전 · 👑 운영자(지표 제외) · 활동 = 앱 열람·기록·AI 등 모든 이벤트</div>
 </body></html>`);
     } catch (e) {
       res.status(500).send("계기판 오류: " + (e instanceof Error ? e.message : String(e)));

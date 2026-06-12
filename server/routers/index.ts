@@ -9,6 +9,7 @@ import { pushRouter } from "./push";
 import { itemsRouter } from "./items";
 import { incomeSourcesRouter } from "./incomeSources";
 import { reportCardsRouter } from "./reportCards";
+import { feedbackRouter } from "./feedback";
 
 export const appRouter = router({
   auth: authRouter,
@@ -21,6 +22,7 @@ export const appRouter = router({
   items: itemsRouter,
   incomeSources: incomeSourcesRouter,
   reportCards: reportCardsRouter,
+  feedback: feedbackRouter,
 });
 
 export type AppRouter = typeof appRouter;
