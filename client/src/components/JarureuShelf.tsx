@@ -76,7 +76,7 @@ const RENDER: Record<string, () => ReactElement> = {
   can: Can, bowl: Bowl, cushion: Cushion, plant: Plant, teapot: Teapot,
 };
 
-export default function JarureuShelf({ score, highlightKey }: { score: number; highlightKey?: string | null }) {
+export default function JarureuShelf({ score, highlightKey, rail = true }: { score: number; highlightKey?: string | null; rail?: boolean }) {
   const items = unlockedItems(score);
   if (items.length === 0) return null;
   return (
@@ -91,8 +91,10 @@ export default function JarureuShelf({ score, highlightKey }: { score: number; h
           );
         })}
       </div>
-      {/* 선반 라인 */}
-      <div className="h-px w-40 mt-0.5 rounded-full" style={{ background: "linear-gradient(90deg, transparent, #d9cfb6 20%, #d9cfb6 80%, transparent)" }} />
+      {/* 선반 라인 — 책상 위(#62)에선 책상면이 바닥이므로 숨김 */}
+      {rail && (
+        <div className="h-px w-40 mt-0.5 rounded-full" style={{ background: "linear-gradient(90deg, transparent, #d9cfb6 20%, #d9cfb6 80%, transparent)" }} />
+      )}
     </div>
   );
 }

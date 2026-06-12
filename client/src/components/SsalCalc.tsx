@@ -70,7 +70,7 @@ export default function SsalCalc({ level = 0, size = 120, analyzing = false, dis
             ))}
           </g>
           {/* LED — 수익 레벨 따라 살아남 */}
-          <circle cx="16.5" cy="14.8" r="1.7" fill="#E0A92E" opacity={0.25 + lv * 0.75} className={lv > 0.6 ? "sc-led" : undefined} />
+          <circle cx="55" cy="14.8" r="1.7" fill="#E0A92E" opacity={0.25 + lv * 0.75} className={lv > 0.6 ? "sc-led" : undefined} />
           {/* LCD */}
           <rect x="13" y="22" width="74" height="20" rx="3.5" fill={`url(#scLcd${uid})`} stroke="#171a14" strokeWidth="1.2" opacity={0.78 + lv * 0.22} />
           <text

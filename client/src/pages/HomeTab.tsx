@@ -226,7 +226,7 @@ export default function HomeTab({ onGoRecords, job, onOpenConfirm, onCompleteDra
 
             {/* 비품 — 기록이 쌓일수록 책상이 풍성해진다 (investment) */}
             <div className="pb-1">
-              <JarureuShelf score={score} highlightKey={newProp} />
+              <JarureuShelf score={score} highlightKey={newProp} rail={false} />
             </div>
           </div>
 
@@ -359,7 +359,7 @@ export default function HomeTab({ onGoRecords, job, onOpenConfirm, onCompleteDra
       {/* 오늘의 쪽지 — 갱신 기준은 '기록 행동'(총 기록 수): 기록할 때마다 다음 쪽지로 넘어간다 */}
       {(() => {
         const note = deskNote((entries as Entry[]).length);
-        const LABELS = { dosa: "도사의 한 마디", cpa: "회시생의 메모", ssal: "쌀집이의 출력" } as const;
+        const LABELS = { dosa: "고문의 자문", cpa: "회시생의 업무 팁", ssal: "쌀집이의 출력" } as const;
         return (
           <div className="mt-10">
             <div className="relative bg-butler border border-butler-line rounded-card px-5 py-5 overflow-hidden">
