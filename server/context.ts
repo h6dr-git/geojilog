@@ -65,7 +65,7 @@ export async function createContext(
   // 2) 없으면 새 익명 계정 생성 + 쿠키 심기
   if (!user) {
     const openId = "anon_" + randomUUID();
-    const newId = await db.createUser({ openId, name: "CEO" });
+    const newId = await db.createUser({ openId, name: "사장님" });
 
     // 방금 만든 계정 재조회. 드물게 read-after-write 지연이 있으면 잠깐 재시도.
     for (let i = 0; i < 3 && !user; i++) {
@@ -76,7 +76,7 @@ export async function createContext(
     if (!user) {
       const now = new Date();
       user = {
-        id: newId, openId, name: "CEO", email: null, loginMethod: null,
+        id: newId, openId, name: "사장님", email: null, loginMethod: null,
         role: "user", createdAt: now, updatedAt: now, lastSignedIn: now,
       } as User;
     }

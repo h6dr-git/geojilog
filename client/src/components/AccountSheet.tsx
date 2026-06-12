@@ -22,7 +22,7 @@ export default function AccountSheet({ onClose }: { onClose: () => void }) {
   const kakaoEnabled = authConfig?.kakaoEnabled ?? false;
 
   const isKakao = user?.loginMethod === "kakao";
-  const displayName = user?.name || "CEO";
+  const displayName = user?.name || "사장님";
 
   const [editing, setEditing] = useState(false);
   const [draftName, setDraftName] = useState("");
@@ -150,7 +150,7 @@ export default function AccountSheet({ onClose }: { onClose: () => void }) {
                   if (e.key === "Escape") setEditing(false);
                 }}
                 maxLength={20}
-                placeholder="CEO"
+                placeholder="사장님"
                 className="w-40 text-center text-title font-semibold text-ink bg-white border border-gold/50 rounded-lg px-2 py-1 outline-none focus:border-gold"
               />
               <button onClick={saveName} aria-label="저장" className="w-8 h-8 rounded-lg bg-emerald-500 text-white flex items-center justify-center active:scale-95 transition-transform">

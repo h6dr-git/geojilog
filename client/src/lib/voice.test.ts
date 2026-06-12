@@ -13,7 +13,7 @@ const ALL_SPOKEN: string[] = [
 ];
 
 describe("정본 린트 — 폐기 워딩·구캐릭터·구호칭 금지 (§7)", () => {
-  const banned = ["지켜냄", "지켜내", "지켰", "지킨", "CEO님", "회장님", "김집사", "자르르", "쌀집군", "화이팅", "거지록", "AI"];
+  const banned = ["지켜냄", "지켜내", "지켰", "지킨", "CEO", "회장님", "김집사", "자르르", "쌀집군", "화이팅", "거지록", "AI"];
   it("모든 육성 대사에 폐기 워딩이 없다", () => {
     for (const line of ALL_SPOKEN)
       for (const w of banned) expect(line, `"${line}" ← 금지어 "${w}"`).not.toContain(w);

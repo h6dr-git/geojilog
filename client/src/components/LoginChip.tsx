@@ -7,7 +7,7 @@ import { Crown } from "lucide-react";
 export default function LoginChip({ onClick }: { onClick?: () => void }) {
   const { user } = useAuth();
   const isKakao = user?.loginMethod === "kakao";
-  const name = user?.name || "CEO";
+  const name = user?.name || "사장님";
 
   return (
     <button

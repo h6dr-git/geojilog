@@ -16,11 +16,11 @@ function getRedirectUri(req: Request): string {
   return `${base}/api/auth/kakao/callback`;
 }
 
-// 카카오 닉네임 → 기본 표시 이름. 성씨 한 글자 + "CEO" (예: 박상욱 → 박CEO).
-// 닉네임이 비어 있으면 그냥 "CEO".
+// 카카오 닉네임 → 기본 표시 이름. 성씨 한 글자 + "사장님" (예: 박상욱 → 박사장님). (v1.3 F2)
+// 닉네임이 비어 있으면 그냥 "사장님".
 function toPresidentName(nickname: string | undefined | null): string {
   const surname = Array.from((nickname ?? "").trim())[0];
-  return surname ? surname + "CEO" : "CEO";
+  return surname ? surname + "사장님" : "사장님";
 }
 
 export function registerKakaoAuth(app: Express): void {
