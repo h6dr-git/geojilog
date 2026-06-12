@@ -1,7 +1,7 @@
 // 거지로그 서비스워커 — 웹 푸시 수신/클릭.
 // 푸시 내용엔 민감정보(금액)가 없다(서버 원칙). 클릭하면 앱을 연다.
 self.addEventListener("push", (event) => {
-  let data = { title: "김집사", body: "회장님, 장부가 기다립니다." };
+  let data = { title: "회시생", body: "사장님, 장부가 기다립니다." };
   try {
     if (event.data) data = { ...data, ...event.data.json() };
   } catch { /* 기본 카피 사용 */ }

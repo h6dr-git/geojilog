@@ -10,6 +10,7 @@ import { serveStatic, setupVite } from "./vite";
 import { getUserById, getOpsReport } from "./db";
 import { registerKakaoAuth } from "./kakao";
 import { startPushScheduler } from "./push";
+import { startBackupScheduler, buildBackupDump, lastBackupInfo } from "./backup";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -143,21 +144,7 @@ ${inboxRows}
     const key = process.env.OPS_KEY;
     if (!key || req.query.key !== key) return res.status(404).send("Not Found");
     try {
-      const { getDb } = await import("./db");
-      const schema = await import("../drizzle/schema");
-      const db = await getDb();
-      if (!db) return res.status(500).json({ error: "db unavailable" });
-      const dump = {
-        exportedAt: new Date().toISOString(),
-        users: await db.select().from(schema.users),
-        savings_entries: await db.select().from(schema.savingsEntries),
-        user_categories: await db.select().from(schema.userCategories),
-        user_items: await db.select().from(schema.userItems),
-        user_income_sources: await db.select().from(schema.userIncomeSources),
-        report_cards: await db.select().from(schema.reportCards),
-        feedbacks: await db.select().from(schema.feedbacks),
-        push_subscriptions: await db.select().from(schema.pushSubscriptions),
-      };
+      const dump = await buildBackupDump();
       const today = new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 10);
       res.setHeader("Content-Disposition", `attachment; filename="geojilog-backup-${today}.json"`);
       res.setHeader("X-Robots-Tag", "noindex");
@@ -178,7 +165,8 @@ ${inboxRows}
     };
     try {
       await getUserById(0); // 실제 쿼리로 DB 연결을 가볍게 핑.
-      res.json({ ok: true, db: "up", env });
+      // 배포 검증용 스탬프 (#61): 지금 도는 코드가 어느 커밋인지 + 마지막 자동 백업
+      res.json({ ok: true, db: "up", env, commit: process.env.RAILWAY_GIT_COMMIT_SHA?.slice(0, 7) ?? null, lastBackup: lastBackupInfo() });
     } catch (e) {
       res
         .status(500)
@@ -217,6 +205,7 @@ ${inboxRows}
   }
 
   startPushScheduler();
+  startBackupScheduler(); // #61 — 일일 DB 덤프(볼륨, 7일 보존)
   server.listen(port, () => {
     console.log(`Server running on http://localhost:${port}/`);
   });

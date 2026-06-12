@@ -59,10 +59,21 @@ export function serveStatic(app: Express) {
     );
   }
 
-  app.use(express.static(distPath));
+  // #61 캐시 전략 — 모바일 휴리스틱 캐싱으로 옛 화면이 보이는 문제 차단:
+  // 해시 박힌 /assets는 1년 immutable, 입구 파일(index.html·sw.js·manifest)은 항상 재검증.
+  app.use(express.static(distPath, {
+    setHeaders: (res, filePath) => {
+      if (filePath.includes(`${path.sep}assets${path.sep}`)) {
+        res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
+      } else {
+        res.setHeader("Cache-Control", "no-cache");
+      }
+    },
+  }));
 
   // fall through to index.html if the file doesn't exist
   app.use("*", (_req, res) => {
+    res.setHeader("Cache-Control", "no-cache");
     res.sendFile(path.resolve(distPath, "index.html"));
   });
 }
