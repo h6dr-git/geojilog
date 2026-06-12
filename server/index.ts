@@ -137,6 +137,36 @@ ${inboxRows}
     }
   });
 
+  // 백업 덤프 (#59) — 운영자 전용. 전 테이블 JSON 다운로드 (장부=자산: 최소한의 수동 백업 수단).
+  // 사용: /ops/backup?key=<OPS_KEY> → geojilog-backup-YYYY-MM-DD.json 저장. 주 1회 권장.
+  app.get("/ops/backup", async (req, res) => {
+    const key = process.env.OPS_KEY;
+    if (!key || req.query.key !== key) return res.status(404).send("Not Found");
+    try {
+      const { getDb } = await import("./db");
+      const schema = await import("../drizzle/schema");
+      const db = await getDb();
+      if (!db) return res.status(500).json({ error: "db unavailable" });
+      const dump = {
+        exportedAt: new Date().toISOString(),
+        users: await db.select().from(schema.users),
+        savings_entries: await db.select().from(schema.savingsEntries),
+        user_categories: await db.select().from(schema.userCategories),
+        user_items: await db.select().from(schema.userItems),
+        user_income_sources: await db.select().from(schema.userIncomeSources),
+        report_cards: await db.select().from(schema.reportCards),
+        feedbacks: await db.select().from(schema.feedbacks),
+        push_subscriptions: await db.select().from(schema.pushSubscriptions),
+      };
+      const today = new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 10);
+      res.setHeader("Content-Disposition", `attachment; filename="geojilog-backup-${today}.json"`);
+      res.setHeader("X-Robots-Tag", "noindex");
+      res.json(dump);
+    } catch (e) {
+      res.status(500).json({ error: e instanceof Error ? e.message : String(e) });
+    }
+  });
+
   // 진단용 헬스체크: DB 연결 + 필수 환경변수 존재 여부(값은 노출 안 함).
   // 로그인 화면이 뜨면 /api/health 로 "코드 문제 vs 설정(Turso/env) 문제"를 즉시 구분.
   app.get("/api/health", async (_req, res) => {
