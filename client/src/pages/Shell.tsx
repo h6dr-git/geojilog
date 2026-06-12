@@ -10,9 +10,11 @@ import BottomNav, { type MainNavTab } from "@/components/BottomNav";
 import LoginFailNotice from "@/components/LoginFailNotice";
 import SaveReveal from "@/components/SaveReveal";
 import QuickRecord from "@/components/QuickRecord";
+import FirstRecordGate from "@/components/FirstRecordGate";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/hooks/useAuth";
 import type { CaptureJob, Prefill } from "@/lib/capture";
+import { getDrafts } from "@/lib/drafts";
 import { sha256File } from "@/lib/fingerprint";
 import { getExifDate } from "@/lib/exif";
 import type { Draft } from "@/lib/drafts";
@@ -39,6 +41,8 @@ export default function Shell() {
   const [tab, setTab] = useState<MainNavTab>("home");
   // 서재 '주간 보고' → 장부 주간 필터 딥링크 — keep-mounted 구조라 nonce 신호로 전달
   const [weekFocusNonce, setWeekFocusNonce] = useState(0);
+  // #55 — 첫 기록 게이트의 '직접 적기' 탈출구: 장부 탭 + 기록 추가 시트 자동 오픈
+  const [addSheetNonce, setAddSheetNonce] = useState(0);
   // 전역 '분석 중' 카운트 (장부 큐 포함) — 어느 탭에서든 쌀집이이 보인다 (#32)
   const [analyzingCount, setAnalyzingCount] = useState(0);
   useEffect(() => onAnalyzingCount(setAnalyzingCount), []);
@@ -60,6 +64,12 @@ export default function Shell() {
 
   // 검증 계기판 (#53) — 앱 열람 핑: 기록 없이 둘러본 재방문도 D1/D7에 잡히게.
   const { isAuthenticated } = useAuth();
+  // #55 — 첫 기록 게이트: 기록 0건이면 첫 기록(사진→원가 계산→리빌)까지 강제 유도
+  const { data: gateEntries, isLoading: gateLoading } = trpc.savings.list.useQuery(undefined, { enabled: isAuthenticated });
+  const showFirstGate =
+    isAuthenticated && !showOnboarding && !gateLoading &&
+    (gateEntries ?? []).length === 0 && !job && !confirmData &&
+    getDrafts().length === 0; // 미완성(드래프트)이 있으면 이미 흐름을 경험한 것 — 막지 않는다
   const ping = trpc.user.ping.useMutation();
   const pinged = useRef(false);
   useEffect(() => {
@@ -244,7 +254,7 @@ export default function Shell() {
               />
             </div>
             <div className={tab === "records" ? "" : "hidden"}>
-              <Ledger weekFocusNonce={weekFocusNonce} />
+              <Ledger weekFocusNonce={weekFocusNonce} openAddNonce={addSheetNonce} />
             </div>
             <div className={tab === "profile" ? "" : "hidden"}>
               <Profile onOpenWeekly={openWeeklyLedger} />
@@ -286,6 +296,17 @@ export default function Shell() {
                 </>
               )}
             </button>
+          )}
+
+          {/* #55 — 첫 기록 게이트 (탭바 위, 시트·리빌 아래) */}
+          {showFirstGate && (
+            <FirstRecordGate
+              onPhoto={triggerCapture}
+              onManual={() => {
+                setTab("records");
+                setAddSheetNonce((n) => n + 1);
+              }}
+            />
           )}
 
           <BottomNav tab={tab} onChange={changeTab} />

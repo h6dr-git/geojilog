@@ -59,7 +59,7 @@ interface QueueItem {
 }
 
 // ── 메인 컴포넌트 ─────────────────────────────────────────────
-export default function Ledger({ weekFocusNonce = 0 }: { weekFocusNonce?: number }) {
+export default function Ledger({ weekFocusNonce = 0, openAddNonce = 0 }: { weekFocusNonce?: number; openAddNonce?: number }) {
   const { isAuthenticated, loading: authLoading } = useAuth();
 
   const utils = trpc.useUtils();
@@ -225,6 +225,14 @@ export default function Ledger({ weekFocusNonce = 0 }: { weekFocusNonce?: number
     startFxTimer.current = window.setTimeout(() => setStartFxLeaving(true), 1500);
     startFxTimer2.current = window.setTimeout(() => setStartFx(false), 2000);
   }
+
+  // #55 — 첫 기록 게이트의 '직접 적기' 딥링크: 시트 열고 수동 입력 펼침
+  useEffect(() => {
+    if (openAddNonce <= 0) return;
+    setShowAdd(true);
+    setShowManual(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [openAddNonce]);
 
   // ── 업로드 큐 ──
   const [queue, setQueue] = useState<QueueItem[]>([]);
