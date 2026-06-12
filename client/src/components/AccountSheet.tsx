@@ -14,7 +14,7 @@ import InstallGuideSheet from "@/components/InstallGuideSheet";
 import { useInstall } from "@/lib/install";
 
 export default function AccountSheet({ onClose }: { onClose: () => void }) {
-  const { isAuthenticated, user, logout } = useAuth();
+  const { isAuthenticated, user } = useAuth();
   const utils = trpc.useUtils();
   const updateName = trpc.user.updateName.useMutation({ onSettled: () => utils.auth.me.invalidate() });
   const { data: entries = [] } = trpc.savings.list.useQuery(undefined, { enabled: isAuthenticated });
@@ -181,13 +181,14 @@ export default function AccountSheet({ onClose }: { onClose: () => void }) {
             <ChevronRight size={16} className="text-[#191600]/40" />
           </a>
         )}
+        {/* 풀 로그아웃 — 앱 쿠키 + 카카오 세션까지 (콘솔에 Logout Redirect URI 등록 필요) */}
         {isKakao && (
-          <button onClick={() => logout()} className="w-full flex items-center justify-between bg-white border border-line rounded-card px-4 py-3.5 mb-2.5 active:bg-cream transition-colors">
+          <a href="/api/auth/kakao/logout" className="w-full flex items-center justify-between bg-white border border-line rounded-card px-4 py-3.5 mb-2.5 active:bg-cream transition-colors">
             <span className="flex items-center gap-2.5 text-body text-ink">
               <LogOut size={17} className="text-ink-soft" /> 로그아웃
             </span>
             <ChevronRight size={16} className="text-ink-faint" />
-          </button>
+          </a>
         )}
 
         {/* 저녁 보고 알림 — 푸시 미지원/미설정 환경에선 숨김 */}

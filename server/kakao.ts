@@ -4,16 +4,21 @@
 import type { Express, Request } from "express";
 import * as db from "./db";
 import { readUid, setSessionCookie } from "./context";
+import { COOKIE_NAME } from "@shared/const";
+import { getSessionCookieOptions } from "./cookies";
 
 const KAKAO_REST_API_KEY = process.env.KAKAO_REST_API_KEY || "";
 
 // redirect_uri는 요청 호스트 기준으로 구성(prod/local 자동 대응).
 // 필요하면 APP_BASE_URL 환경변수로 직접 지정 가능.
-function getRedirectUri(req: Request): string {
-  const base =
+function getBaseUrl(req: Request): string {
+  return (
     process.env.APP_BASE_URL ||
-    `${req.protocol}://${req.get("x-forwarded-host") || req.get("host")}`;
-  return `${base}/api/auth/kakao/callback`;
+    `${req.protocol}://${req.get("x-forwarded-host") || req.get("host")}`
+  );
+}
+function getRedirectUri(req: Request): string {
+  return `${getBaseUrl(req)}/api/auth/kakao/callback`;
 }
 
 // 카카오 닉네임 → 기본 표시 이름. 성씨 한 글자 + "사장님" (예: 박상욱 → 박사장님). (v1.3 F2)
@@ -24,6 +29,19 @@ function toPresidentName(nickname: string | undefined | null): string {
 }
 
 export function registerKakaoAuth(app: Express): void {
+  // 0) 카카오 로그아웃 — 앱 세션(쿠키) 정리 + 카카오 계정 세션도 로그아웃 → 앱 루트로 복귀.
+  //    ⚠️ Logout Redirect URI(베이스 URL + "/")를 카카오 디벨로퍼스 콘솔에 등록해야 작동.
+  //    카카오 세션까지 끊어야 "카카오로 로그인"이 자동 재로그인되지 않는다(계정 전환 가능).
+  app.get("/api/auth/kakao/logout", (req, res) => {
+    const cookieOptions = getSessionCookieOptions(req);
+    res.clearCookie(COOKIE_NAME, { ...cookieOptions, maxAge: -1 });
+    if (!KAKAO_REST_API_KEY) return res.redirect("/");
+    const url = new URL("https://kauth.kakao.com/oauth/logout");
+    url.searchParams.set("client_id", KAKAO_REST_API_KEY);
+    url.searchParams.set("logout_redirect_uri", `${getBaseUrl(req)}/`);
+    res.redirect(url.toString());
+  });
+
   // 1) 로그인 시작 → 카카오 인가 화면으로
   app.get("/api/auth/kakao", (req, res) => {
     if (!KAKAO_REST_API_KEY) {
