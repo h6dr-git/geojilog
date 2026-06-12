@@ -1,7 +1,7 @@
 {
   "name": "거지로그",
   "short_name": "거지로그",
-  "description": "거지답게 아껴서 벌었다",
+  "description": "지출 말고, 번 돈을 적는 가계부",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
