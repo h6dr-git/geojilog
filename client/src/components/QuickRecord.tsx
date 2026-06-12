@@ -9,6 +9,7 @@ import { X, Loader2, Trash2 } from "lucide-react";
 import ConfirmDialog from "@/components/ConfirmDialog";
 import IncomeSourceChips from "@/components/IncomeSourceChips";
 import { FIXED_ACTUAL } from "@shared/incomeSources";
+import { incomeSourceUsual, type SavingsEntry } from "@/lib/ledger";
 import { celebrateSave } from "@/lib/celebrate";
 import type { Prefill } from "@/lib/capture";
 
@@ -42,6 +43,7 @@ export default function QuickRecord({ data, onClose, onSaved }: Props) {
   const date = data.date ?? todayStr();
 
   const { data: cats } = trpc.categories.list.useQuery(undefined);
+  const { data: allEntries = [] } = trpc.savings.list.useQuery(); // #60-b 내 평소가 (캐시 재사용)
   const categoryNames =
     cats && cats.length ? cats.map((c: { name: string }) => c.name) : DEFAULT_CATEGORIES;
 
@@ -173,7 +175,7 @@ export default function QuickRecord({ data, onClose, onSaved }: Props) {
 
         {/* 수익원 — 어떻게 번 돈인지 (AI가 짚고, 한 탭에 수정) */}
         <label className="text-micro text-ink-soft block mb-1">수익원</label>
-        <div className="mb-3">
+        <div className="mb-2">
           <IncomeSourceChips
             value={incomeSource}
             onChange={(v) => {
@@ -183,6 +185,16 @@ export default function QuickRecord({ data, onClose, onSaved }: Props) {
             }}
           />
         </div>
+
+        {/* #60-b — 기록의 복리 체감: 이 유형의 '내 평소가' (표본 2건부터, 칩 바꾸면 즉시 갱신) */}
+        {(() => {
+          const u = incomeSourceUsual(allEntries as SavingsEntry[], incomeSource);
+          return u ? (
+            <p className="text-micro text-ink-faint mb-3">
+              사장님의 {incomeSource} 평소 실지출 — <span className="font-mono text-gold">₩{u.usualActual.toLocaleString("ko-KR")}</span> (최근 {u.sample}건 중앙값)
+            </p>
+          ) : <span className="block mb-1" />;
+        })()}
 
         {/* 원가 / 실제 지출 */}
         <div className="flex gap-2.5 mb-2">

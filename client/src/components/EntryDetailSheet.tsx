@@ -183,6 +183,12 @@ export default function EntryDetailSheet({
                   ✨ 평소 {entry.incomeSource}(₩{fmt(usual!)})보다 ₩{fmt(usual! - entry.actualAmount)} 더 아낀 날
                 </p>
               )}
+              {/* #60-b — 세 층이 아니어도 내 평소가는 항상 (표본 2건부터) */}
+              {!threeLayer && usual != null && (
+                <p className="text-micro mt-1.5 text-ink-faint">
+                  이 유형 평소 실지출 ₩{fmt(usual)} (최근 {sourceUsual!.sample}건 중앙값)
+                </p>
+              )}
             </div>
 
             {/* 메모 · AI 근거 */}

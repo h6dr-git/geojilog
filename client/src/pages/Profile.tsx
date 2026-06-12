@@ -17,6 +17,7 @@ import { themeById } from "@/components/cardSkin";
 import { SavingsEntry, fmt } from "@/lib/ledger";
 import { cpaWeeklyComment, dosaLineOfDay } from "@/lib/voice";
 import { dayOfWeekRhythm, weeklyTrend, monthlyTrend, monthHeatmap, allTimeRecords, cumulativeCurve } from "@/lib/stats";
+import { intelWeeklyLine, meaningOfTotal } from "@/lib/intel";
 import { WeekRhythm, TrendBars, MonthHeat, RecordsRow, CumulativeCurve } from "@/components/StatsBlocks";
 import { ChevronLeft, ChevronRight, Sparkles, BookMarked } from "lucide-react";
 
@@ -118,13 +119,20 @@ export default function Profile({ onOpenWeekly }: { onOpenWeekly: () => void }) 
     return profit - prevTotal;
   }, [period, offset, list, profit, today]);
 
-  // 집사 코멘트 — 기간별
+  // 회시생 코멘트 — 기간별 + #60 주간 인텔(이번 주에만, 숫자 있을 때만 한 줄 추가)
   const comment = useMemo(() => {
     if (count === 0) return period === "week" && offset === 0 ? "이번 주는 아직 조용하군요." : "이 기간엔 기록이 없습니다.";
-    if (period === "week") return cpaWeeklyComment(count, profit);
+    if (period === "week") {
+      const base = cpaWeeklyComment(count, profit);
+      if (offset === 0) {
+        const intel = intelWeeklyLine(list, { start: range.start, end: range.end });
+        if (intel) return `${base} ${intel}`;
+      }
+      return base;
+    }
     if (period === "month") return `${count}건을 정리해 두었습니다.`;
     return `지금까지 ${count}건, 전부 장부에 있습니다.`;
-  }, [period, offset, count, profit]);
+  }, [period, offset, count, profit, list, range.start, range.end]);
 
   // ── Wrapped 이벤트 배너 — 주말 결산 시점(일·월)에만, 이번 주 기록이 있을 때 ──
   const dow = new Date().getDay();
@@ -324,6 +332,10 @@ export default function Profile({ onOpenWeekly }: { onOpenWeekly: () => void }) 
             {records && count > 0 && (
               <div className="mt-4 pt-4" style={{ borderTop: "1px solid #efe4cd" }}>
                 <RecordsRow avgPerEntry={records.avgPerEntry} bestWeek={records.bestWeek} longestStreak={records.longestStreak} />
+                {/* #60 — 누적의 의미 번역 */}
+                {meaningOfTotal(profit) && (
+                  <p className="text-caption mt-3" style={{ color: "#8a7f63" }}>{meaningOfTotal(profit)}</p>
+                )}
               </div>
             )}
 

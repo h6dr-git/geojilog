@@ -4,6 +4,9 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import SsalCalc from "@/components/SsalCalc";
 import { onCelebrate, type RevealDetail } from "@/lib/celebrate";
 import { cpaSaveLine, cpaRevealLine, ssalRevealCode, profitEasterEgg } from "@/lib/voice";
+import { intelRevealLine } from "@/lib/intel";
+import { trpc } from "@/lib/trpc";
+import type { SavingsEntry } from "@/lib/ledger";
 
 const AUTO_CLOSE_MS = 2600;
 
@@ -40,14 +43,23 @@ export default function SaveReveal() {
     return () => cancelAnimationFrame(raf);
   }, [detail]);
 
-  // 회시생 보고 — 말의 경제(v1.2): 할 말이 있는 날만 육성, 평일은 쌀집이 코드가 대신한다.
+  // 회시생 보고 — 말의 경제 + #60 인텔(기록의 복리): 숫자 있는 인사이트가 있는 날 = 할 말이 있는 날.
+  // 우선순위: 이스터에그 > 0원/보너스(special) > 인텔(신기록·마일스톤·황금요일·연속) > 30% 변주 > 침묵(쌀집이 코드)
+  const { data: allEntries = [] } = trpc.savings.list.useQuery();
   const reveal = useMemo(() => {
     if (!detail) return { line: "", code: null as string | null };
     const egg = profitEasterEgg(detail.profit);
     if (egg) return { line: `${cpaSaveLine(detail.profit)} ${egg}`, code: null };
     const special = detail.bonus != null && detail.bonus > 0;
-    const line = cpaRevealLine(detail.profit, special);
+    if (special || detail.profit === 0) {
+      const line = cpaRevealLine(detail.profit, true);
+      return { line: line ?? "", code: line ? null : ssalRevealCode() };
+    }
+    const intel = intelRevealLine(allEntries as SavingsEntry[], { profit: detail.profit });
+    if (intel) return { line: intel, code: null };
+    const line = cpaRevealLine(detail.profit, false);
     return line ? { line, code: null } : { line: "", code: ssalRevealCode() };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [detail]);
 
   if (!detail) return null;

@@ -1146,6 +1146,13 @@ export default function Ledger({ weekFocusNonce = 0, openAddNonce = 0 }: { weekF
                         {item.priorDate && (
                           <p className="text-micro text-emerald-600/80">원가는 지난번 확정가 기준 ({item.priorDate.slice(5).replace("-", ".")})</p>
                         )}
+                        {/* #60-b — 내 평소가 (유형 선택 시) */}
+                        {(() => {
+                          const u = incomeSourceUsual(entries as SavingsEntry[], item.incomeSource);
+                          return u ? (
+                            <p className="text-micro text-ink-faint px-1">이 유형 평소 실지출 ₩{fmt(u.usualActual)} (최근 {u.sample}건)</p>
+                          ) : null;
+                        })()}
 
                         {/* #43 — 인원: 객관 지표. AI가 채워두고, 바꾸면 내 몫이 즉시 재계산된다 (적용 버튼 없음) */}
                         <div className="flex items-center gap-2 px-1 text-micro text-ink-soft">
@@ -1246,6 +1253,12 @@ export default function Ledger({ weekFocusNonce = 0, openAddNonce = 0 }: { weekF
                       }}
                       allowNone
                     />
+                    {(() => {
+                      const u = incomeSourceUsual(entries as SavingsEntry[], manualSource);
+                      return u ? (
+                        <p className="text-micro text-ink-faint mt-1.5">사장님의 {manualSource} 평소 실지출 — ₩{fmt(u.usualActual)} (최근 {u.sample}건 중앙값)</p>
+                      ) : null;
+                    })()}
                   </div>
                   <div>
                     <label className="text-caption text-ink-soft mb-1 block">항목명</label>
