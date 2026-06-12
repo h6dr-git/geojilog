@@ -16,7 +16,8 @@ export type TrpcContext = {
   user: User | null;
 };
 
-export const COOKIE_NAME = "gjr_session";
+import { COOKIE_NAME } from "@shared/const";
+export { COOKIE_NAME };
 const ONE_YEAR_MS = 365 * 24 * 60 * 60 * 1000;
 const SECRET = new TextEncoder().encode(
   process.env.JWT_SECRET || "geojirok-dev-secret-please-set-JWT_SECRET"
