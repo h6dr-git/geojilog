@@ -187,7 +187,7 @@ export default function QuickRecord({ data, onClose, onSaved }: Props) {
         {/* 원가 / 실제 지출 */}
         <div className="flex gap-2.5 mb-2">
           <div className="flex-1">
-            <label className="text-micro text-ink-soft block mb-1">원가 (안 아꼈으면)</label>
+            <label className="text-micro text-ink-soft block mb-1">원가 (원래 냈을 값)</label>
             <div className="flex items-center border border-line rounded-card px-3">
               <span className="text-ink-soft text-body mr-1">₩</span>
               <input

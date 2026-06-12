@@ -559,7 +559,7 @@ export default function Ledger({ weekFocusNonce = 0 }: { weekFocusNonce?: number
         </div>
       )}
 
-      {/* 주간 필터 브레드크럼 (달력 주 선택·회장님 결산 딥링크 공용) */}
+      {/* 주간 필터 브레드크럼 (달력 주 선택·서재 결산 딥링크 공용) */}
       {weekFilter && (
         <div className="flex items-center gap-1.5 mb-2.5 px-1 text-caption">
           <button onClick={() => setWeekFilter(null)} className="text-ink-soft underline-offset-2 active:text-ink transition-colors">
@@ -757,7 +757,7 @@ export default function Ledger({ weekFocusNonce = 0 }: { weekFocusNonce?: number
               </p>
               {(entries as SavingsEntry[]).length === 0 && (
                 <>
-                  <p className="text-caption text-ink-soft mt-1">사진 한 장이면 쌀집군이 첫 수익을 두드려 드려요</p>
+                  <p className="text-caption text-ink-soft mt-1">사진 한 장이면 회시생이 첫 수익을 두드려 드려요</p>
                   <button
                     onClick={() => setShowAdd(true)}
                     className="mt-4 inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-emerald-500 text-white text-caption font-medium active:scale-95 transition-transform"
@@ -949,7 +949,7 @@ export default function Ledger({ weekFocusNonce = 0 }: { weekFocusNonce?: number
                   onDrop={(e) => { e.preventDefault(); handleFiles(e.dataTransfer.files); }}
                 >
                   <Upload className="w-7 h-7 text-emerald-400 mx-auto mb-2" />
-                  <p className="text-body font-medium text-ink">사진을 올리면 쌀집군이 번 돈을 두드려요</p>
+                  <p className="text-body font-medium text-ink">사진을 올리면 회시생이 번 돈을 두드려요</p>
                   <p className="text-caption text-ink-soft mt-1">한 번에 여러 장 · 탭해서 선택</p>
                 </div>
                 <button
@@ -998,7 +998,7 @@ export default function Ledger({ weekFocusNonce = 0 }: { weekFocusNonce?: number
                           <div className="h-3 bg-line rounded animate-pulse w-1/2" />
                           <div className="flex items-center gap-1.5 text-caption text-ink-soft">
                             <Loader2 size={12} className="animate-spin text-emerald-500" />
-                            쌀집군이 두드리는 중...
+                            회시생이 두드리는 중...
                           </div>
                         </div>
                         <button onClick={() => removeQueueItem(item.id)} className="p-1 text-ink-faint active:text-ink-soft">
@@ -1334,7 +1334,7 @@ export default function Ledger({ weekFocusNonce = 0 }: { weekFocusNonce?: number
           <div style={{ animation: "prop-in .5s cubic-bezier(.2,.8,.2,1) both" }}>
             <SsalCalc level={0.5} size={84} analyzing />
           </div>
-          <p className="mt-4 text-body font-medium" style={{ color: "#d8cfae" }}>쌀집군이 계산을 시작했어요</p>
+          <p className="mt-4 text-body font-medium" style={{ color: "#d8cfae" }}>회시생이 계산을 시작했어요</p>
           <p className="mt-1 text-caption" style={{ color: "#7E8C82" }}>끝나면 알려드릴게요 — 다른 일 보셔도 됩니다</p>
         </div>
       )}

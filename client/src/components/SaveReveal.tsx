@@ -1,9 +1,9 @@
 // 리빌 연출 — 저장 성공 순간의 도파민. (바이블 §2: 핵심 루프의 도파민 = "+₩ 지켜냄" 리프레임)
-// 다크그린 무대 + 쌀집군 + 카운트업 +₩ + 회시생 보고 한 줄. 탭하거나 2.6초 뒤 자동으로 사라진다.
+// 다크그린 무대 + 쌀집이 + 카운트업 +₩ + 회시생 보고 한 줄. 탭하거나 2.6초 뒤 자동으로 사라진다.
 import { useEffect, useMemo, useRef, useState } from "react";
 import SsalCalc from "@/components/SsalCalc";
 import { onCelebrate, type RevealDetail } from "@/lib/celebrate";
-import { cpaSaveLine, profitEasterEgg } from "@/lib/voice";
+import { cpaSaveLine, cpaRevealLine, ssalRevealCode, profitEasterEgg } from "@/lib/voice";
 
 const AUTO_CLOSE_MS = 2600;
 
@@ -40,11 +40,14 @@ export default function SaveReveal() {
     return () => cancelAnimationFrame(raf);
   }, [detail]);
 
-  // 회시생 보고 + 금액 이스터에그(#41 v3: +₩1,004 = 천사의 수익 등)
-  const butlerLine = useMemo(() => {
-    if (!detail) return "";
+  // 회시생 보고 — 말의 경제(v1.2): 할 말이 있는 날만 육성, 평일은 쌀집이 코드가 대신한다.
+  const reveal = useMemo(() => {
+    if (!detail) return { line: "", code: null as string | null };
     const egg = profitEasterEgg(detail.profit);
-    return egg ? `${cpaSaveLine(detail.profit)} ${egg}` : cpaSaveLine(detail.profit);
+    if (egg) return { line: `${cpaSaveLine(detail.profit)} ${egg}`, code: null };
+    const special = detail.bonus != null && detail.bonus > 0;
+    const line = cpaRevealLine(detail.profit, special);
+    return line ? { line, code: null } : { line: "", code: ssalRevealCode() };
   }, [detail]);
 
   if (!detail) return null;
@@ -65,7 +68,7 @@ export default function SaveReveal() {
         .rv-won{position:absolute;font-family:'JetBrains Mono',ui-monospace,monospace;color:#f2c94c;animation:rvWon 1.6s ease-out forwards;pointer-events:none}
       `}</style>
 
-      {/* 금빛 ₩ 입자 — 쌀집군에게 쏟아진다 */}
+      {/* 금빛 ₩ 입자 — 쌀집이에게 쏟아진다 */}
       <div className="absolute inset-0 overflow-hidden" aria-hidden="true">
         {[
           { l: "32%", t: "52%", d: "0s", s: "15px", r: "-12deg" },
@@ -109,13 +112,20 @@ export default function SaveReveal() {
       {/* #37 — 평소(단골 사전 평소가)보다 더 아낀 날 */}
       {detail.bonus != null && detail.bonus > 0 && (
         <p className="mt-1.5 text-caption font-medium" style={{ color: "#E0A92E", animation: "rvRise .35s ease .31s both" }}>
-          ✨ 평소보다 ₩{detail.bonus.toLocaleString("ko-KR")} 더 아꼈어요
+          ✨ 평소 대비 +₩{detail.bonus.toLocaleString("ko-KR")} 초과 수익
         </p>
       )}
 
-      <p className="mt-1.5 text-body leading-relaxed max-w-[17rem]" style={{ color: "#d8cfae", animation: "rvRise .35s ease .34s both" }}>
-        {butlerLine}
-      </p>
+      {reveal.line ? (
+        <p className="mt-1.5 text-body leading-relaxed max-w-[17rem]" style={{ color: "#d8cfae", animation: "rvRise .35s ease .34s both" }}>
+          {reveal.line}
+        </p>
+      ) : (
+        /* 침묵하는 날 — 쌀집이 코드가 말을 대신한다 (뜻은 아는 사람만) */
+        <p className="mt-1.5 font-mono font-bold tracking-[0.3em]" style={{ fontSize: "17px", color: "#d8cfae", animation: "rvRise .35s ease .34s both" }}>
+          {reveal.code}
+        </p>
+      )}
 
       <p className="absolute bottom-8 text-micro" style={{ color: "#5E6A60" }}>탭해서 닫기</p>
 

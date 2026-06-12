@@ -27,7 +27,7 @@ export const CARD_THEMES: CardTheme[] = [
 export const CARD_STICKERS = [
   { id: "crown", name: "왕관" },
   { id: "won", name: "₩ 반짝" },
-  { id: "jar", name: "쌀집군" }, // id는 localStorage 호환 위해 유지
+  { id: "jar", name: "쌀집이" }, // id는 localStorage 호환 위해 유지
   { id: "seal", name: "수익 인장" }, // '지켜냄' 워딩 폐기(2026-06-10 확정) → 회시생 레지스터 '수익 실현'
 ] as const;
 export type StickerId = (typeof CARD_STICKERS)[number]["id"];
@@ -65,7 +65,7 @@ export function CrownSticker({ color = "#E0A92E" }: { color?: string }) {
 }
 
 export function JarSticker({ size = 34 }: { size?: number }) {
-  // #41 v3 — 쌀집군 미니 계산기 (이전 단지 스티커 대체, export명은 호환 유지)
+  // #41 v3 — 쌀집이 미니 계산기 (이전 단지 스티커 대체, export명은 호환 유지)
   return (
     <svg width={size} height={Math.round(size * (118 / 100))} viewBox="0 0 100 118" style={{ display: "block" }}>
       <rect x="10" y="8" width="80" height="102" rx="12" fill="#3a3a40" stroke="#1b1b1f" strokeWidth="4" />

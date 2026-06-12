@@ -1,5 +1,5 @@
 // 집무실(홈) = "회시생의 사무소" — 진짜 홈. 기록 행위는 장부에서(인터페이스 철학, 피드백 #28).
-// 말풍선 기본 화자는 쌀집군(숫자어) — 회시생 채널은 쪽지·결산·푸시. (#41 v3)
+// 말풍선 기본 화자는 쌀집이(숫자어) — 회시생 채널은 쪽지·결산·푸시. (#41 v3)
 // 안전 로비: 수익·통계·결산·내 기록(숫자) 절대 노출 금지.
 import { trpc } from "@/lib/trpc";
 import { APP_NAME } from "@/lib/brand";
@@ -16,7 +16,7 @@ import InstallGuideSheet from "@/components/InstallGuideSheet";
 import { useInstall } from "@/lib/install";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
-import { ChevronRight, Check, Eye, EyeOff } from "lucide-react";
+import { ChevronRight, Check } from "lucide-react";
 
 const WEEKLY_GOAL = 50000;
 type Entry = { date: string; profit: number; imageUrl?: string | null };
@@ -84,7 +84,7 @@ export default function HomeTab({ onGoRecords, job, onOpenConfirm, onCompleteDra
   const errorJob = job && job.status === "error" ? job : null;
   const dupJob = job && job.status === "duplicate" ? job : null; // #48
 
-  // 자르르 말풍선 — 탭하면 김집사 인사 대신 자르르가 한 마디(3.2초). 오늘 기록 여부로 톤이 갈린다.
+  // 쌀집이 말풍선 — 탭하면 숫자어 한 마디(3.2초). 오늘 기록 여부로 코드가 갈린다.
   const today = (() => {
     const d = new Date();
     const p = (n: number) => String(n).padStart(2, "0");
@@ -100,6 +100,14 @@ export default function HomeTab({ onGoRecords, job, onOpenConfirm, onCompleteDra
   // 이번 달 수익 — 탭 투 리빌(#36 확정): 기본 마스킹, 탭하면 3초 노출 후 다시 가림.
   // 동기부여(매일 보고 싶은 숫자)와 안전 로비(어깨너머 방어)의 절충 — 잔액 숨김은 핀테크 문법 그대로.
   const [revealed, setRevealed] = useState(false);
+  const [revealHintDone, setRevealHintDone] = useState<boolean>(() => {
+    try { return localStorage.getItem("geo_reveal_hint_done") === "1"; } catch { return true; }
+  });
+  function markRevealHintDone() {
+    if (revealHintDone) return;
+    setRevealHintDone(true);
+    try { localStorage.setItem("geo_reveal_hint_done", "1"); } catch {}
+  }
   const revealTimer = useRef<number | undefined>(undefined);
   function toggleReveal() {
     window.clearTimeout(revealTimer.current);
@@ -130,7 +138,7 @@ export default function HomeTab({ onGoRecords, job, onOpenConfirm, onCompleteDra
       };
     });
   })();
-  // 말풍선 — 기본 화자 쌀집군(숫자 코드), 살림 해금 알림만 회시생 텍스트. (#41 v3)
+  // 말풍선 — 기본 화자 쌀집이(숫자 코드), 살림 해금 알림만 회시생 텍스트. (#41 v3)
   type Bubble = { speaker: "ssal" | "cpa"; text: string; meaning?: string; rare: boolean };
   const [jarLine, setJarLine] = useState<Bubble | null>(null);
   const [showMeaning, setShowMeaning] = useState(false); // 코드 탭 → 뜻 1.5초
@@ -186,9 +194,12 @@ export default function HomeTab({ onGoRecords, job, onOpenConfirm, onCompleteDra
         <LoginChip onClick={() => setShowAccount(true)} />
       </header>
 
-      {/* 쌀집군 본체 — 디스플레이 = 이번 달 수익 (탭 투 리빌 #36과 융합: 기본 마스킹) */}
+      {/* 쌀집이 본체 — 디스플레이 = 이번 달 수익 (탭 투 리빌 #36과 융합: 기본 마스킹) */}
       <div className="flex flex-col items-center mt-10">
-        <div className="relative" onClick={pokeJarureu}>
+        <div
+          className="relative cursor-pointer select-none transition-transform duration-150 active:scale-[0.96]"
+          onClick={() => { toggleReveal(); pokeJarureu(); markRevealHintDone(); }}
+        >
           <SsalCalc
             level={level}
             size={132}
@@ -197,6 +208,16 @@ export default function HomeTab({ onGoRecords, job, onOpenConfirm, onCompleteDra
           />
           <div className="absolute left-1/2 -translate-x-1/2 -bottom-0.5 w-24 h-3.5 rounded-[50%] bg-black/10 blur-md" aria-hidden="true" />
         </div>
+
+        {/* F7 — 첫 리빌 전까지만: 누르고 싶게 만드는 힌트 (이후 영구 숨김) */}
+        {!revealHintDone && (
+          <button
+            onClick={() => { toggleReveal(); markRevealHintDone(); }}
+            className="mt-2.5 text-micro font-mono text-ink-faint border border-dashed border-line rounded-full px-3 py-1 animate-pulse"
+          >
+            탭해서 이번 달 수익 보기
+          </button>
+        )}
 
         {/* 살림 선반 — 기록이 쌓일수록 소품이 늘어난다 (숫자 미표기) */}
         <div className="mt-3">
@@ -246,7 +267,7 @@ export default function HomeTab({ onGoRecords, job, onOpenConfirm, onCompleteDra
         <div className="mt-7 flex items-center gap-3 bg-emerald-50 border border-emerald-100 rounded-card p-3.5 shadow-sm">
           <img src={analyzingJob.preview} alt="" className="w-12 h-12 rounded-card object-cover shrink-0" />
           <div className="text-left">
-            <p className="text-body font-medium text-emerald-700">쌀집군이 두드리고 있어요</p>
+            <p className="text-body font-medium text-emerald-700">회시생이 두드리고 있어요</p>
             <p className="text-micro text-emerald-600">잠시 둘러보고 계셔도 됩니다</p>
           </div>
         </div>
@@ -334,29 +355,14 @@ export default function HomeTab({ onGoRecords, job, onOpenConfirm, onCompleteDra
         </span>
       </button>
 
-      {/* 이번 달 수익 — 기본 마스킹·탭 투 리빌 (#36): 노출은 3초, 어깨너머엔 ●●●● */}
-      <button
-        onClick={toggleReveal}
-        className="mt-2.5 w-full flex items-center justify-between bg-white border border-line rounded-card px-4 py-3 active:bg-line/30 transition-colors"
-      >
-        <span className="text-caption text-ink-soft flex items-center gap-1.5">
-          {revealed ? <Eye size={13} className="text-emerald-500" /> : <EyeOff size={13} className="text-ink-faint" />}
-          이번 달 수익
-        </span>
-        <span
-          key={revealed ? "on" : "off"}
-          className={`font-mono text-body font-semibold tabular-nums animate-bubble-in ${revealed ? "text-emerald-600" : "text-ink-faint tracking-widest"}`}
-        >
-          {revealed ? `+₩${monthProfit.toLocaleString("ko-KR")}` : "₩ ●●●●●"}
-        </span>
-      </button>
+      {/* (F7, 2026-06-12) '이번 달 수익' 카드 제거 — 월 수익 표시면은 쌀집이 디스플레이가 유일 */}
 
       {/* #40 — 설치 유도 (미설치 + 미해제일 때만, 조용한 한 줄) */}
       {!standalone && !installDismissed && (
         <div className="mt-2.5 flex items-center gap-2 bg-butler border border-butler-line rounded-card px-4 py-3">
           <button onClick={handleInstall} className="flex-1 text-left active:opacity-80 transition-opacity">
             <p className="text-caption font-medium" style={{ color: "#5c5647" }}>홈 화면에 거지로그를 두세요</p>
-            <p className="text-micro" style={{ color: "#a9863f" }}>앱처럼 열리고, 김집사의 저녁 보고도 받을 수 있어요 — 탭해서 설치</p>
+            <p className="text-micro" style={{ color: "#a9863f" }}>앱처럼 열리고, 회시생의 저녁 보고도 받을 수 있어요 — 탭해서 설치</p>
           </button>
           <button onClick={dismissInstall} aria-label="닫기" className="w-6 h-6 flex items-center justify-center text-ink-faint active:text-ink-soft shrink-0">
             ✕
@@ -367,7 +373,7 @@ export default function HomeTab({ onGoRecords, job, onOpenConfirm, onCompleteDra
       {/* 오늘의 쪽지 — 갱신 기준은 '기록 행동'(총 기록 수): 기록할 때마다 다음 쪽지로 넘어간다 */}
       {(() => {
         const note = deskNote((entries as Entry[]).length);
-        const LABELS = { dosa: "도사의 한 마디", cpa: "회시생의 메모", ssal: "쌀집군의 출력" } as const;
+        const LABELS = { dosa: "도사의 한 마디", cpa: "회시생의 메모", ssal: "쌀집이의 출력" } as const;
         return (
           <div className="mt-10">
             <div className="relative bg-butler border border-butler-line rounded-card px-5 py-5 overflow-hidden">

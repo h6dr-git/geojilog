@@ -1,4 +1,4 @@
-// 쌀집군의 책상 선반 (집무실 안 B′) — 기록이 쌓일수록 비품이 하나씩 늘어난다. (#41 v3: 자르르→쌀집군)
+// 쌀집이의 책상 선반 (집무실 안 B′) — 기록이 쌓일수록 비품이 하나씩 늘어난다. (#41 v3: 자르르→쌀집이)
 // 기준: 복합 점수 = '이달' 기록 건수 + (이달 수익 ₩10,000당 1점). 숫자는 절대 표시하지 않는다(민감정보 0).
 // 월 단위 초기화(피드백): 매달 깡통부터 다시 — 계속 쌓이면 효용이 떨어지므로. 잃는 건 '지난달 선반'뿐, 기록은 그대로.
 // 비품은 마스코트와 같은 프로토타입 톤의 코드 SVG.
@@ -80,7 +80,7 @@ export default function JarureuShelf({ score, highlightKey }: { score: number; h
   const items = unlockedItems(score);
   if (items.length === 0) return null;
   return (
-    <div className="flex flex-col items-center" aria-label="쌀집군의 비품">
+    <div className="flex flex-col items-center" aria-label="쌀집이의 비품">
       <div className="flex items-end gap-3 px-2">
         {items.map((it) => {
           const C = RENDER[it.key];

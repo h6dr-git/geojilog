@@ -134,7 +134,7 @@ export default function AccountSheet({ onClose }: { onClose: () => void }) {
           </button>
         </div>
 
-        {/* 정체성 — 쌀집군 + 닉네임 */}
+        {/* 정체성 — 쌀집이 + 닉네임 */}
         <div className="text-center mb-5">
           <div className="flex justify-center mb-2">
             <Jarureu level={0.6} size={72} />

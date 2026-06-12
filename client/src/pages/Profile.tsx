@@ -182,7 +182,7 @@ export default function Profile({ onOpenWeekly }: { onOpenWeekly: () => void }) 
         <div className="text-center py-16">
           <p className="text-body text-ink-soft leading-relaxed">
             아직 보고서가 없습니다.<br />
-            첫 기록이 쌓이면 김집사가 정리해 올립니다.
+            첫 기록이 쌓이면 회시생이 정리해 올립니다.
           </p>
         </div>
       ) : (
@@ -341,7 +341,7 @@ export default function Profile({ onOpenWeekly }: { onOpenWeekly: () => void }) 
               </div>
             )}
 
-            {/* 김집사 코멘트 */}
+            {/* 회시생 코멘트 */}
             <p className="text-caption mt-4" style={{ color: "#5c5647" }}>{comment}</p>
           </div>
 

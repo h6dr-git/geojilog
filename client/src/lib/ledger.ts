@@ -90,7 +90,7 @@ export function toMarkdownTable(entries: SavingsEntry[]) {
 
 
 export function toCsv(entries: SavingsEntry[]) {
-  const header = "날짜,항목,카테고리,수익원,원가,실제지출,절약수익,메모,AI추정";
+  const header = "날짜,항목,카테고리,수익원,원가,실제지출,절약수익,메모,추정";
   const rows = entries.map(e =>
     [
       e.date, `"${e.title}"`, e.category, e.incomeSource ?? "미분류",
