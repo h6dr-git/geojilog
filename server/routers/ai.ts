@@ -149,6 +149,13 @@ export const aiRouter = router({
           cropBox: { x: clamp01(cropRaw.x), y: clamp01(cropRaw.y) },
           savingsSteps,
         };
+        // #50 안전망 — 카페인데 식사계 수익원이 새어나오면 명백 모순: 단계 제거·실지출=기준가·수익원 중립화
+        const MEAL_SOURCES = new Set(["학식/구내", "천원아침"]);
+        if (parsed.category === "카페" && (MEAL_SOURCES.has(parsed.incomeSource) || parsed.savingsSteps.some((s) => MEAL_SOURCES.has(s.source)))) {
+          parsed.savingsSteps = [];
+          parsed.estimatedActualAmount = parsed.estimatedOriginalAmount;
+          if (MEAL_SOURCES.has(parsed.incomeSource)) parsed.incomeSource = "기타";
+        }
         await logUsageEvent(ctx.user.id, "ai_analyze_image");
         // P2(나만의 기준가) — ① 단골 사전 우선 ② 없으면 같은 제목 최근 3건 중간값.
         // usualActual(평소가)을 함께 줘서, 평소보다 더 아낀 날(#37)을 클라가 표시할 수 있게.

@@ -61,6 +61,23 @@ async function analyze(systemPrompt: string, b64: string): Promise<any> {
   return JSON.parse(c);
 }
 
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+const DELAY = Number(process.env.EVAL_DELAY_MS || 2500);
+async function analyzeRetry(systemPrompt: string, b64: string, tries = 4): Promise<any> {
+  for (let i = 0; i < tries; i++) {
+    try { return await analyze(systemPrompt, b64); }
+    catch (e) {
+      const msg = String((e as Error).message || e);
+      if (msg.startsWith("429") && i < tries - 1) {
+        const wait = 5000 * Math.pow(2, i);
+        console.log(`   …429 quota — ${(wait / 1000).toFixed(0)}s 대기 후 재시도`);
+        await sleep(wait);
+        continue;
+      }
+      throw e;
+    }
+  }
+}
 const won = (n: number) => "₩" + Math.round(n).toLocaleString("ko-KR");
 const stepSum = (o: any) => Array.isArray(o?.savingsSteps) ? o.savingsSteps.reduce((s: number, x: any) => s + (Number(x?.amount) || 0), 0) : 0;
 
@@ -78,9 +95,10 @@ async function run() {
     const b64 = fs.readFileSync(`${dir}/${f}`).toString("base64");
     const lab = labels[f];
     let r2: any, r1: any;
-    try { r2 = await analyze(IMAGE_ANALYSIS_SYSTEM_PROMPT, b64); }
+    try { r2 = await analyzeRetry(IMAGE_ANALYSIS_SYSTEM_PROMPT, b64); }
     catch (e) { console.log(`✗ ${f}  v2 실패: ${(e as Error).message}`); continue; }
-    if (v1) { try { r1 = await analyze(v1, b64); } catch { r1 = null; } }
+    await sleep(DELAY);
+    if (v1) { try { r1 = await analyzeRetry(v1, b64); await sleep(DELAY); } catch { r1 = null; } }
 
     const inv = r2.estimatedOriginalAmount - stepSum(r2) - r2.estimatedActualAmount;
     if (Math.abs(inv) <= 1) invOkV2++;
