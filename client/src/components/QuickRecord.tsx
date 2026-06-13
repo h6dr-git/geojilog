@@ -1,6 +1,6 @@
 // 확인 전용 시트 — 분석은 이미 끝난 상태에서 '확인/수정 → 저장'만 한다. (스피너로 가두지 않음)
 // data를 미리 채워서 받는다. draftId가 있으면 '미완성 완성', 없으면 '갓 분석된 결과 확인'.
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { addDraft, removeDraft } from "@/lib/drafts";
 import { won } from "@/lib/format";
@@ -8,9 +8,10 @@ import { toast } from "sonner";
 import { X, Loader2, Trash2 } from "lucide-react";
 import ConfirmDialog from "@/components/ConfirmDialog";
 import IncomeSourceChips from "@/components/IncomeSourceChips";
-import { FIXED_ACTUAL } from "@shared/incomeSources";
+import { FIXED_ACTUAL, reconcileSavingsSteps, fallbackSavingsSteps } from "@shared/incomeSources";
 import { incomeSourceUsual, type SavingsEntry } from "@/lib/ledger";
 import { celebrateSave } from "@/lib/celebrate";
+import SavingsCombo from "@/components/SavingsCombo";
 import type { Prefill } from "@/lib/capture";
 
 const DEFAULT_CATEGORIES = ["식비", "카페", "교통", "쇼핑", "문화/여가", "기타"];
@@ -55,6 +56,16 @@ export default function QuickRecord({ data, onClose, onSaved }: Props) {
   const o = parseInt(original || "0", 10) || 0;
   const a = parseInt(actual || "0", 10) || 0;
   const profit = o - a;
+  // #50 — 표시/저장용 연쇄 단계: AI가 준 단계 우선, 없으면 수익원 기반 단일 폴백. 항상 (기준가-실지출)에 맞춤.
+  const displaySteps = useMemo(
+    () =>
+      reconcileSavingsSteps(
+        data.savingsSteps && data.savingsSteps.length ? data.savingsSteps : fallbackSavingsSteps(incomeSource ?? null, o, a),
+        o,
+        a
+      ),
+    [data.savingsSteps, incomeSource, o, a]
+  );
 
   async function handleSave() {
     if (!title.trim()) return toast.error("항목명을 입력해주세요");
@@ -74,6 +85,7 @@ export default function QuickRecord({ data, onClose, onSaved }: Props) {
         imageUrl: data.imageUrl || undefined,
         imageSig: data.imageSig, // #48
         memo: memo.trim() || undefined,
+        savingsSteps: displaySteps.length ? displaySteps : undefined,
       });
       if (data.draftId) removeDraft(data.draftId);
       const usual = incomeSource === data.incomeSource ? data.sourceUsualActual : undefined;
@@ -138,14 +150,17 @@ export default function QuickRecord({ data, onClose, onSaved }: Props) {
           )}
         </div>
 
-        {/* 수익 + 기록 날짜 (지난 사진이면 EXIF로 읽은 날짜) */}
-        <div className="text-center mb-4">
-          <p className="text-micro text-ink-soft mb-0.5">이번에 번 돈</p>
-          <p className={`font-mono text-hero font-bold tabular-nums ${profit >= 0 ? "text-emerald-500" : "text-red-400"}`}>
-            {profit >= 0 ? "+" : "−"}
-            {won(Math.abs(profit))}
-          </p>
-          <p className="text-micro text-ink-faint mt-1 font-mono">{date.replace(/-/g, ".")} 기록</p>
+        {/* #50 — 연쇄 절약 연출: 기준가 → 단계 할인 → 번 돈 */}
+        <div className="mb-4">
+          {profit >= 0 ? (
+            <SavingsCombo originalAmount={o} steps={displaySteps} />
+          ) : (
+            <div className="text-center mb-2">
+              <p className="text-micro text-ink-soft mb-0.5">이번 지출</p>
+              <p className="font-mono text-hero font-bold tabular-nums text-red-400">−{won(Math.abs(profit))}</p>
+            </div>
+          )}
+          <p className="text-micro text-ink-faint text-center font-mono">{date.replace(/-/g, ".")} 기록</p>
         </div>
 
         {/* 항목명 */}

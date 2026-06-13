@@ -2,7 +2,7 @@ import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { protectedProcedure, router } from "../trpc";
 import { countAiCallsToday, logUsageEvent, getLatestEntryByTitle, getItemByName, getIncomeSourceUsual, findEntryByImageSig } from "../db";
-import { INCOME_SOURCES, isIncomeSource } from "@shared/incomeSources";
+import { INCOME_SOURCES, isIncomeSource, normalizeSavingsSteps, reconcileSavingsSteps } from "@shared/incomeSources";
 import { invokeLLM } from "../llm";
 import { storagePut, storageGetSignedUrl } from "../storage";
 import { IMAGE_ANALYSIS_SYSTEM_PROMPT, SMS_PARSE_SYSTEM_PROMPT } from "../prompts";
@@ -79,6 +79,20 @@ export const aiRouter = router({
                   incomeSource: { type: "string", enum: [...INCOME_SOURCES] }, // #37+#38 수익원 분류
                   estimatedOriginalAmount: { type: "integer" },
                   estimatedActualAmount: { type: "integer" },
+                  savingsSteps: {
+                    type: "array",
+                    items: {
+                      type: "object",
+                      properties: {
+                        source: { type: "string", enum: [...INCOME_SOURCES] },
+                        label: { type: "string" },
+                        amount: { type: "integer" },
+                        reason: { type: "string" },
+                      },
+                      required: ["source", "label", "amount", "reason"],
+                      additionalProperties: false,
+                    },
+                  },
                   estimatedPeopleCount: { type: "integer" }, // #33 — 보이는 음식이 약 몇 인분인지 (1인분=1)
                   reason: { type: "string" },
                   confidence: { type: "string", enum: ["high", "medium", "low"] },
@@ -92,7 +106,7 @@ export const aiRouter = router({
                     additionalProperties: false,
                   },
                 },
-                required: ["title", "category", "incomeSource", "estimatedOriginalAmount", "estimatedActualAmount", "estimatedPeopleCount", "reason", "confidence", "cropBox"],
+                required: ["title", "category", "incomeSource", "estimatedOriginalAmount", "estimatedActualAmount", "savingsSteps", "estimatedPeopleCount", "reason", "confidence", "cropBox"],
                 additionalProperties: false,
               },
             },
@@ -118,6 +132,8 @@ export const aiRouter = router({
           throw new Error("AI 분석 결과가 불완전합니다 — 다시 시도해 주세요");
         }
         const people = toInt(raw.estimatedPeopleCount);
+        // #50 — 연쇄 할인 단계 정규화 후 기준가/실지출에 맞춰 보정(불변식: orig-Σamount=actual)
+        const savingsSteps = reconcileSavingsSteps(normalizeSavingsSteps(raw.savingsSteps), origAmt, actAmt);
         const cropRaw = (raw.cropBox ?? {}) as { x?: unknown; y?: unknown };
         const parsed = {
           title: typeof raw.title === "string" && raw.title.trim() ? raw.title.trim().slice(0, 30) : "이름 모를 한 끼",
@@ -131,6 +147,7 @@ export const aiRouter = router({
             (result.modelUsed.includes("lite") ? " (혼잡으로 간이 분석 — 금액을 한 번 확인해 주세요)" : ""),
           confidence: (["high", "medium", "low"].includes(String(raw.confidence)) ? String(raw.confidence) : "low") as "high" | "medium" | "low",
           cropBox: { x: clamp01(cropRaw.x), y: clamp01(cropRaw.y) },
+          savingsSteps,
         };
         await logUsageEvent(ctx.user.id, "ai_analyze_image");
         // P2(나만의 기준가) — ① 단골 사전 우선 ② 없으면 같은 제목 최근 3건 중간값.

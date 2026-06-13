@@ -53,3 +53,83 @@ export function guessIncomeSource(text: string): IncomeSource | null {
   for (const [src, re] of RULES) if (re.test(t)) return src;
   return null;
 }
+
+// ── 연쇄 할인 단계 (#50 발라트로식 절약 분해) ──────────────────
+// 기준가(originalAmount)에서 순서대로 차감되어 실지출(actualAmount)에 도달.
+// 불변식: actualAmount === originalAmount - Σ(steps.amount). steps가 진실, 실지출은 그 결과.
+export type SavingsStep = {
+  source: string; // 수익원 (INCOME_SOURCES 또는 커스텀 라벨)
+  label: string; // 짧은 표시 라벨 (예: "학생식당 정가")
+  amount: number; // 이 단계 절약액 (원, 양의 정수)
+  reason?: string; // 근거 (선택)
+};
+
+export const MAX_SAVINGS_STEPS = 4; // 단계 수 상한 — UI·추정 폭주 방지
+export const STEP_LABEL_MAX = 20;
+
+export function stepsSavedTotal(steps: readonly SavingsStep[]): number {
+  return steps.reduce((s, x) => s + (Number.isFinite(x.amount) ? Math.max(0, Math.round(x.amount)) : 0), 0);
+}
+
+// 임의 입력(AI/클라)을 안전한 steps로 정규화. 유효 단계가 없으면 null.
+export function normalizeSavingsSteps(input: unknown): SavingsStep[] | null {
+  if (!Array.isArray(input)) return null;
+  const out: SavingsStep[] = [];
+  for (const raw of input) {
+    if (!raw || typeof raw !== "object") continue;
+    const r = raw as Record<string, unknown>;
+    const amount = Math.round(Number(r.amount));
+    if (!Number.isFinite(amount) || amount <= 0) continue;
+    const source = typeof r.source === "string" && r.source.trim() ? r.source.trim().slice(0, CUSTOM_SOURCE_NAME_MAX) : "기타";
+    const label = typeof r.label === "string" && r.label.trim() ? r.label.trim().slice(0, STEP_LABEL_MAX) : source;
+    const reason = typeof r.reason === "string" && r.reason.trim() ? r.reason.trim().slice(0, 200) : undefined;
+    out.push({ source, label, amount, reason });
+    if (out.length >= MAX_SAVINGS_STEPS) break;
+  }
+  return out.length ? out : null;
+}
+
+// steps를 기준가/실지출에 맞춰 보정 — 합이 절약총액(orig-act)과 어긋나면 잔차를 마지막 단계로 흡수.
+export function reconcileSavingsSteps(
+  steps: SavingsStep[] | null,
+  originalAmount: number,
+  actualAmount: number
+): SavingsStep[] {
+  const target = Math.max(0, Math.round(originalAmount) - Math.round(actualAmount));
+  if (target <= 0) return [];
+  let s = (steps ?? [])
+    .map((x) => ({ ...x, amount: Math.max(0, Math.round(x.amount)) }))
+    .filter((x) => x.amount > 0);
+  if (s.length === 0) return [{ source: "기타", label: "절약", amount: target }];
+  const sum = stepsSavedTotal(s);
+  if (sum > target) {
+    let over = sum - target;
+    for (let i = s.length - 1; i >= 0 && over > 0; i--) {
+      const cut = Math.min(s[i].amount, over);
+      s[i].amount -= cut;
+      over -= cut;
+    }
+    s = s.filter((x) => x.amount > 0);
+  } else if (sum < target) {
+    s[s.length - 1].amount += target - sum;
+  }
+  return s;
+}
+
+// 기존 기록/단일 수익원 → 단일 단계 폴백 (steps 컬럼이 비었을 때 표시용).
+export function fallbackSavingsSteps(
+  incomeSource: string | null,
+  originalAmount: number,
+  actualAmount: number
+): SavingsStep[] {
+  const saved = Math.max(0, Math.round(originalAmount) - Math.round(actualAmount));
+  if (saved <= 0) return [];
+  const src = incomeSource ?? "기타";
+  return [{ source: src, label: src, amount: saved }];
+}
+
+// steps의 대표 수익원 — 가장 큰 절약 단계의 source (단일 incomeSource 컬럼 채움용).
+export function primarySource(steps: readonly SavingsStep[]): string | null {
+  if (!steps.length) return null;
+  return steps.reduce((a, b) => (b.amount > a.amount ? b : a)).source;
+}

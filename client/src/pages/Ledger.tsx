@@ -20,6 +20,7 @@ import ConfirmDialog from "@/components/ConfirmDialog";
 import IncomeSourceChips, { useIncomeSourceList } from "@/components/IncomeSourceChips";
 import IncomeSourceSheet, { UNCLASSIFIED_KEY } from "@/components/IncomeSourceSheet";
 import { UNCLASSIFIED, FIXED_ACTUAL } from "@shared/incomeSources";
+import type { SavingsStep } from "@shared/incomeSources";
 import SsalCalc from "@/components/SsalCalc";
 import { SavingsEntry, fmt, todayStr, makeDefaultTitle, KO_DAYS, incomeSourceUsual } from "@/lib/ledger";
 import { celebrateSave } from "@/lib/celebrate";
@@ -56,6 +57,7 @@ interface QueueItem {
   groupActual?: number;      // #43 — AI 전체 실제 추정 (단체)
   aiOriginalAmount?: number;
   aiActualAmount?: number;
+  savingsSteps?: SavingsStep[]; // #50 연쇄 할인 단계 (내 몫 기준)
 }
 
 // ── 메인 컴포넌트 ─────────────────────────────────────────────
@@ -324,6 +326,7 @@ export default function Ledger({ weekFocusNonce = 0, openAddNonce = 0 }: { weekF
       imageUrl: finalImageUrl,
       aiOriginalAmount: result.estimatedOriginalAmount,
       aiActualAmount: result.estimatedActualAmount,
+      savingsSteps: result.savingsSteps?.map((st) => ({ ...st, amount: Math.max(1, Math.round(st.amount / (result.myShare?.peopleCount || 1))) })), // #50 단체면 내 몫으로 스케일
       imageSig: imageSig ?? undefined, // #48
     } : it));
     } finally {
@@ -394,6 +397,7 @@ export default function Ledger({ weekFocusNonce = 0, openAddNonce = 0 }: { weekF
         aiEstimated: "yes",
         aiOriginalAmount: item.aiOriginalAmount,
         aiActualAmount: item.aiActualAmount,
+        savingsSteps: item.savingsSteps,
         aiReason: item.aiReason,
         // #43 — 전체 추론값 보존 (파인튜닝·데이터 해자)
         aiPeopleCount: item.nSplit ? Number(item.nSplit) || undefined : undefined,

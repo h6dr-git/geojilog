@@ -2,7 +2,7 @@ import { z } from "zod";
 import { protectedProcedure, router } from "../trpc";
 import { getSavingsEntries, createSavingsEntry, deleteSavingsEntry, deleteMultipleSavingsEntries, deleteAllSavingsEntries, countSavingsEntriesByCategory, updateSavingsEntry, updateMultipleSavingsEntries, logUsageEvent, upsertItemFromEntry, backfillIncomeSources, isValidIncomeSourceFor } from "../db";
 import { TRPCError } from "@trpc/server";
-import { CUSTOM_SOURCE_NAME_MAX } from "@shared/incomeSources";
+import { CUSTOM_SOURCE_NAME_MAX, normalizeSavingsSteps, reconcileSavingsSteps } from "@shared/incomeSources";
 
 // #47 — 커스텀 유형 허용: 형태는 zod, 실존 여부(기본 9종 ∪ 내 커스텀)는 서버에서 확인
 const incomeSourceInput = z.string().trim().min(1).max(CUSTOM_SOURCE_NAME_MAX);
@@ -47,12 +47,19 @@ export const savingsRouter = router({
         imageUrl: z.string().optional(),
         imageSig: z.string().regex(/^[0-9a-f]{64}$/).optional(), // #48 — 중복 감지 지문
         memo: z.string().optional(),
+        savingsSteps: z.array(z.object({
+          source: z.string().trim().min(1).max(CUSTOM_SOURCE_NAME_MAX),
+          label: z.string().trim().min(1).max(20),
+          amount: z.number().int().positive(),
+          reason: z.string().optional(),
+        })).max(8).optional(), // #50 연쇄 할인 단계
       }))
       .mutation(async ({ ctx, input }) => {
         await assertIncomeSource(ctx.user.id, input.incomeSource);
         const count = await countSavingsEntriesByCategory(ctx.user.id, input.category);
         const ticker = generateTicker(input.category, count);
         const profit = input.originalAmount - input.actualAmount;
+        const savingsStepsArr = reconcileSavingsSteps(normalizeSavingsSteps(input.savingsSteps), input.originalAmount, input.actualAmount);
         const created = await createSavingsEntry({
           userId: ctx.user.id,
           date: input.date,
@@ -72,6 +79,7 @@ export const savingsRouter = router({
           imageUrl: input.imageUrl,
           imageSig: input.imageSig,
           memo: input.memo,
+          savingsSteps: savingsStepsArr.length ? JSON.stringify(savingsStepsArr) : null,
         });
         await logUsageEvent(ctx.user.id, "entry_create");
         // 단골 사전 자동 축적 (P2 2차) — 실패해도 기록 저장엔 영향 없음

@@ -1,5 +1,6 @@
 // 캡처/분석 작업 공용 타입
 import type { DupInfo } from "@/lib/fingerprint";
+import type { SavingsStep } from "@shared/incomeSources";
 export type Prefill = {
   imageUrl: string;
   title: string;
@@ -22,6 +23,8 @@ export type Prefill = {
   draftId?: string;
   /** #48 — 원본 사진 sha256 (중복 감지용, 저장 시 함께 기록) */
   imageSig?: string;
+  /** #50 — AI가 분해한 연쇄 할인 단계 (기준가→실지출) */
+  savingsSteps?: SavingsStep[];
 };
 
 export type CaptureJob =
