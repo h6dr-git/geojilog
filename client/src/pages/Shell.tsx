@@ -267,7 +267,7 @@ export default function Shell() {
             <button
               onClick={() => (job && job.status === "analyzing" ? changeTab("home") : changeTab("records"))}
               aria-label="분석 진행 보기"
-              className="fixed right-3 bottom-[92px] z-40 flex items-center gap-1.5 pl-1.5 pr-3 py-1.5 rounded-full bg-white/95 border border-line shadow-lg active:scale-95 transition-transform"
+              className="fixed right-3 bottom-[96px] z-40 flex items-center gap-1.5 pl-1.5 pr-3 py-2 rounded-full surface-glass active:scale-95 transition-transform"
             >
               <SsalCalc level={0.5} size={30} analyzing />
               <span className="text-micro font-medium text-ink-soft">계산하는 중{analyzingCount > 1 ? ` ${analyzingCount}` : ""}</span>
@@ -278,7 +278,7 @@ export default function Shell() {
           {job && tab !== "home" && (
             <button
               onClick={() => (job.status === "ready" || job.status === "error" ? openConfirmFromJob() : setTab("home"))}
-              className="fixed left-1/2 -translate-x-1/2 bottom-[76px] z-40 flex items-center gap-2 px-4 py-2.5 rounded-full shadow-lg text-body font-medium bg-white border border-line active:scale-[0.98] transition-transform"
+              className="fixed left-1/2 -translate-x-1/2 bottom-[80px] z-40 flex items-center gap-2 px-4 py-2.5 rounded-full surface-glass text-body font-medium active:scale-[0.98] transition-transform"
             >
               {job.status === "analyzing" ? (
                 <>

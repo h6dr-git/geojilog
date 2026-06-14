@@ -178,6 +178,8 @@ html,
 body {
   background-color: var(--color-cream);
   overscroll-behavior-y: none;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 /* #44 — 탭바 위치 변동 픽스: 짧은 탭(집무실)→긴 탭(장부) 전환 때 스크롤바가 나타나며
@@ -217,4 +219,142 @@ html {
 @keyframes rare-bar {
   from { width: 100%; }
   to { width: 0%; }
+}
+
+/* ── 디자인 유틸리티 — 앱 전역 표면·버튼·페이지 톤 ── */
+@layer components {
+  /* 미세 종이 질감 — 과하지 않게 3% 불투명도 */
+  .texture-paper {
+    position: relative;
+  }
+  .texture-paper::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    pointer-events: none;
+    opacity: 0.035;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    background-size: 128px 128px;
+  }
+
+  /* 페이지 셸 — 따뜻한 앰비언트 그라데이션 */
+  .page-shell {
+    min-height: 100dvh;
+    background:
+      radial-gradient(ellipse 120% 60% at 50% -8%, rgba(224, 169, 46, 0.09) 0%, transparent 55%),
+      radial-gradient(ellipse 80% 40% at 100% 20%, rgba(16, 185, 129, 0.05) 0%, transparent 50%),
+      var(--color-cream);
+  }
+
+  /* 떠 있는 카드 표면 */
+  .surface-elevated {
+    background: rgba(255, 255, 255, 0.92);
+    border: 1px solid rgba(239, 233, 220, 0.9);
+    border-radius: var(--radius-card);
+    box-shadow:
+      0 1px 2px rgba(26, 26, 23, 0.04),
+      0 4px 16px rgba(26, 26, 23, 0.06),
+      0 12px 32px rgba(26, 26, 23, 0.03);
+  }
+
+  /* 한지 느낌 카드 — 서재·쪽지용 */
+  .surface-paper {
+    background: linear-gradient(165deg, #fffef9 0%, #faf6ee 100%);
+    border: 1px solid var(--color-butler-line);
+    border-radius: var(--radius-card);
+    box-shadow:
+      0 1px 0 rgba(255, 255, 255, 0.8) inset,
+      0 2px 12px rgba(120, 90, 40, 0.06);
+  }
+
+  /* 글래스 표면 — 탭바·칩 */
+  .surface-glass {
+    background: rgba(255, 255, 255, 0.78);
+    backdrop-filter: blur(20px) saturate(1.6);
+    -webkit-backdrop-filter: blur(20px) saturate(1.6);
+    border: 1px solid rgba(255, 255, 255, 0.65);
+    box-shadow:
+      0 4px 24px rgba(26, 26, 23, 0.1),
+      0 1px 0 rgba(255, 255, 255, 0.9) inset;
+  }
+
+  /* 페이지 타이틀 */
+  .page-title {
+    font-size: var(--text-title);
+    line-height: var(--text-title--line-height);
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    color: var(--color-ink);
+  }
+  .page-subtitle {
+    font-size: var(--text-caption);
+    line-height: var(--text-caption--line-height);
+    color: var(--color-ink-soft);
+    margin-top: 0.125rem;
+  }
+
+  /* 프라이머리 CTA */
+  .btn-primary {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.625rem 1.125rem;
+    border-radius: 9999px;
+    font-size: var(--text-caption);
+    font-weight: 600;
+    color: white;
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    box-shadow:
+      0 2px 8px rgba(16, 185, 129, 0.35),
+      0 1px 0 rgba(255, 255, 255, 0.2) inset;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+  }
+  .btn-primary:active {
+    transform: scale(0.96);
+    box-shadow: 0 1px 4px rgba(16, 185, 129, 0.25);
+  }
+
+  /* 세그먼트 컨트롤 트랙 */
+  .segment-track {
+    display: flex;
+    gap: 0.25rem;
+    padding: 0.25rem;
+    background: rgba(255, 255, 255, 0.85);
+    border: 1px solid var(--color-line);
+    border-radius: 9999px;
+    box-shadow: 0 1px 4px rgba(26, 26, 23, 0.04);
+  }
+  .segment-active {
+    background: var(--color-ink);
+    color: white;
+    box-shadow: 0 2px 8px rgba(26, 26, 23, 0.18);
+  }
+
+  /* 수익 숫자 강조 */
+  .profit-hero {
+    font-family: "JetBrains Mono", ui-monospace, monospace;
+    font-size: var(--text-hero);
+    line-height: var(--text-hero--line-height);
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    background: linear-gradient(135deg, #059669 0%, #10b981 50%, #34d399 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+}
+
+/* 부드러운 등장 */
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.animate-fade-up { animation: fade-up 0.35s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+
+/* 탭바 활성 인디케이터 */
+@keyframes nav-pill {
+  from { transform: scale(0.85); opacity: 0.6; }
+  to { transform: scale(1); opacity: 1; }
 }

@@ -33,13 +33,13 @@ function recentWeekProfit(entries: Entry[]): number {
 function lobbyBg(): string {
   const h = new Date().getHours();
   const top =
-    h < 6 ? "rgba(74,90,110,0.12)"        // 새벽 — 푸른 어스름
-    : h < 11 ? "rgba(224,169,46,0.13)"    // 아침 — 골드
-    : h < 17 ? "rgba(16,185,129,0.08)"    // 낮 — 에메랄드
-    : h < 21 ? "rgba(228,138,84,0.12)"    // 저녁 — 노을
-    : "rgba(74,90,110,0.14)";             // 밤
-  const mid = h >= 11 && h < 17 ? "rgba(224,169,46,0.05)" : "rgba(16,185,129,0.05)";
-  return `radial-gradient(130% 52% at 50% 0%, ${top} 0%, ${mid} 26%, rgba(250,248,243,0) 58%), #FAF8F3`;
+    h < 6 ? "rgba(74,90,110,0.14)"
+    : h < 11 ? "rgba(224,169,46,0.16)"
+    : h < 17 ? "rgba(16,185,129,0.10)"
+    : h < 21 ? "rgba(228,138,84,0.14)"
+    : "rgba(74,90,110,0.16)";
+  const mid = h >= 11 && h < 17 ? "rgba(224,169,46,0.06)" : "rgba(16,185,129,0.06)";
+  return `radial-gradient(ellipse 130% 55% at 50% -5%, ${top} 0%, ${mid} 28%, rgba(250,248,243,0) 62%), radial-gradient(ellipse 60% 30% at 90% 15%, rgba(224,169,46,0.04) 0%, transparent 50%), #FAF8F3`;
 }
 
 
@@ -180,28 +180,33 @@ export default function HomeTab({ onGoRecords, job, onOpenConfirm, onCompleteDra
       className="min-h-dvh max-w-lg mx-auto px-5 pb-24 flex flex-col"
       style={{ background: lobbyBg() }}
     >
-      <header className="pt-12 pb-2 flex items-center justify-between">
-        {/* #62 — 회사 명패: 여긴 절약업 사무소다 */}
-        <div className="flex items-center gap-2">
-          <div className="rounded-lg px-3 py-1.5" style={{ background: "#2b241a", border: "1px solid rgba(224,169,46,0.35)" }}>
-            <p className="text-micro font-semibold tracking-wide" style={{ color: "#E0A92E" }}>{displayName} 절약사무소</p>
+      <header className="pt-12 pb-2 flex items-center justify-between animate-fade-up">
+        <div className="flex items-center gap-2.5">
+          <div
+            className="rounded-xl px-3.5 py-2"
+            style={{
+              background: "linear-gradient(145deg, #2f281c 0%, #1f1a12 100%)",
+              border: "1px solid rgba(224,169,46,0.4)",
+              boxShadow: "0 4px 16px rgba(26,26,23,0.2), 0 1px 0 rgba(224,169,46,0.15) inset",
+            }}
+          >
+            <p className="text-micro font-bold tracking-wide" style={{ color: "#E0A92E" }}>{displayName} 절약사무소</p>
           </div>
-          <span className="text-micro font-mono text-ink-faint tracking-widest">{APP_NAME}</span>
+          <span className="text-micro font-mono text-ink-faint tracking-[0.25em] uppercase">{APP_NAME}</span>
         </div>
         <LoginChip onClick={() => setShowAccount(true)} />
       </header>
 
       {/* ══ #62 사장님의 책상 — 벽(시간대 톤) 아래 책상면, 그 위에 쌀집이와 비품 ══ */}
-      <div className="mt-8">
+      <div className="mt-7 animate-fade-up" style={{ animationDelay: "0.05s" }}>
         <div
-          className="relative rounded-t-[22px] px-4 pt-5 pb-4"
+          className="relative rounded-t-[24px] px-4 pt-6 pb-4 texture-paper"
           style={{
-            background: "linear-gradient(180deg, #d9c4a3 0%, #cdb58f 14%, #c2a87f 100%)",
-            boxShadow: "inset 0 2px 0 rgba(255,255,255,0.35), 0 -6px 18px rgba(120,90,40,0.10)",
+            background: "linear-gradient(180deg, #e2cfa8 0%, #d4bc8f 12%, #c9ae7e 100%)",
+            boxShadow: "inset 0 3px 0 rgba(255,255,255,0.4), 0 -8px 24px rgba(120,90,40,0.12), 0 2px 0 rgba(120,90,40,0.08)",
           }}
         >
-          {/* 책상 모서리 결 */}
-          <div className="absolute inset-x-0 top-0 h-[3px] rounded-t-[22px]" style={{ background: "rgba(120,90,40,0.25)" }} aria-hidden="true" />
+          <div className="absolute inset-x-0 top-0 h-[4px] rounded-t-[24px]" style={{ background: "linear-gradient(90deg, transparent, rgba(120,90,40,0.3) 20%, rgba(120,90,40,0.3) 80%, transparent)" }} aria-hidden="true" />
 
           <div className="flex items-end justify-center gap-5">
             {/* 쌀집이 — 책상 위 계산기 (탭: 코드 → 월 수익 → 마스킹) */}
@@ -242,18 +247,15 @@ export default function HomeTab({ onGoRecords, job, onOpenConfirm, onCompleteDra
           </div>
         </div>
 
-        {/* 책상 앞면 */}
-        <div className="h-3 rounded-b-xl" style={{ background: "linear-gradient(180deg, #a88c61 0%, #94794f 100%)" }} aria-hidden="true" />
+        <div className="h-4 rounded-b-2xl" style={{ background: "linear-gradient(180deg, #a88c61 0%, #8a7048 60%, #7a6340 100%)", boxShadow: "0 4px 12px rgba(120,90,40,0.15)" }} aria-hidden="true" />
       </div>
 
-      {/* ── #62 회시생의 책상 메모 — 인텔 상주(기록의 복리가 홈에 산다) + 장부 상태. 탭=장부 ── */}
       <button
         onClick={onGoRecords}
-        className="relative mt-4 w-full text-left rounded-card px-4 py-3.5 shadow-sm active:scale-[0.99] transition-transform"
-        style={{ background: "#FFFEF8", border: "1px solid #EFE9DC", transform: "rotate(-0.4deg)" }}
+        className="relative mt-5 w-full text-left surface-paper texture-paper px-4 py-4 active:scale-[0.99] transition-transform animate-fade-up"
+        style={{ transform: "rotate(-0.35deg)", animationDelay: "0.1s" }}
       >
-        {/* 테이프 조각 */}
-        <span className="absolute -top-2 left-1/2 -translate-x-1/2 w-12 h-4 rounded-[3px]" style={{ background: "rgba(224,169,46,0.28)" }} aria-hidden="true" />
+        <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 w-14 h-5 rounded-sm" style={{ background: "rgba(224,169,46,0.32)", boxShadow: "0 1px 2px rgba(120,90,40,0.1)" }} aria-hidden="true" />
         <span className="flex items-center gap-2 mb-1.5">
           <SpeakerBadge speaker="cpa" size={20} />
           <span className="text-micro text-gold tracking-wide font-medium">{CPA_NAME}의 책상 메모</span>
@@ -282,16 +284,16 @@ export default function HomeTab({ onGoRecords, job, onOpenConfirm, onCompleteDra
 
       {/* 단일 액션 — 큰 기록 버튼 / 진행 상태칩 */}
       {analyzingJob ? (
-        <div className="mt-7 flex items-center gap-3 bg-emerald-50 border border-emerald-100 rounded-card p-3.5 shadow-sm">
-          <img src={analyzingJob.preview} alt="" className="w-12 h-12 rounded-card object-cover shrink-0" />
+        <div className="mt-7 flex items-center gap-3 surface-elevated p-4 animate-fade-up" style={{ borderColor: "rgba(16,185,129,0.2)" }}>
+          <img src={analyzingJob.preview} alt="" className="w-12 h-12 rounded-xl object-cover shrink-0 ring-2 ring-emerald-100" />
           <div className="text-left">
             <p className="text-body font-medium text-emerald-700">회시생이 두드리고 있어요</p>
             <p className="text-micro text-emerald-600">잠시 둘러보고 계셔도 됩니다</p>
           </div>
         </div>
       ) : readyJob ? (
-        <button onClick={onOpenConfirm} className="mt-7 w-full flex items-center gap-3 border border-emerald-200 bg-emerald-50 rounded-card p-3 text-left shadow-sm active:bg-emerald-100 transition-colors">
-          <img src={readyJob.preview} alt="" className="w-12 h-12 rounded-card object-cover shrink-0" />
+        <button onClick={onOpenConfirm} className="mt-7 w-full flex items-center gap-3 surface-elevated p-3.5 text-left active:scale-[0.99] transition-transform animate-fade-up" style={{ borderColor: "rgba(16,185,129,0.25)" }}>
+          <img src={readyJob.preview} alt="" className="w-12 h-12 rounded-xl object-cover shrink-0 ring-2 ring-emerald-100" />
           <div className="flex-1 min-w-0">
             <p className="text-body font-medium text-ink truncate">{readyJob.data.title || "분석 완료"}</p>
             <p className="text-micro text-emerald-600 flex items-center gap-0.5"><Check size={12} /> 분석 완료 · 확인하고 저장</p>
@@ -345,7 +347,7 @@ export default function HomeTab({ onGoRecords, job, onOpenConfirm, onCompleteDra
 
       {/* #40 — 설치 유도 (미설치 + 미해제일 때만, 조용한 한 줄) */}
       {!standalone && !installDismissed && (
-        <div className="mt-2.5 flex items-center gap-2 bg-butler border border-butler-line rounded-card px-4 py-3">
+        <div className="mt-2.5 flex items-center gap-2 surface-paper px-4 py-3.5">
           <button onClick={handleInstall} className="flex-1 text-left active:opacity-80 transition-opacity">
             <p className="text-caption font-medium" style={{ color: "#5c5647" }}>홈 화면에 거지로그를 두세요</p>
             <p className="text-micro" style={{ color: "#a9863f" }}>앱처럼 열리고, 회시생의 저녁 보고도 받을 수 있어요 — 탭해서 설치</p>
@@ -361,8 +363,8 @@ export default function HomeTab({ onGoRecords, job, onOpenConfirm, onCompleteDra
         const note = deskNote((entries as Entry[]).length);
         const LABELS = { dosa: "고문의 자문", cpa: "회시생의 업무 팁", ssal: "쌀집이의 출력" } as const;
         return (
-          <div className="mt-10">
-            <div className="relative bg-butler border border-butler-line rounded-card px-5 py-5 overflow-hidden">
+          <div className="mt-10 animate-fade-up" style={{ animationDelay: "0.15s" }}>
+            <div className="relative surface-paper texture-paper px-5 py-5 overflow-hidden">
               {note.speaker === "dosa" && (
                 <span className="absolute -top-3 right-3 text-[68px] leading-none font-serif text-gold/20 select-none" aria-hidden="true">”</span>
               )}

@@ -511,14 +511,15 @@ export default function Ledger({ weekFocusNonce = 0, openAddNonce = 0 }: { weekF
   }
 
   return (
-    <div className="min-h-dvh bg-cream max-w-lg mx-auto px-5 pb-24">
-
-      {/* ── 헤더 ── */}
-      <header className="pt-12 pb-4 flex items-center justify-between">
-        <p className="text-title font-semibold text-ink">장부</p>
+    <div className="page-shell max-w-lg mx-auto px-5 pb-24">
+      <header className="pt-12 pb-4 flex items-center justify-between animate-fade-up">
+        <div>
+          <p className="page-title">장부</p>
+          <p className="page-subtitle">절약이 쌓이는 곳</p>
+        </div>
         <button
           onClick={() => setShowAdd(true)}
-          className="flex items-center gap-1 pl-2.5 pr-3.5 py-2 rounded-full bg-emerald-500 text-white text-caption font-medium shadow-sm shadow-emerald-500/30 active:scale-95 transition-transform"
+          className="btn-primary"
         >
           <Plus size={15} /> 기록 추가
         </button>
@@ -528,7 +529,8 @@ export default function Ledger({ weekFocusNonce = 0, openAddNonce = 0 }: { weekF
       {queue.length > 0 && !showAdd && (
         <button
           onClick={() => setShowAdd(true)}
-          className="w-full flex items-center gap-2.5 mb-4 px-3.5 py-2.5 rounded-card border border-emerald-200 bg-emerald-50 text-left active:bg-emerald-100 transition-colors"
+          className="w-full flex items-center gap-2.5 mb-4 px-4 py-3 surface-elevated text-left active:scale-[0.99] transition-transform"
+          style={{ borderColor: "rgba(16,185,129,0.2)" }}
         >
           {analyzingCount > 0
             ? <Loader2 size={14} className="animate-spin text-emerald-500 shrink-0" />
@@ -661,7 +663,7 @@ export default function Ledger({ weekFocusNonce = 0, openAddNonce = 0 }: { weekF
 
       {/* ── #46 검색 입력 ── */}
       {!selectMode && showSearch && (
-        <div className="flex items-center gap-2 mb-2 px-3 py-2 bg-white border border-line rounded-card">
+        <div className="flex items-center gap-2 mb-2 px-3 py-2.5 surface-elevated">
           <Search size={14} className="text-ink-faint shrink-0" />
           <input
             autoFocus
@@ -683,7 +685,7 @@ export default function Ledger({ weekFocusNonce = 0, openAddNonce = 0 }: { weekF
         <section className="mb-6">
           {/* 접이식 달력 — 날짜 탭하면 그 날만 필터 */}
           {showCal && !weekFilter && (
-            <div className="bg-white border border-line rounded-card px-2 py-3 mb-3">
+            <div className="surface-elevated px-2 py-3 mb-3">
               <div className="grid grid-cols-8 mb-1">
                 {KO_DAYS.map((d, i) => (
                   <div key={d} className={`text-center text-micro py-0.5 ${i === 0 ? "text-red-400" : i === 6 ? "text-blue-400" : "text-ink-soft"}`}>{d}</div>
@@ -794,12 +796,12 @@ export default function Ledger({ weekFocusNonce = 0, openAddNonce = 0 }: { weekF
                       </span>
                       <span className="text-caption font-mono text-emerald-600 tabular-nums">+₩{fmt(dayTotal)}</span>
                     </div>
-                    <div className="bg-white border border-line rounded-card overflow-hidden">
+                    <div className="surface-elevated overflow-hidden">
                       {items.map((entry, i) => (
                         <button
                           key={entry.id}
                           onClick={() => (selectMode ? toggleSelect(entry.id) : setDetailEntry(entry))}
-                          className={`w-full flex items-center gap-3 px-3 py-2.5 text-left active:bg-cream transition-colors ${i > 0 ? "border-t border-line" : ""} ${selectMode && selected.has(entry.id) ? "bg-emerald-50/60" : ""}`}
+                          className={`w-full flex items-center gap-3 px-3.5 py-3 text-left active:bg-cream/80 transition-colors ${i > 0 ? "border-t border-line/70" : ""} ${selectMode && selected.has(entry.id) ? "bg-emerald-50/60" : ""}`}
                         >
                           {selectMode && (
                             selected.has(entry.id)
@@ -807,16 +809,21 @@ export default function Ledger({ weekFocusNonce = 0, openAddNonce = 0 }: { weekF
                               : <Circle size={18} className="text-ink-faint flex-shrink-0" />
                           )}
                           {entry.imageUrl
-                            ? <img src={entry.imageUrl} alt="" className="w-10 h-10 rounded-lg object-cover flex-shrink-0" />
-                            : <div className="w-10 h-10 rounded-lg bg-line flex-shrink-0" />}
+                            ? <img src={entry.imageUrl} alt="" className="w-11 h-11 rounded-xl object-cover flex-shrink-0 ring-1 ring-line/50" />
+                            : <div className="w-11 h-11 rounded-xl bg-line/80 flex-shrink-0" />}
                           <div className="flex-1 min-w-0">
                             <p className="text-body font-medium text-ink truncate">{entry.title}</p>
-                            {entry.memo
-                              ? <p className="text-caption text-ink-soft truncate italic">{entry.memo}</p>
-                              : <p className="text-caption text-ink-faint truncate">{entry.category}{entry.incomeSource ? ` · ${entry.incomeSource}` : ""}</p>}
+                            <div className="flex items-center gap-1.5 mt-0.5 min-w-0">
+                              {entry.incomeSource
+                                ? <span className="text-micro px-1.5 py-0.5 rounded-full bg-gold/10 text-gold shrink-0">{entry.incomeSource}</span>
+                                : <span className="text-micro px-1.5 py-0.5 rounded-full bg-cream text-ink-faint shrink-0">{entry.category}</span>}
+                              {entry.memo
+                                ? <span className="text-caption text-ink-soft truncate italic">{entry.memo}</span>
+                                : entry.incomeSource && <span className="text-micro text-ink-faint shrink-0">{entry.category}</span>}
+                            </div>
                           </div>
                           <div className="text-right flex-shrink-0">
-                            <p className="text-body font-mono font-semibold text-emerald-500 tabular-nums">+₩{fmt(entry.profit)}</p>
+                            <p className="text-body font-mono font-bold text-emerald-500 tabular-nums leading-tight">+₩{fmt(entry.profit)}</p>
                             <p className="text-micro text-ink-faint tabular-nums">
                               <span className="line-through">₩{fmt(entry.originalAmount)}</span>
                               <span className="mx-0.5">→</span>₩{fmt(entry.actualAmount)}

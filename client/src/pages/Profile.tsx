@@ -171,8 +171,8 @@ export default function Profile({ onOpenWeekly }: { onOpenWeekly: () => void }) 
     <button
       key={key}
       onClick={() => changePeriod(key)}
-      className={`flex-1 py-2 rounded-full text-caption font-medium transition-colors ${
-        period === key ? "bg-ink text-white" : "text-ink-soft active:bg-line/60"
+      className={`flex-1 py-2 rounded-full text-caption font-medium transition-all duration-200 ${
+        period === key ? "segment-active" : "text-ink-soft active:bg-line/60"
       }`}
     >
       {label}
@@ -180,10 +180,10 @@ export default function Profile({ onOpenWeekly }: { onOpenWeekly: () => void }) 
   );
 
   return (
-    <div className="min-h-dvh max-w-lg mx-auto px-5 pt-12 pb-24 bg-cream">
-      <header className="pb-4">
-        <p className="text-title font-semibold text-ink">서재</p>
-        <p className="text-caption text-ink-soft mt-0.5">회시생이 정리해 둔 보고서</p>
+    <div className="page-shell max-w-lg mx-auto px-5 pt-12 pb-24">
+      <header className="pb-5 animate-fade-up">
+        <p className="page-title">서재</p>
+        <p className="page-subtitle">회시생이 정리해 둔 보고서</p>
       </header>
 
       {list.length === 0 ? (
@@ -199,8 +199,8 @@ export default function Profile({ onOpenWeekly }: { onOpenWeekly: () => void }) 
           {showBanner && (
             <button
               onClick={() => setShowWrapped(true)}
-              className="w-full flex items-center gap-2.5 mb-4 px-4 py-3 rounded-card text-left active:scale-[0.99] transition-transform"
-              style={{ background: "#16201A", border: "1px solid rgba(224,169,46,0.35)" }}
+              className="w-full flex items-center gap-2.5 mb-4 px-4 py-3.5 rounded-card text-left active:scale-[0.99] transition-transform animate-fade-up"
+              style={{ background: "linear-gradient(135deg, #16201A 0%, #1a2820 100%)", border: "1px solid rgba(224,169,46,0.4)", boxShadow: "0 8px 24px rgba(22,32,26,0.25)" }}
             >
               <Sparkles size={16} style={{ color: "#E0A92E" }} className="shrink-0" />
               <span className="flex-1 text-caption font-medium" style={{ color: "#F4EFE3" }}>
@@ -211,7 +211,7 @@ export default function Profile({ onOpenWeekly }: { onOpenWeekly: () => void }) 
           )}
 
           {/* 기간 세그먼트 */}
-          <div className="flex gap-1 p-1 bg-white border border-line rounded-full mb-3">
+          <div className="segment-track mb-3">
             {segBtn("week", "주간")}
             {segBtn("month", "월간")}
             {segBtn("all", "전체")}
@@ -236,7 +236,7 @@ export default function Profile({ onOpenWeekly }: { onOpenWeekly: () => void }) 
           )}
 
           {/* ── 단일 보고서 — 탭 없이 스크롤로 전부 읽힌다 ── */}
-          <div className="bg-butler border border-butler-line rounded-card p-5">
+          <div className="surface-paper texture-paper p-5 animate-fade-up">
             <div className="flex items-center justify-between mb-2.5">
               <div className="flex items-center gap-2">
                 <SpeakerBadge speaker="cpa" size={22} />
@@ -251,7 +251,7 @@ export default function Profile({ onOpenWeekly }: { onOpenWeekly: () => void }) 
               )}
             </div>
 
-            <p className="font-mono text-hero font-bold text-emerald-500 tabular-nums leading-tight">+₩{fmt(profit)}</p>
+            <p className="profit-hero tabular-nums leading-tight">+₩{fmt(profit)}</p>
             <p className="text-caption mt-1" style={{ color: "#5c5647" }}>
               {count}건
               {monthCompare != null && (
@@ -361,7 +361,7 @@ export default function Profile({ onOpenWeekly }: { onOpenWeekly: () => void }) 
           {count > 0 && period !== "all" && (
             <button
               onClick={() => setShowShare(true)}
-              className="mt-3 w-full flex items-center justify-center gap-2 py-3 rounded-card border border-line bg-white text-body text-ink font-medium active:bg-cream transition-colors"
+              className="mt-3 w-full flex items-center justify-center gap-2 py-3.5 surface-elevated text-body text-ink font-medium active:scale-[0.99] transition-transform"
             >
               <BookMarked size={15} className="text-gold" />
               결산 카드 만들기

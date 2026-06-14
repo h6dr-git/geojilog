@@ -1,5 +1,4 @@
-// 하단 탭바 v2 — 인스타 신UI 문법(박상욱 제공 스크린샷 기준):
-// 아이콘만(라벨 없음) · 순백에 가까운 부유 필 · 활성 = 진하고 살짝 큰 아이콘. (#35)
+// 하단 탭바 v3 — 글래스 필 + 활성 필 인디케이터 + 미세 라벨
 import { Home, BookText, Library } from "lucide-react";
 
 export type MainNavTab = "home" | "records" | "profile";
@@ -19,20 +18,10 @@ export default function BottomNav({
 }) {
   return (
     <nav
-      className="fixed left-1/2 -translate-x-1/2 z-40 w-[calc(100%-3.5rem)] max-w-xs"
-      style={{ bottom: "max(0.9rem, env(safe-area-inset-bottom))" }}
+      className="fixed left-1/2 -translate-x-1/2 z-40 w-[calc(100%-2.5rem)] max-w-sm"
+      style={{ bottom: "max(0.85rem, env(safe-area-inset-bottom))" }}
     >
-      <div
-        className="flex items-center rounded-full border px-2"
-        style={{
-          background: "rgba(255, 255, 255, 0.92)",
-          backdropFilter: "blur(18px) saturate(1.5)",
-          WebkitBackdropFilter: "blur(18px) saturate(1.5)",
-          borderColor: "rgba(26, 26, 23, 0.05)",
-          boxShadow: "0 8px 28px rgba(26, 26, 23, 0.16)",
-          height: "58px",
-        }}
-      >
+      <div className="surface-glass flex items-center rounded-[1.75rem] px-1.5 h-[62px]">
         {TABS.map(({ key, label, Icon }) => {
           const active = tab === key;
           return (
@@ -41,13 +30,30 @@ export default function BottomNav({
               onClick={() => onChange(key)}
               aria-label={label}
               aria-current={active ? "page" : undefined}
-              className="flex-1 h-full flex items-center justify-center active:scale-90 transition-transform"
+              className="relative flex-1 h-full flex flex-col items-center justify-center gap-0.5 active:scale-90 transition-transform"
             >
+              {active && (
+                <span
+                  className="absolute inset-x-2 inset-y-1.5 rounded-2xl"
+                  style={{
+                    background: "linear-gradient(180deg, rgba(26,26,23,0.07) 0%, rgba(26,26,23,0.04) 100%)",
+                    animation: "nav-pill 0.2s cubic-bezier(0.2, 0.8, 0.2, 1) both",
+                  }}
+                  aria-hidden="true"
+                />
+              )}
               <Icon
-                size={active ? 26 : 24}
-                strokeWidth={active ? 2.5 : 1.8}
-                className={`transition-all duration-150 ${active ? "text-ink" : "text-ink-faint"}`}
+                size={active ? 22 : 20}
+                strokeWidth={active ? 2.4 : 1.7}
+                className={`relative z-10 transition-all duration-200 ${active ? "text-ink" : "text-ink-faint"}`}
               />
+              <span
+                className={`relative z-10 text-[10px] font-medium tracking-wide transition-all duration-200 ${
+                  active ? "text-ink opacity-100" : "text-ink-faint opacity-0 scale-90"
+                }`}
+              >
+                {label}
+              </span>
             </button>
           );
         })}

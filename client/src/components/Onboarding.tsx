@@ -11,9 +11,11 @@ export default function Onboarding({ onStart, onKakao }: { onStart: () => void; 
   const { data: authConfig } = trpc.auth.config.useQuery();
   const kakaoEnabled = authConfig?.kakaoEnabled ?? false;
   return (
-    <div className="fixed inset-0 z-50 flex flex-col items-center justify-center px-8 text-center bg-forest">
+    <div className="fixed inset-0 z-50 flex flex-col items-center justify-center px-8 text-center overflow-hidden"
+      style={{ background: "radial-gradient(ellipse 80% 60% at 50% 20%, rgba(16,185,129,0.12) 0%, transparent 50%), linear-gradient(180deg, #16201A 0%, #0f1812 100%)" }}
+    >
       {/* 앱 이름 — 자간 넓은 모노 */}
-      <p className="text-body font-mono tracking-[0.4em] text-[#8ba896] mb-10">{APP_NAME}</p>
+      <p className="text-body font-mono tracking-[0.45em] text-[#8ba896] mb-10 uppercase">{APP_NAME}</p>
 
       {/* 마스코트 (골드 글로우) */}
       <div className="mb-9" style={{ filter: "drop-shadow(0 10px 28px rgba(240,200,80,0.22))" }}>
@@ -29,7 +31,7 @@ export default function Onboarding({ onStart, onKakao }: { onStart: () => void; 
       {/* 0마찰 입장 버튼 — 바로 첫 기록으로 */}
       <button
         onClick={onStart}
-        className="mt-12 w-full max-w-[18rem] bg-emerald-500 text-white font-medium py-4 rounded-card flex items-center justify-center gap-2 active:scale-[0.99] transition-transform shadow-lg shadow-emerald-500/30"
+        className="mt-12 w-full max-w-[18rem] btn-primary py-4 rounded-card text-body"
       >
         <Camera size={18} /> 내 첫 절약, 찾으러 가기
       </button>
