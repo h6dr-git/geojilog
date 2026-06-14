@@ -11,6 +11,7 @@ export interface SavingsEntry {
   originalAmount: number;
   actualAmount: number;
   profit: number;
+  savingsSteps?: string | null; // #50 연쇄 할인 단계 JSON
   aiEstimated: "yes" | "no";
   aiReason?: string | null;
   imageUrl?: string | null;
@@ -79,18 +80,18 @@ export function filterByRange(entries: SavingsEntry[], range: ExportRange, from:
 
 
 export function toMarkdownTable(entries: SavingsEntry[]) {
-  const header = "| 날짜 | 항목 | 카테고리 | 수익원 | 원가 | 실제지출 | 절약수익 | 메모 |";
+  const header = "| 날짜 | 항목 | 카테고리 | 수익원 | 원가 | 실제지출 | 수익 | 메모 |";
   const sep = "|------|------|----------|--------|------|----------|----------|------|";
   const rows = entries.map(e =>
     `| ${e.date} | ${e.title} | ${e.category} | ${e.incomeSource ?? "미분류"} | ${fmt(e.originalAmount)}원 | ${fmt(e.actualAmount)}원 | ${fmt(e.profit)}원 | ${e.memo ?? ""} |`
   );
   const total = entries.reduce((s, e) => s + e.profit, 0);
-  return [header, sep, ...rows].join("\n") + `\n\n**총 절약 수익: ${fmt(total)}원** (${entries.length}건)`;
+  return [header, sep, ...rows].join("\n") + `\n\n**총 계상 수익: ${fmt(total)}원** (${entries.length}건)`;
 }
 
 
 export function toCsv(entries: SavingsEntry[]) {
-  const header = "날짜,항목,카테고리,수익원,원가,실제지출,절약수익,메모,추정";
+  const header = "날짜,항목,카테고리,수익원,원가,실제지출,수익,메모,추정";
   const rows = entries.map(e =>
     [
       e.date, `"${e.title}"`, e.category, e.incomeSource ?? "미분류",

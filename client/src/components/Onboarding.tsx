@@ -33,7 +33,7 @@ export default function Onboarding({ onStart, onKakao }: { onStart: () => void; 
         onClick={onStart}
         className="mt-12 w-full max-w-[18rem] btn-primary py-4 rounded-card text-body"
       >
-        <Camera size={18} /> 내 첫 절약, 찾으러 가기
+        <Camera size={18} /> 첫 수익, 찾으러 가기
       </button>
       <p className="mt-3 text-caption text-[#6f8a7a]">가입 없이 바로 시작 · 1분이면 첫 수익</p>
 

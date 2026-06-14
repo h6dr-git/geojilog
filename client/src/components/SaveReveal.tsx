@@ -104,8 +104,8 @@ export default function SaveReveal() {
         <SsalCalc level={0.86} size={92} display={detail ? `+${detail.profit.toLocaleString("ko-KR")}` : ""} />
       </div>
 
-      <p className="mt-5 text-micro tracking-[0.3em] font-mono" style={{ color: "#7E8C82", animation: "rvRise .35s ease .1s both" }}>
-        PROFIT RECOGNIZED
+      <p className="mt-5 text-micro tracking-[0.25em] font-mono voice-label" style={{ animation: "rvRise .35s ease .1s both" }}>
+        수익 실현
       </p>
 
       <p

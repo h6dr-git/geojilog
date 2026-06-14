@@ -170,7 +170,7 @@ export default function IncomeSourceSheet({
 
         {(custom as CustomSource[]).length === 0 && !adding ? (
           <p className="text-micro text-ink-faint text-center py-3">
-            기본 유형에 없는 절약 루트가 있으면 직접 추가해 보세요
+            기본 유형에 없는 수익원이 있으면 직접 추가해 보세요
           </p>
         ) : (
           <div className="space-y-1">

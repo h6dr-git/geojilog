@@ -7,7 +7,8 @@ import { X, Pencil, Trash2, Loader2, Maximize2, ImagePlus } from "lucide-react";
 import ConfirmDialog from "@/components/ConfirmDialog";
 import { SavingsEntry, fmt, incomeSourceUsual } from "@/lib/ledger";
 import IncomeSourceChips from "@/components/IncomeSourceChips";
-import { UNCLASSIFIED } from "@shared/incomeSources";
+import SavingsCombo from "@/components/SavingsCombo";
+import { UNCLASSIFIED, fallbackSavingsSteps, type SavingsStep } from "@shared/incomeSources";
 
 export default function EntryDetailSheet({
   entry,
@@ -59,6 +60,14 @@ export default function EntryDetailSheet({
   const [showPhoto, setShowPhoto] = useState(false); // 사진 탭 = 사진 확대 (관습 그대로 — #20 철회 반영)
   const [imgOverride, setImgOverride] = useState<string | null>(null); // 사진 교체 직후 즉시 반영용
   const imageUrl = imgOverride ?? entry.imageUrl;
+  // #50 — 저장된 연쇄 단계(JSON) → 없으면 수익원 기반 단일 폴백
+  const savedSteps: SavingsStep[] = (() => {
+    const raw = (entry as { savingsSteps?: string | null }).savingsSteps;
+    if (typeof raw === "string" && raw.trim()) {
+      try { const parsed = JSON.parse(raw); if (Array.isArray(parsed) && parsed.length) return parsed as SavingsStep[]; } catch { /* 무시 */ }
+    }
+    return fallbackSavingsSteps(entry.incomeSource ?? null, entry.originalAmount, entry.actualAmount);
+  })();
   const [form, setForm] = useState({
     date: entry.date,
     title: entry.title,
@@ -111,7 +120,7 @@ export default function EntryDetailSheet({
     >
       <style>{`@keyframes edUp{from{transform:translateY(100%)}to{transform:translateY(0)}}@keyframes edFade{from{opacity:0}to{opacity:1}}`}</style>
       <div
-        className="w-full max-w-lg bg-white rounded-t-3xl px-5 pt-3 pb-8 max-h-[90vh] overflow-y-auto overscroll-contain"
+        className="w-full max-w-lg sheet-panel px-5 pt-3 pb-8 max-h-[90vh] overflow-y-auto overscroll-contain"
         style={{ animation: "edUp .28s cubic-bezier(.2,.8,.2,1)" }}
         onClick={(e) => e.stopPropagation()}
       >
@@ -162,30 +171,16 @@ export default function EntryDetailSheet({
 
             <p className="text-title font-semibold text-ink">{entry.title}</p>
 
-            {/* 금액 — #37: 평소보다 더 아낀 날은 세 층(시중가→평소가→오늘가)으로 */}
-            <div className="mt-3 bg-emerald-50 rounded-card px-4 py-3">
-              <div className="flex items-baseline justify-between">
-                <span className="text-caption text-ink-soft tabular-nums">
-                  <span className="line-through">₩{fmt(entry.originalAmount)}</span>
-                  <span className="mx-1.5 text-ink-faint">→</span>
-                  {threeLayer && (
-                    <>
-                      <span className="line-through text-gold/80">₩{fmt(usual!)}</span>
-                      <span className="mx-1.5 text-ink-faint">→</span>
-                    </>
-                  )}
-                  <span>₩{fmt(entry.actualAmount)}</span>
-                </span>
-                <span className="font-mono text-title font-bold text-emerald-600 tabular-nums">+₩{fmt(entry.profit)}</span>
-              </div>
+            {/* #50 — 순차 절약: 시중 기준가에서 단계별로 깎여 번 돈에 도달 */}
+            <div className="mt-3 surface-paper texture-paper px-4 pt-3.5 pb-3">
+              <SavingsCombo originalAmount={entry.originalAmount} steps={savedSteps} animate />
               {threeLayer && (
-                <p className="text-micro mt-1.5" style={{ color: "#B07F1E" }}>
-                  ✨ 평소 {entry.incomeSource}(₩{fmt(usual!)})보다 ₩{fmt(usual! - entry.actualAmount)} 더 아낀 날
+                <p className="text-micro text-center -mt-2.5" style={{ color: "#B07F1E" }}>
+                  ✨ 평소 {entry.incomeSource}(₩{fmt(usual!)}) 대비 +₩{fmt(usual! - entry.actualAmount)} 초과 수익
                 </p>
               )}
-              {/* #60-b — 세 층이 아니어도 내 평소가는 항상 (표본 2건부터) */}
               {!threeLayer && usual != null && (
-                <p className="text-micro mt-1.5 text-ink-faint">
+                <p className="text-micro text-center -mt-2.5 text-ink-faint">
                   이 유형 평소 실지출 ₩{fmt(usual)} (최근 {sourceUsual!.sample}건 중앙값)
                 </p>
               )}
@@ -269,9 +264,9 @@ export default function EntryDetailSheet({
               <button
                 type="submit"
                 disabled={updateEntry.isPending}
-                className="flex-1 py-3 bg-emerald-500 text-white text-body font-medium rounded-xl active:scale-[0.98] disabled:opacity-50 transition-transform"
+                className="flex-1 py-3 btn-primary rounded-xl disabled:opacity-50"
               >
-                {updateEntry.isPending ? <Loader2 size={16} className="animate-spin mx-auto" /> : "저장"}
+                {updateEntry.isPending ? <Loader2 size={16} className="animate-spin mx-auto" /> : "수정 반영"}
               </button>
               <button
                 type="button"

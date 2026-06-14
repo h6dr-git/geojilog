@@ -181,21 +181,26 @@ export default function HomeTab({ onGoRecords, job, onOpenConfirm, onCompleteDra
       style={{ background: lobbyBg() }}
     >
       <header className="pt-12 pb-2 flex items-center justify-between animate-fade-up">
-        <div className="flex items-center gap-2.5">
-          <div
-            className="rounded-xl px-3.5 py-2"
-            style={{
-              background: "linear-gradient(145deg, #2f281c 0%, #1f1a12 100%)",
-              border: "1px solid rgba(224,169,46,0.4)",
-              boxShadow: "0 4px 16px rgba(26,26,23,0.2), 0 1px 0 rgba(224,169,46,0.15) inset",
-            }}
-          >
-            <p className="text-micro font-bold tracking-wide" style={{ color: "#E0A92E" }}>{displayName} 절약사무소</p>
-          </div>
-          <span className="text-micro font-mono text-ink-faint tracking-[0.25em] uppercase">{APP_NAME}</span>
+        <div>
+          <p className="page-title">집무실</p>
+          <p className="page-subtitle">안전 로비 · 기록은 장부에서</p>
         </div>
         <LoginChip onClick={() => setShowAccount(true)} />
       </header>
+
+      <div className="mt-3 animate-fade-up" style={{ animationDelay: "0.03s" }}>
+        <div
+          className="inline-flex rounded-xl px-3.5 py-2"
+          style={{
+            background: "linear-gradient(145deg, #2f281c 0%, #1f1a12 100%)",
+            border: "1px solid rgba(224,169,46,0.4)",
+            boxShadow: "0 4px 16px rgba(26,26,23,0.2), 0 1px 0 rgba(224,169,46,0.15) inset",
+          }}
+        >
+          <p className="text-micro font-bold tracking-wide" style={{ color: "#E0A92E" }}>{displayName} 절약사무소</p>
+        </div>
+        <span className="ml-2.5 text-micro font-mono text-ink-faint tracking-[0.2em] uppercase align-middle">{APP_NAME}</span>
+      </div>
 
       {/* ══ #62 사장님의 책상 — 벽(시간대 톤) 아래 책상면, 그 위에 쌀집이와 비품 ══ */}
       <div className="mt-7 animate-fade-up" style={{ animationDelay: "0.05s" }}>

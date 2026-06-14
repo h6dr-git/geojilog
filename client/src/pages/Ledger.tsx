@@ -14,6 +14,7 @@ import {
   Upload, Camera, PenLine, Loader2,
   Copy, ChevronDown, ChevronUp, ChevronRight, ChevronLeft,
   X, RotateCw, Plus, CalendarDays, Search, CheckSquare, CheckCircle2, Circle, Trash2,
+  TrendingUp, TrendingDown,
 } from "lucide-react";
 import EntryDetailSheet from "@/components/EntryDetailSheet";
 import ConfirmDialog from "@/components/ConfirmDialog";
@@ -22,6 +23,8 @@ import IncomeSourceSheet, { UNCLASSIFIED_KEY } from "@/components/IncomeSourceSh
 import { UNCLASSIFIED, FIXED_ACTUAL } from "@shared/incomeSources";
 import type { SavingsStep } from "@shared/incomeSources";
 import SsalCalc from "@/components/SsalCalc";
+import SpeakerBadge from "@/components/SpeakerBadge";
+import { CPA_NAME } from "@/lib/brand";
 import { SavingsEntry, fmt, todayStr, makeDefaultTitle, KO_DAYS, incomeSourceUsual } from "@/lib/ledger";
 import { celebrateSave } from "@/lib/celebrate";
 import { analyzingStart, analyzingEnd } from "@/lib/analyzing";
@@ -188,7 +191,30 @@ export default function Ledger({ weekFocusNonce = 0, openAddNonce = 0 }: { weekF
     return Array.from(map.entries()).sort((a, b) => b[0].localeCompare(a[0]));
   }, [displayEntries]);
 
-  const monthTotal = useMemo(() => monthEntries.reduce((s, e) => s + e.profit, 0), [monthEntries]);
+  const periodTotal = useMemo(() => displayEntries.reduce((s, e) => s + e.profit, 0), [displayEntries]);
+  const periodLabel = useMemo(() => {
+    if (weekFilter) return `${weekFilter.start.slice(5).replace("-", ".")} ~ ${weekFilter.end.slice(5).replace("-", ".")}`;
+    if (filterDate) {
+      const d = new Date(filterDate + "T00:00:00");
+      return `${d.getDate()}일 (${KO_DAYS[d.getDay()]})`;
+    }
+    if (search.trim()) return "검색";
+    if (sourceFilter) return sourceFilter === UNCLASSIFIED_KEY ? UNCLASSIFIED : sourceFilter;
+    return `${month + 1}월`;
+  }, [weekFilter, filterDate, search, sourceFilter, month]);
+  const periodCompare = useMemo(() => {
+    const now = new Date();
+    const isCurrentMonth = year === now.getFullYear() && month === now.getMonth();
+    if (!isCurrentMonth || weekFilter || filterDate || sourceFilter || search.trim()) return null;
+    const dayOfMonth = now.getDate();
+    const prev = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const prevYm = `${prev.getFullYear()}-${String(prev.getMonth() + 1).padStart(2, "0")}`;
+    const prevList = (entries as SavingsEntry[]).filter(
+      (e) => e.date.startsWith(prevYm) && Number(e.date.slice(8, 10)) <= dayOfMonth
+    );
+    if (prevList.length === 0) return null;
+    return periodTotal - prevList.reduce((s, e) => s + e.profit, 0);
+  }, [year, month, weekFilter, filterDate, sourceFilter, search, entries, periodTotal]);
   // 달력용 일자별 합계 — 점 표시 대신 금액 숫자 (피드백)
   const profitByDate = useMemo(() => {
     const map: Record<string, number> = {};
@@ -493,7 +519,7 @@ export default function Ledger({ weekFocusNonce = 0, openAddNonce = 0 }: { weekF
       <div className="min-h-dvh flex flex-col items-center justify-center bg-cream gap-6 px-6">
         <div className="text-center">
           <h1 className="text-hero font-bold tracking-tight text-ink">거지로그</h1>
-          <p className="mt-2 text-body text-ink-soft">절약한 만큼 번다</p>
+          <p className="mt-2 text-body text-ink-soft">번 돈을 적는 장부</p>
         </div>
         <p className="text-body text-ink-soft text-center leading-relaxed">
           연결이 잠시 불안정해 데이터를 불러오지 못했어요.<br />
@@ -501,7 +527,7 @@ export default function Ledger({ weekFocusNonce = 0, openAddNonce = 0 }: { weekF
         </p>
         <button
           onClick={() => window.location.reload()}
-          className="flex items-center gap-2 px-6 py-3 bg-emerald-500 text-white text-body font-medium rounded-xl active:scale-[0.98] transition-transform"
+          className="flex items-center gap-2 btn-primary px-6 py-3 rounded-xl active:scale-[0.98] transition-transform"
         >
           <RotateCw size={16} />
           다시 시도
@@ -515,7 +541,7 @@ export default function Ledger({ weekFocusNonce = 0, openAddNonce = 0 }: { weekF
       <header className="pt-12 pb-4 flex items-center justify-between animate-fade-up">
         <div>
           <p className="page-title">장부</p>
-          <p className="page-subtitle">절약이 쌓이는 곳</p>
+          <p className="page-subtitle">수익이 계상되는 곳</p>
         </div>
         <button
           onClick={() => setShowAdd(true)}
@@ -542,31 +568,58 @@ export default function Ledger({ weekFocusNonce = 0, openAddNonce = 0 }: { weekF
         </button>
       )}
 
+      {/* ── 수익 히어로 — 현재 기간 합계를 가장 먼저 보여준다 ── */}
+      {!selectMode && (
+        <div className="ledger-hero surface-elevated p-5 mb-4 animate-fade-up" style={{ animationDelay: "0.04s" }}>
+          <div className="flex items-center gap-2 mb-3">
+            <SpeakerBadge speaker="cpa" size={20} />
+            <p className="voice-label">{CPA_NAME} · {periodLabel} 계상</p>
+          </div>
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <p className="profit-hero tabular-nums leading-tight">+₩{fmt(periodTotal)}</p>
+              <p className="text-caption text-ink-soft mt-1.5">
+                거래 {displayEntries.length}건
+                {periodCompare != null && (
+                  <span className={periodCompare >= 0 ? " text-emerald-600" : " text-ink-soft"}>
+                    {" · "}지난달 같은 기간 대비 {periodCompare >= 0 ? "+" : "−"}₩{fmt(Math.abs(periodCompare))}
+                  </span>
+                )}
+              </p>
+            </div>
+            {periodCompare != null && (
+              <span className={`ledger-trend-chip shrink-0 ${periodCompare >= 0 ? "ledger-trend-up" : "ledger-trend-down"}`}>
+                {periodCompare >= 0 ? <TrendingUp size={13} /> : <TrendingDown size={13} />}
+                {periodCompare >= 0 ? "+" : "−"}₩{fmt(Math.abs(periodCompare))}
+              </span>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* ── 월 네비 + 달력 토글 (주간 필터 중엔 숨김) ── */}
       {!weekFilter && (
-        <div className="flex items-center justify-between mb-1">
-          <button onClick={prevMonth} aria-label="이전 달" className="min-w-[40px] min-h-[40px] flex items-center justify-center rounded-lg text-ink-soft active:bg-line/60 active:scale-95 transition-all">
+        <div className="segment-track mb-3 animate-fade-up" style={{ animationDelay: "0.06s" }}>
+          <button onClick={prevMonth} aria-label="이전 달" className="min-w-[36px] min-h-[36px] flex items-center justify-center rounded-full text-ink-soft active:bg-cream transition-colors">
             <ChevronLeft size={16} />
           </button>
-          <div className="flex items-center gap-1">
+          <div className="flex-1 flex items-center justify-center gap-1 min-w-0">
             <button
               onClick={() => monthInputRef.current?.showPicker?.() ?? monthInputRef.current?.click()}
-              className="text-body font-medium text-ink active:text-emerald-600 transition-colors flex items-center gap-1"
+              className="px-3 py-1.5 rounded-full text-body font-semibold text-ink active:text-emerald-600 transition-colors flex items-center gap-1"
             >
               {year}년 {month + 1}월
               <ChevronDown size={12} className="text-ink-soft" />
             </button>
-            {(
-              <button
-                onClick={toggleCal}
-                aria-label="달력 보기"
-                className={`ml-1 w-8 h-8 flex items-center justify-center rounded-lg transition-colors ${showCal ? "text-emerald-600 bg-emerald-50" : "text-ink-soft active:bg-line/60"}`}
-              >
-                <CalendarDays size={15} />
-              </button>
-            )}
+            <button
+              onClick={toggleCal}
+              aria-label="달력 보기"
+              className={`w-8 h-8 flex items-center justify-center rounded-full transition-all ${showCal ? "segment-active" : "text-ink-soft active:bg-cream"}`}
+            >
+              <CalendarDays size={14} />
+            </button>
           </div>
-          <button onClick={nextMonth} aria-label="다음 달" className="min-w-[40px] min-h-[40px] flex items-center justify-center rounded-lg text-ink-soft active:bg-line/60 active:scale-95 transition-all">
+          <button onClick={nextMonth} aria-label="다음 달" className="min-w-[36px] min-h-[36px] flex items-center justify-center rounded-full text-ink-soft active:bg-cream transition-colors">
             <ChevronRight size={16} />
           </button>
           <input ref={monthInputRef} type="month" value={ym} onChange={handleMonthJump} className="sr-only" tabIndex={-1} />
@@ -575,14 +628,14 @@ export default function Ledger({ weekFocusNonce = 0, openAddNonce = 0 }: { weekF
 
       {/* 주간 필터 브레드크럼 (달력 주 선택·서재 결산 딥링크 공용) */}
       {weekFilter && (
-        <div className="flex items-center gap-1.5 mb-2.5 px-1 text-caption">
+        <div className="flex items-center gap-1.5 mb-2.5 px-2 py-1.5 rounded-full bg-white/80 border border-line/80 text-caption w-fit">
           <button onClick={() => setWeekFilter(null)} className="text-ink-soft underline-offset-2 active:text-ink transition-colors">
             전체
           </button>
           <ChevronRight size={11} className="text-ink-faint" />
           <span className="flex items-center gap-1.5 text-emerald-600 font-medium">
             {weekFilter.start.slice(5).replace("-", ".")} ~ {weekFilter.end.slice(5).replace("-", ".")} 주간
-            <button onClick={() => setWeekFilter(null)} aria-label="필터 해제" className="w-4 h-4 rounded-full bg-line/70 flex items-center justify-center text-ink-soft active:bg-line">
+            <button onClick={() => setWeekFilter(null)} aria-label="필터 해제" className="w-4 h-4 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600 active:bg-emerald-200">
               <X size={9} />
             </button>
           </span>
@@ -606,20 +659,20 @@ export default function Ledger({ weekFocusNonce = 0, openAddNonce = 0 }: { weekF
 
       {/* ── #37+#38 수익원 필터 칩 — 현재 기간에 있는 유형만, 끝에 '관리' ── */}
       {!selectMode && (dateScoped.length > 0 || sourceFilter) && (
-        <div className="flex gap-1.5 overflow-x-auto pb-2 mb-1 -mx-1 px-1" style={{ scrollbarWidth: "none" }}>
+        <div className="flex gap-1.5 overflow-x-auto pb-2 mb-2 -mx-1 px-1" style={{ scrollbarWidth: "none" }}>
           <button
             onClick={() => { setShowSearch((v) => { if (v) setSearch(""); return !v; }); }}
             aria-label="검색"
-            className={`shrink-0 w-8 h-8 flex items-center justify-center rounded-full transition-colors ${
-              showSearch || search ? "bg-ink text-white" : "bg-white border border-line text-ink-soft active:bg-cream"
+            className={`shrink-0 w-9 h-9 flex items-center justify-center rounded-full transition-all shadow-sm ${
+              showSearch || search ? "bg-ink text-white shadow-md" : "bg-white border border-line/80 text-ink-soft active:bg-cream"
             }`}
           >
-            <Search size={13} />
+            <Search size={14} />
           </button>
           <button
             onClick={() => setSourceFilter(null)}
-            className={`shrink-0 px-3 py-1.5 rounded-full text-caption transition-colors ${
-              !sourceFilter ? "bg-ink text-white" : "bg-white border border-line text-ink-soft active:bg-cream"
+            className={`shrink-0 px-3.5 py-2 rounded-full text-caption font-medium transition-all ${
+              !sourceFilter ? "bg-ink text-white shadow-md" : "bg-white border border-line/80 text-ink-soft active:bg-cream"
             }`}
           >
             전체
@@ -628,35 +681,35 @@ export default function Ledger({ weekFocusNonce = 0, openAddNonce = 0 }: { weekF
             <button
               key={src}
               onClick={() => setSourceFilter(sourceFilter === src ? null : src)}
-              className={`shrink-0 px-3 py-1.5 rounded-full text-caption transition-colors ${
-                sourceFilter === src ? "bg-gold text-white" : "bg-white border border-line text-ink-soft active:bg-cream"
+              className={`shrink-0 px-3.5 py-2 rounded-full text-caption font-medium transition-all ${
+                sourceFilter === src ? "bg-gold text-white shadow-md" : "bg-white border border-line/80 text-ink-soft active:bg-cream"
               }`}
             >
-              {src} <span className="tabular-nums opacity-70">{sourceCounts.get(src) ?? 0}</span>
+              {src} <span className="tabular-nums opacity-75">{sourceCounts.get(src) ?? 0}</span>
             </button>
           ))}
           {((sourceCounts.get(UNCLASSIFIED_KEY) ?? 0) > 0 || sourceFilter === UNCLASSIFIED_KEY) && (
             <button
               onClick={() => setSourceFilter(sourceFilter === UNCLASSIFIED_KEY ? null : UNCLASSIFIED_KEY)}
-              className={`shrink-0 px-3 py-1.5 rounded-full text-caption transition-colors ${
-                sourceFilter === UNCLASSIFIED_KEY ? "bg-ink-soft text-white" : "bg-white border border-dashed border-line text-ink-faint active:bg-cream"
+              className={`shrink-0 px-3.5 py-2 rounded-full text-caption font-medium transition-all ${
+                sourceFilter === UNCLASSIFIED_KEY ? "bg-ink-soft text-white shadow-md" : "bg-white border border-dashed border-line text-ink-faint active:bg-cream"
               }`}
             >
-              {UNCLASSIFIED} <span className="tabular-nums opacity-70">{sourceCounts.get(UNCLASSIFIED_KEY) ?? 0}</span>
+              {UNCLASSIFIED} <span className="tabular-nums opacity-75">{sourceCounts.get(UNCLASSIFIED_KEY) ?? 0}</span>
             </button>
           )}
           <button
             onClick={() => setShowSources(true)}
-            className="shrink-0 px-3 py-1.5 rounded-full text-caption bg-white border border-line text-emerald-600 font-medium active:bg-emerald-50 transition-colors"
+            className="shrink-0 px-3.5 py-2 rounded-full text-caption font-medium bg-emerald-50 border border-emerald-200/80 text-emerald-700 active:bg-emerald-100 transition-colors"
           >
             관리
           </button>
           <button
             onClick={() => setSelectMode(true)}
             aria-label="선택 모드"
-            className="shrink-0 w-8 h-8 flex items-center justify-center rounded-full bg-white border border-line text-ink-soft active:bg-cream transition-colors"
+            className="shrink-0 w-9 h-9 flex items-center justify-center rounded-full bg-white border border-line/80 text-ink-soft active:bg-cream transition-colors"
           >
-            <CheckSquare size={13} />
+            <CheckSquare size={14} />
           </button>
         </div>
       )}
@@ -685,10 +738,10 @@ export default function Ledger({ weekFocusNonce = 0, openAddNonce = 0 }: { weekF
         <section className="mb-6">
           {/* 접이식 달력 — 날짜 탭하면 그 날만 필터 */}
           {showCal && !weekFilter && (
-            <div className="surface-elevated px-2 py-3 mb-3">
-              <div className="grid grid-cols-8 mb-1">
+            <div className="surface-elevated px-3 py-3.5 mb-4">
+              <div className="grid grid-cols-8 mb-1.5">
                 {KO_DAYS.map((d, i) => (
-                  <div key={d} className={`text-center text-micro py-0.5 ${i === 0 ? "text-red-400" : i === 6 ? "text-blue-400" : "text-ink-soft"}`}>{d}</div>
+                  <div key={d} className={`text-center text-micro font-medium py-0.5 ${i === 0 ? "text-red-400" : i === 6 ? "text-blue-400" : "text-ink-soft"}`}>{d}</div>
                 ))}
                 <div />
               </div>
@@ -710,27 +763,27 @@ export default function Ledger({ weekFocusNonce = 0, openAddNonce = 0 }: { weekF
                         <button
                           key={ds}
                           onClick={() => setFilterDate(selected ? null : ds)}
-                          className="flex flex-col items-center py-1 min-h-[42px] rounded-lg active:bg-line/50 transition-colors"
+                          className={`flex flex-col items-center py-1.5 min-h-[44px] rounded-xl transition-colors ${
+                            selected ? "bg-emerald-500/10" : "active:bg-line/40"
+                          }`}
                         >
-                          <span className={`text-caption w-6 h-6 flex items-center justify-center rounded-full ${
-                            selected ? "bg-emerald-500 text-white font-semibold"
-                            : isToday ? "border border-gold/60 text-ink font-medium"
+                          <span className={`text-caption w-7 h-7 flex items-center justify-center rounded-full ${
+                            selected ? "bg-emerald-500 text-white font-semibold shadow-sm"
+                            : isToday ? "border-2 border-gold/70 text-ink font-semibold"
                             : "text-ink"
                           }`}>{day}</span>
-                          {/* 금액 숫자 — 점보다 정보가 많다 (피드백) */}
                           {profit !== undefined && (
-                            <span className="text-emerald-500 font-medium leading-tight tabular-nums" style={{ fontSize: "8.5px" }}>
+                            <span className="text-emerald-600 font-semibold leading-tight tabular-nums mt-0.5" style={{ fontSize: "8.5px" }}>
                               +{fmt(profit)}
                             </span>
                           )}
                         </button>
                       );
                     })}
-                    {/* 주 단위 보기 (피드백 4) */}
                     <button
                       onClick={() => weekStart && weekEnd && setWeekFilter({ start: weekStart, end: weekEnd })}
                       aria-label="이 주만 보기"
-                      className="flex items-center justify-center text-ink-faint active:text-emerald-500 transition-colors"
+                      className="flex items-center justify-center text-ink-faint active:text-emerald-500 transition-colors rounded-lg active:bg-emerald-50"
                       title="이 주만 보기"
                     >
                       <ChevronRight size={12} />
@@ -738,21 +791,20 @@ export default function Ledger({ weekFocusNonce = 0, openAddNonce = 0 }: { weekF
                   </div>
                 );
               })}
-              <p className="text-center text-micro text-ink-faint mt-1.5">날짜를 누르면 그날만 · 오른쪽 화살표는 그 주만</p>
+              <p className="text-center text-micro text-ink-faint mt-2">날짜를 누르면 그날만 · 오른쪽 화살표는 그 주만</p>
             </div>
           )}
 
           {/* 날짜 필터 칩 */}
-          {/* 필터 브레드크럼 — 배너보다 조용하게, 경로처럼 (피드백 #15 재작업) */}
           {filterDate && (
-            <div className="flex items-center gap-1.5 mb-2.5 px-1 text-caption">
+            <div className="flex items-center gap-1.5 mb-3 px-2 py-1.5 rounded-full bg-white/80 border border-line/80 text-caption w-fit">
               <button onClick={() => setFilterDate(null)} className="text-ink-soft underline-offset-2 active:text-ink transition-colors">
                 {month + 1}월 전체
               </button>
               <ChevronRight size={11} className="text-ink-faint" />
               <span className="flex items-center gap-1.5 text-emerald-600 font-medium">
                 {(() => { const d = new Date(filterDate + "T00:00:00"); return `${d.getDate()}일 (${KO_DAYS[d.getDay()]})`; })()}
-                <button onClick={() => setFilterDate(null)} aria-label="필터 해제" className="w-4 h-4 rounded-full bg-line/70 flex items-center justify-center text-ink-soft active:bg-line">
+                <button onClick={() => setFilterDate(null)} aria-label="필터 해제" className="w-4 h-4 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600 active:bg-emerald-200">
                   <X size={9} />
                 </button>
               </span>
@@ -760,21 +812,37 @@ export default function Ledger({ weekFocusNonce = 0, openAddNonce = 0 }: { weekF
           )}
 
           {isLoading ? (
-            <div className="space-y-2">
-              {[1, 2, 3].map(i => <div key={i} className="h-14 bg-line rounded-lg animate-pulse" />)}
+            <div className="space-y-4">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="animate-pulse">
+                  <div className="h-4 w-24 bg-line/80 rounded-full mb-2" />
+                  <div className="surface-elevated p-3 space-y-3">
+                    <div className="flex items-center gap-3">
+                      <div className="w-14 h-14 rounded-2xl bg-line/70" />
+                      <div className="flex-1 space-y-2">
+                        <div className="h-4 bg-line/70 rounded-lg w-3/4" />
+                        <div className="h-3 bg-line/50 rounded-full w-1/3" />
+                      </div>
+                      <div className="h-5 w-16 bg-emerald-100/80 rounded-lg" />
+                    </div>
+                  </div>
+                </div>
+              ))}
             </div>
           ) : groups.length === 0 ? (
-            <div className="flex flex-col items-center text-center py-10">
-              <SsalCalc level={0.12} size={56} display="E" />
-              <p className="text-body font-medium text-ink mt-3">
+            <div className="surface-elevated flex flex-col items-center text-center px-6 py-12">
+              <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-emerald-50 to-gold/10 flex items-center justify-center mb-4">
+                <SsalCalc level={0.12} size={48} display="E" />
+              </div>
+              <p className="text-body font-semibold text-ink">
                 {(entries as SavingsEntry[]).length === 0 ? "아직 장부가 비어 있어요" : "이 기간엔 기록이 없어요"}
               </p>
               {(entries as SavingsEntry[]).length === 0 && (
                 <>
-                  <p className="text-caption text-ink-soft mt-1">사진 한 장이면 회시생이 첫 수익을 두드려 드려요</p>
+                  <p className="text-caption text-ink-soft mt-1.5 max-w-[240px]">사진 한 장이면 회시생이 첫 수익을 두드려 드려요</p>
                   <button
                     onClick={() => setShowAdd(true)}
-                    className="mt-4 inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-emerald-500 text-white text-caption font-medium active:scale-95 transition-transform"
+                    className="mt-5 inline-flex items-center gap-1.5 px-5 py-2.5 rounded-full btn-primary"
                   >
                     <Camera size={14} /> 첫 기록 남기기
                   </button>
@@ -782,71 +850,72 @@ export default function Ledger({ weekFocusNonce = 0, openAddNonce = 0 }: { weekF
               )}
             </div>
           ) : (
-            <div>
+            <div className="space-y-4">
               {groups.map(([date, items]) => {
                 const d = new Date(date + "T00:00:00");
                 const dayTotal = items.reduce((s, e) => s + e.profit, 0);
                 return (
-                  <div key={date} className="mb-1">
-                    {/* 날짜 그룹 헤더 — 장부의 뼈대 */}
-                    <div className="flex items-baseline justify-between pt-3 pb-1.5 px-1">
-                      <span className="text-caption font-medium text-ink-soft">
-                        {d.getDate()}일 <span className={d.getDay() === 0 ? "text-red-400" : d.getDay() === 6 ? "text-blue-400" : ""}>({KO_DAYS[d.getDay()]})</span>
-                        {date === todayFull && <span className="ml-1.5 text-micro text-emerald-600">오늘</span>}
-                      </span>
-                      <span className="text-caption font-mono text-emerald-600 tabular-nums">+₩{fmt(dayTotal)}</span>
+                  <div key={date}>
+                    <div className="ledger-date-header flex items-center justify-between mb-2 px-1">
+                      <div className="flex items-baseline gap-2">
+                        <span className="text-title font-semibold text-ink tabular-nums">{d.getDate()}</span>
+                        <span className={`text-caption font-medium ${d.getDay() === 0 ? "text-red-400" : d.getDay() === 6 ? "text-blue-400" : "text-ink-soft"}`}>
+                          {KO_DAYS[d.getDay()]}
+                        </span>
+                        {date === todayFull && (
+                          <span className="text-micro px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 font-medium">오늘</span>
+                        )}
+                      </div>
+                      <div className="text-right">
+                        <p className="text-micro text-ink-faint">일일 계상</p>
+                        <p className="text-caption font-mono font-semibold text-emerald-600 tabular-nums">+₩{fmt(dayTotal)}</p>
+                      </div>
                     </div>
-                    <div className="surface-elevated overflow-hidden">
-                      {items.map((entry, i) => (
+                    <div className="space-y-2">
+                      {items.map((entry) => (
                         <button
                           key={entry.id}
                           onClick={() => (selectMode ? toggleSelect(entry.id) : setDetailEntry(entry))}
-                          className={`w-full flex items-center gap-3 px-3.5 py-3 text-left active:bg-cream/80 transition-colors ${i > 0 ? "border-t border-line/70" : ""} ${selectMode && selected.has(entry.id) ? "bg-emerald-50/60" : ""}`}
+                          className={`ledger-entry-row w-full flex items-center gap-3.5 px-4 py-3.5 text-left active:scale-[0.995] transition-all ${
+                            selectMode && selected.has(entry.id) ? "ring-2 ring-emerald-400/60" : ""
+                          }`}
                         >
                           {selectMode && (
                             selected.has(entry.id)
-                              ? <CheckCircle2 size={18} className="text-emerald-500 flex-shrink-0" />
-                              : <Circle size={18} className="text-ink-faint flex-shrink-0" />
+                              ? <CheckCircle2 size={20} className="text-emerald-500 flex-shrink-0" />
+                              : <Circle size={20} className="text-ink-faint flex-shrink-0" />
                           )}
                           {entry.imageUrl
-                            ? <img src={entry.imageUrl} alt="" className="w-11 h-11 rounded-xl object-cover flex-shrink-0 ring-1 ring-line/50" />
-                            : <div className="w-11 h-11 rounded-xl bg-line/80 flex-shrink-0" />}
+                            ? <img src={entry.imageUrl} alt="" className="w-14 h-14 rounded-2xl object-cover flex-shrink-0 ring-2 ring-white shadow-sm" />
+                            : <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-line/90 to-line/50 flex-shrink-0 ring-2 ring-white shadow-sm" />}
                           <div className="flex-1 min-w-0">
-                            <p className="text-body font-medium text-ink truncate">{entry.title}</p>
-                            <div className="flex items-center gap-1.5 mt-0.5 min-w-0">
+                            <p className="text-body font-semibold text-ink truncate leading-snug">{entry.title}</p>
+                            <div className="flex items-center gap-1.5 mt-1 min-w-0 flex-wrap">
                               {entry.incomeSource
-                                ? <span className="text-micro px-1.5 py-0.5 rounded-full bg-gold/10 text-gold shrink-0">{entry.incomeSource}</span>
-                                : <span className="text-micro px-1.5 py-0.5 rounded-full bg-cream text-ink-faint shrink-0">{entry.category}</span>}
+                                ? <span className="ledger-chip ledger-chip-gold">{entry.incomeSource}</span>
+                                : <span className="ledger-chip ledger-chip-muted">{entry.category}</span>}
                               {entry.memo
-                                ? <span className="text-caption text-ink-soft truncate italic">{entry.memo}</span>
-                                : entry.incomeSource && <span className="text-micro text-ink-faint shrink-0">{entry.category}</span>}
+                                ? <span className="text-caption text-ink-soft truncate italic max-w-[120px]">{entry.memo}</span>
+                                : entry.incomeSource && <span className="ledger-chip ledger-chip-muted">{entry.category}</span>}
                             </div>
                           </div>
-                          <div className="text-right flex-shrink-0">
-                            <p className="text-body font-mono font-bold text-emerald-500 tabular-nums leading-tight">+₩{fmt(entry.profit)}</p>
-                            <p className="text-micro text-ink-faint tabular-nums">
-                              <span className="line-through">₩{fmt(entry.originalAmount)}</span>
-                              <span className="mx-0.5">→</span>₩{fmt(entry.actualAmount)}
+                          <div className="text-right flex-shrink-0 pl-1">
+                            <p className="ledger-entry-profit tabular-nums leading-tight">+₩{fmt(entry.profit)}</p>
+                            <p className="text-micro text-ink-faint tabular-nums mt-0.5">
+                              <span className="opacity-60">원가</span>{" "}
+                              <span className="line-through opacity-70">₩{fmt(entry.originalAmount)}</span>
+                              <span className="mx-0.5 opacity-50">→</span>
+                              <span className="opacity-60">실지출</span>{" "}
+                              <span>₩{fmt(entry.actualAmount)}</span>
                             </p>
                           </div>
-                          {!selectMode && <ChevronRight size={14} className="text-ink-faint flex-shrink-0" />}
+                          {!selectMode && <ChevronRight size={15} className="text-ink-faint/70 flex-shrink-0" />}
                         </button>
                       ))}
                     </div>
                   </div>
                 );
               })}
-              {/* 월 합계 */}
-              {!filterDate && !weekFilter && groups.length > 0 && (
-                <div className="flex justify-between items-center mt-4 px-1">
-                  <span className="text-caption text-ink-soft">
-                    {month + 1}월{sourceFilter ? ` ${sourceFilter === UNCLASSIFIED_KEY ? UNCLASSIFIED : sourceFilter}` : ""} 합계 · {displayEntries.length}건
-                  </span>
-                  <span className="text-body font-mono font-semibold text-emerald-600 tabular-nums">
-                    +₩{fmt(sourceFilter ? displayEntries.reduce((t, e) => t + e.profit, 0) : monthTotal)}
-                  </span>
-                </div>
-              )}
             </div>
           )}
         </section>
@@ -858,7 +927,7 @@ export default function Ledger({ weekFocusNonce = 0, openAddNonce = 0 }: { weekF
           className="fixed left-1/2 -translate-x-1/2 z-50 w-[calc(100%-2.5rem)] max-w-md"
           style={{ bottom: "max(0.9rem, env(safe-area-inset-bottom))" }}
         >
-          <div className="flex items-center gap-1.5 bg-white border border-line rounded-2xl px-2 py-2 shadow-lg">
+          <div className="flex items-center gap-1.5 surface-glass rounded-2xl px-2 py-2">
             <button
               onClick={() => setBulkAction("source")}
               disabled={selected.size === 0 || updateBulk.isPending}
@@ -946,13 +1015,16 @@ export default function Ledger({ weekFocusNonce = 0, openAddNonce = 0 }: { weekF
         >
           <style>{`@keyframes adUp{from{transform:translateY(100%)}to{transform:translateY(0)}}@keyframes adFade{from{opacity:0}to{opacity:1}}`}</style>
           <div
-            className="w-full max-w-lg bg-white rounded-t-3xl px-5 pt-3 pb-8 max-h-[88vh] overflow-y-auto overscroll-contain"
+            className="w-full max-w-lg sheet-panel px-5 pt-3 pb-8 max-h-[88vh] overflow-y-auto overscroll-contain"
             style={{ animation: "adUp .28s cubic-bezier(.2,.8,.2,1)" }}
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between mb-4">
               <div className="w-8" />
-              <span className="text-body font-medium text-ink">기록 추가</span>
+              <div className="text-center">
+                <p className="text-body font-semibold text-ink">기록 추가</p>
+                <p className="voice-label mt-0.5">증빙 → 원가 → 계상</p>
+              </div>
               <button onClick={() => setShowAdd(false)} aria-label="닫기" className="w-8 h-8 flex items-center justify-center text-ink-soft">
                 <X size={20} />
               </button>
@@ -962,7 +1034,7 @@ export default function Ledger({ weekFocusNonce = 0, openAddNonce = 0 }: { weekF
             {queue.length === 0 ? (
               <section className="mb-5">
                 <div
-                  className="border-2 border-dashed border-line rounded-card p-6 text-center active:border-emerald-300 cursor-pointer transition-colors"
+                  className="surface-elevated border-2 border-dashed border-emerald-200/60 rounded-card p-6 text-center active:border-emerald-300 cursor-pointer transition-colors"
                   onClick={() => galleryRef.current?.click()}
                   onDragOver={(e) => e.preventDefault()}
                   onDrop={(e) => { e.preventDefault(); handleFiles(e.dataTransfer.files); }}
@@ -1001,7 +1073,7 @@ export default function Ledger({ weekFocusNonce = 0, openAddNonce = 0 }: { weekF
               <section className="mb-5 space-y-3">
                 <p className="text-caption font-mono text-ink-soft tracking-widest uppercase">분석 대기열 ({queue.length})</p>
                 {queue.map(item => (
-                  <div key={item.id} className="border border-line rounded-card overflow-hidden animate-bubble-in">
+                  <div key={item.id} className="ledger-entry-row overflow-hidden animate-bubble-in">
                     {item.dup && (
                       <div className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-50 border-b border-amber-100 text-micro text-amber-700">
                         <Copy size={12} /> 이미 추가한 사진과 같아 보여요
@@ -1213,7 +1285,7 @@ export default function Ledger({ weekFocusNonce = 0, openAddNonce = 0 }: { weekF
                         <button
                           onClick={() => handleQueueConfirm(item)}
                           disabled={item.submitting}
-                          className="w-full py-2.5 bg-emerald-500 text-white text-body font-medium rounded-lg active:scale-[0.98] disabled:opacity-50 transition-transform"
+                          className="w-full py-2.5 btn-primary rounded-lg disabled:opacity-50"
                         >
                           {item.submitting ? <Loader2 className="w-4 h-4 animate-spin mx-auto" /> : "등록"}
                         </button>
@@ -1334,8 +1406,8 @@ export default function Ledger({ weekFocusNonce = 0, openAddNonce = 0 }: { weekF
                     </p>
                   )}
                   <button type="submit" disabled={createEntry.isPending}
-                    className="w-full py-2.5 bg-emerald-500 text-white text-body font-medium rounded-lg active:scale-[0.98] disabled:opacity-50 transition-transform">
-                    {createEntry.isPending ? <Loader2 className="w-4 h-4 animate-spin mx-auto" /> : "등록"}
+                    className="w-full py-2.5 btn-primary rounded-lg disabled:opacity-50">
+                    {createEntry.isPending ? <Loader2 className="w-4 h-4 animate-spin mx-auto" /> : "장부에 계상"}
                   </button>
                 </form>
               )}

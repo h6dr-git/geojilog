@@ -144,10 +144,10 @@ export default function WeeklyWrapped({
       <div className="flex-1 flex flex-col items-center justify-center px-8 text-center max-w-lg w-full mx-auto pointer-events-none">
         {step === 0 && (
           <div key={0} style={{ animation: "wwRise .4s ease both" }}>
-            <p className="text-micro tracking-[0.3em] font-mono mb-2" style={{ color: "#7E8C82" }}>WEEKLY REPORT</p>
+            <p className="text-micro tracking-[0.2em] font-mono mb-2 voice-label" style={{ color: "#E0A92E" }}>주간 보고</p>
             <p className="text-body" style={{ color: "#d8cfae" }}>회시생의 주간 결산</p>
             <p className="text-caption mt-1 font-mono" style={{ color: "#5E6A60" }}>{mmdd(start)} – {mmdd(end)}</p>
-            <p className="mt-8 text-micro" style={{ color: "#7E8C82" }}>이번 주 수익</p>
+            <p className="mt-8 text-micro" style={{ color: "#7E8C82" }}>이번 주 계상 수익</p>
             <p className="font-mono font-extrabold tabular-nums leading-none mt-2" style={{ fontSize: "52px", color: "#34d399" }}>
               +₩{n.toLocaleString("ko-KR")}
             </p>
@@ -157,7 +157,7 @@ export default function WeeklyWrapped({
 
         {step === 1 && (
           <div key={1} style={{ animation: "wwRise .4s ease both" }}>
-            <p className="text-micro tracking-[0.3em] font-mono mb-6" style={{ color: "#7E8C82" }}>BEST MOVE</p>
+            <p className="text-micro tracking-[0.2em] font-mono mb-6 voice-label" style={{ color: "#E0A92E" }}>최고의 한 수</p>
             <p className="text-body mb-5" style={{ color: "#d8cfae" }}>이번 주 최고의 한 수</p>
             {best ? (
               <>
@@ -180,7 +180,7 @@ export default function WeeklyWrapped({
 
         {step === 2 && (
           <div key={2} style={{ animation: "wwRise .4s ease both" }}>
-            <p className="text-micro tracking-[0.3em] font-mono mb-6" style={{ color: "#7E8C82" }}>CPA'S NOTE</p>
+            <p className="text-micro tracking-[0.2em] font-mono mb-6 voice-label" style={{ color: "#E0A92E" }}>회시생 코멘트</p>
             <span className="w-10 h-10 rounded-xl inline-flex items-center justify-center text-body font-medium mb-5" style={{ background: "#eadfc6", color: "#a9863f" }}>회</span>
             <p className="text-title leading-relaxed max-w-[19rem]" style={{ color: "#F4EFE3" }}>{butler}</p>
             <div className="mt-8 space-y-1.5">
@@ -197,7 +197,7 @@ export default function WeeklyWrapped({
 
         {step === 3 && (
           <div key={3} className="w-full pointer-events-auto" style={{ animation: "wwRise .4s ease both" }}>
-            {/* 공유 카드 (캡처 뷰에서도 동일 사용) */}
+            <p className="text-micro tracking-[0.2em] font-mono mb-3 voice-label" style={{ color: "#E0A92E" }}>결산 카드</p>
             {shareCard}
 
             {/* #23 — 카드 스킨: 테마 3종 + 스티커 토글 (선택은 기기에 기억, 앨범과 공유) */}

@@ -127,15 +127,18 @@ export default function QuickRecord({ data, onClose, onSaved }: Props) {
     >
       <style>{`@keyframes qrUp{from{transform:translateY(100%)}to{transform:translateY(0)}}@keyframes qrFade{from{opacity:0}to{opacity:1}}`}</style>
       <div
-        className="w-full max-w-lg bg-white rounded-t-3xl px-5 pt-3 pb-7 max-h-[90vh] overflow-y-auto"
+        className="w-full max-w-lg sheet-panel px-5 pt-3 pb-7 max-h-[90vh] overflow-y-auto"
         style={{ animation: "qrUp .28s cubic-bezier(.2,.8,.2,1)" }}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between mb-3">
           <div className="w-8" />
-          <span className="text-body font-medium text-ink">
-            {isCompleting ? "금액 채우기" : "한 끼 기록 확인"}
-          </span>
+          <div className="text-center">
+            <p className="text-body font-semibold text-ink">
+              {isCompleting ? "금액 채우기" : "거래 확인"}
+            </p>
+            <p className="voice-label mt-0.5">회시생 · 계상 전</p>
+          </div>
           <button onClick={onClose} aria-label="닫기" className="w-8 h-8 flex items-center justify-center text-ink-soft">
             <X size={20} />
           </button>
@@ -169,7 +172,7 @@ export default function QuickRecord({ data, onClose, onSaved }: Props) {
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           placeholder="무엇을 먹었나요?"
-          className="w-full border border-line rounded-card px-3 py-2.5 text-body mb-3 focus:outline-none focus:border-emerald-400"
+          className="input-field mb-3"
         />
 
         {/* 카테고리 */}
@@ -258,7 +261,7 @@ export default function QuickRecord({ data, onClose, onSaved }: Props) {
           value={memo}
           onChange={(e) => setMemo(e.target.value)}
           placeholder="나만 보는 한 줄 일기"
-          className="w-full border border-line rounded-card px-3 py-2.5 text-body mb-3 focus:outline-none focus:border-emerald-400"
+          className="input-field mb-3"
         />
 
         {/* AI 근거 */}
@@ -272,9 +275,9 @@ export default function QuickRecord({ data, onClose, onSaved }: Props) {
         <button
           onClick={handleSave}
           disabled={saving}
-          className="mt-2 w-full bg-emerald-500 text-white font-medium py-3.5 rounded-2xl flex items-center justify-center gap-2 active:scale-[0.99] transition-transform disabled:opacity-50"
+          className="mt-2 w-full btn-primary py-3.5 rounded-2xl disabled:opacity-50"
         >
-          {saving ? <Loader2 className="w-5 h-5 animate-spin" /> : "저장"}
+          {saving ? <Loader2 className="w-5 h-5 animate-spin" /> : profit > 0 ? `+₩${profit.toLocaleString("ko-KR")} 계상하기` : "장부에 기록"}
         </button>
 
         {/* 나중에 / 미완성 삭제 */}

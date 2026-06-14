@@ -20,6 +20,7 @@ import { dayOfWeekRhythm, weeklyTrend, monthlyTrend, monthHeatmap, allTimeRecord
 import { intelWeeklyLine, meaningOfTotal } from "@/lib/intel";
 import { WeekRhythm, TrendBars, MonthHeat, RecordsRow, CumulativeCurve } from "@/components/StatsBlocks";
 import { ChevronLeft, ChevronRight, Sparkles, BookMarked } from "lucide-react";
+import { CPA_NAME } from "@/lib/brand";
 
 type Period = "week" | "month" | "all";
 
@@ -183,7 +184,7 @@ export default function Profile({ onOpenWeekly }: { onOpenWeekly: () => void }) 
     <div className="page-shell max-w-lg mx-auto px-5 pt-12 pb-24">
       <header className="pb-5 animate-fade-up">
         <p className="page-title">서재</p>
-        <p className="page-subtitle">회시생이 정리해 둔 보고서</p>
+        <p className="page-subtitle">기록이 만든 보고서 · 2차 생산지</p>
       </header>
 
       {list.length === 0 ? (
@@ -236,12 +237,12 @@ export default function Profile({ onOpenWeekly }: { onOpenWeekly: () => void }) 
           )}
 
           {/* ── 단일 보고서 — 탭 없이 스크롤로 전부 읽힌다 ── */}
-          <div className="surface-paper texture-paper p-5 animate-fade-up">
+          <div className="ledger-hero surface-paper texture-paper p-5 animate-fade-up">
             <div className="flex items-center justify-between mb-2.5">
               <div className="flex items-center gap-2">
                 <SpeakerBadge speaker="cpa" size={22} />
-                <p className="text-micro text-gold tracking-wide font-medium">
-                  {period === "week" ? "주간 보고" : period === "month" ? "월간 보고" : "총람"}
+                <p className="voice-label">
+                  {CPA_NAME} · {range.label} {period === "week" ? "주간 보고" : period === "month" ? "월간 보고" : "총람"}
                 </p>
               </div>
               {period === "week" && offset === 0 && count > 0 && (
@@ -253,9 +254,9 @@ export default function Profile({ onOpenWeekly }: { onOpenWeekly: () => void }) 
 
             <p className="profit-hero tabular-nums leading-tight">+₩{fmt(profit)}</p>
             <p className="text-caption mt-1" style={{ color: "#5c5647" }}>
-              {count}건
+              거래 {count}건
               {monthCompare != null && (
-                <> · 지난달 같은 기간보다 {monthCompare >= 0 ? `₩${fmt(Math.abs(monthCompare))} 더 벌었습니다` : `₩${fmt(Math.abs(monthCompare))} 적습니다`}</>
+                <> · 지난달 같은 기간 대비 {monthCompare >= 0 ? "+" : "−"}₩{fmt(Math.abs(monthCompare))}</>
               )}
             </p>
 

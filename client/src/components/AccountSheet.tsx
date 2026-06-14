@@ -124,7 +124,7 @@ export default function AccountSheet({ onClose }: { onClose: () => void }) {
     >
       <style>{`@keyframes acUp{from{transform:translateY(100%)}to{transform:translateY(0)}}@keyframes acFade{from{opacity:0}to{opacity:1}}`}</style>
       <div
-        className="w-full max-w-lg bg-white rounded-t-3xl px-5 pt-3 pb-8"
+        className="w-full max-w-lg sheet-panel px-5 pt-3 pb-8"
         style={{ animation: "acUp .28s cubic-bezier(.2,.8,.2,1)" }}
         onClick={(e) => e.stopPropagation()}
       >
@@ -196,7 +196,7 @@ export default function AccountSheet({ onClose }: { onClose: () => void }) {
         {/* #58 — 업무 지시 (서면 피드백 → /ops 인박스) */}
         <button
           onClick={() => setShowFeedback(true)}
-          className="w-full flex items-center justify-between bg-white border border-line rounded-card px-4 py-3.5 mb-2.5 active:bg-cream transition-colors"
+          className="w-full flex items-center justify-between surface-elevated px-4 py-3.5 mb-2.5 active:scale-[0.99] transition-transform"
         >
           <span className="flex items-center gap-2.5 text-body text-ink">
             <MessageSquarePlus size={17} className="text-ink-soft" /> 업무 지시
@@ -234,7 +234,7 @@ export default function AccountSheet({ onClose }: { onClose: () => void }) {
               if (canPrompt) await promptInstall();
               else setShowInstallGuide(true);
             }}
-            className="w-full flex items-center justify-between bg-white border border-line rounded-card px-4 py-3.5 mb-2.5 active:bg-cream transition-colors"
+            className="w-full flex items-center justify-between surface-elevated px-4 py-3.5 mb-2.5 active:scale-[0.99] transition-transform"
           >
             <span className="flex items-center gap-2.5 text-body text-ink">
               <SquarePlus size={17} className="text-gold" /> 홈 화면에 추가
@@ -244,7 +244,7 @@ export default function AccountSheet({ onClose }: { onClose: () => void }) {
         )}
 
         {/* 데이터 내보내기 */}
-        <button onClick={() => setShowExport(true)} className="w-full flex items-center justify-between bg-white border border-line rounded-card px-4 py-3.5 active:bg-cream transition-colors">
+        <button onClick={() => setShowExport(true)} className="w-full flex items-center justify-between surface-elevated px-4 py-3.5 active:scale-[0.99] transition-transform">
           <span className="flex items-center gap-2.5 text-body text-ink">
             <Download size={17} className="text-emerald-500" /> 데이터 내보내기
           </span>

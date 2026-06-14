@@ -31,7 +31,7 @@ export default function FirstRecordGate({
 
       <button
         onClick={onPhoto}
-        className="mt-10 w-full max-w-[18rem] bg-emerald-500 text-white font-medium py-4 rounded-card flex items-center justify-center gap-2 active:scale-[0.99] transition-transform shadow-lg shadow-emerald-500/30"
+        className="mt-10 w-full max-w-[18rem] btn-primary py-4 rounded-card"
       >
         <Camera size={18} /> 사진 한 장 올리기
       </button>

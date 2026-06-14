@@ -6,6 +6,13 @@ import {
   SavingsEntry, ExportRange, fmt, todayStr, filterByRange, toMarkdownTable, toCsv,
 } from "@/lib/ledger";
 
+const RANGE_LABELS: Record<ExportRange, string> = {
+  all: "전체",
+  month: "이번 달",
+  week: "이번 주",
+  custom: "직접 선택",
+};
+
 export default function ExportSheet({ entries, onClose }: { entries: SavingsEntry[]; onClose: () => void }) {
   const [exportRange, setExportRange] = useState<ExportRange>("all");
   const [customFrom, setCustomFrom] = useState("");
@@ -16,6 +23,7 @@ export default function ExportSheet({ entries, onClose }: { entries: SavingsEntr
     () => filterByRange(entries, exportRange, customFrom, customTo),
     [entries, exportRange, customFrom, customTo]
   );
+  const exportTotal = useMemo(() => exportEntries.reduce((s, e) => s + e.profit, 0), [exportEntries]);
 
   const handleCopyMd = async () => {
     const md = toMarkdownTable(exportEntries);
@@ -51,8 +59,7 @@ export default function ExportSheet({ entries, onClose }: { entries: SavingsEntr
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    const label = { all: "전체", month: "이번달", week: "이번주", custom: "기간" }[exportRange];
-    a.download = `거지로그_${label}_${todayStr()}.csv`;
+    a.download = `거지로그_${RANGE_LABELS[exportRange]}_${todayStr()}.csv`;
     a.click();
     URL.revokeObjectURL(url);
     toast.success("CSV 파일이 다운로드됩니다");
@@ -66,69 +73,65 @@ export default function ExportSheet({ entries, onClose }: { entries: SavingsEntr
     >
       <style>{`@keyframes exUp{from{transform:translateY(100%)}to{transform:translateY(0)}}@keyframes exFade{from{opacity:0}to{opacity:1}}`}</style>
       <div
-        className="w-full max-w-lg bg-white rounded-t-3xl px-5 pt-3 pb-8"
+        className="w-full max-w-lg sheet-panel px-5 pt-3 pb-8"
         style={{ animation: "exUp .28s cubic-bezier(.2,.8,.2,1)" }}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between mb-4">
           <div className="w-8" />
-          <span className="text-body font-medium text-ink">데이터 내보내기</span>
+          <div className="text-center">
+            <p className="text-body font-semibold text-ink">데이터 내보내기</p>
+            <p className="voice-label mt-0.5">회시생 · 장부 백업</p>
+          </div>
           <button onClick={onClose} aria-label="닫기" className="w-8 h-8 flex items-center justify-center text-ink-soft">
             <X size={20} />
           </button>
         </div>
 
         <p className="text-caption text-ink-soft mb-2">기간 선택</p>
-        <div className="flex gap-2 flex-wrap">
+        <div className="segment-track mb-2">
           {(["all", "month", "week", "custom"] as ExportRange[]).map((r) => (
             <button
               key={r}
               onClick={() => setExportRange(r)}
-              className={`px-3 py-1.5 text-caption rounded-full border transition-colors ${
-                exportRange === r
-                  ? "bg-emerald-500 text-white border-emerald-500"
-                  : "border-line text-ink-soft active:bg-cream"
+              className={`flex-1 py-2 rounded-full text-caption font-medium transition-all min-w-0 px-1 ${
+                exportRange === r ? "segment-active" : "text-ink-soft active:bg-line/60"
               }`}
             >
-              {{ all: "전체", month: "이번 달", week: "이번 주", custom: "직접 선택" }[r]}
+              {RANGE_LABELS[r]}
             </button>
           ))}
         </div>
         {exportRange === "custom" && (
-          <div className="flex gap-2 mt-2.5">
-            <input
-              type="date" value={customFrom} onChange={(e) => setCustomFrom(e.target.value)}
-              className="flex-1 text-caption border border-line rounded-lg px-2 py-1.5 focus:outline-none focus:border-emerald-400"
-            />
+          <div className="flex gap-2 mt-2">
+            <input type="date" value={customFrom} onChange={(e) => setCustomFrom(e.target.value)} className="input-field text-caption py-2" />
             <span className="text-caption text-ink-soft self-center">~</span>
-            <input
-              type="date" value={customTo} onChange={(e) => setCustomTo(e.target.value)}
-              className="flex-1 text-caption border border-line rounded-lg px-2 py-1.5 focus:outline-none focus:border-emerald-400"
-            />
+            <input type="date" value={customTo} onChange={(e) => setCustomTo(e.target.value)} className="input-field text-caption py-2" />
           </div>
         )}
 
-        <div className="bg-cream rounded-card px-3.5 py-2.5 mt-4">
-          <p className="text-caption text-ink-soft">
-            {exportEntries.length}건 · 수익{" "}
-            <span className="font-semibold text-emerald-600">₩{fmt(exportEntries.reduce((s, e) => s + e.profit, 0))}</span>
-          </p>
+        <div className="ledger-hero surface-elevated px-4 py-3.5 mt-4">
+          <p className="voice-label mb-1.5">내보낼 요약</p>
+          <p className="ledger-entry-profit text-title leading-tight">+₩{fmt(exportTotal)}</p>
+          <p className="text-caption text-ink-soft mt-1">거래 {exportEntries.length}건 · {RANGE_LABELS[exportRange]}</p>
         </div>
 
         <div className="flex gap-2 mt-4">
           <button
-            onClick={handleCopyMd} disabled={exportEntries.length === 0}
-            className="flex-1 flex items-center justify-center gap-1.5 py-3 text-body border border-line rounded-xl active:bg-cream disabled:opacity-40 transition-colors"
+            onClick={handleCopyMd}
+            disabled={exportEntries.length === 0}
+            className="flex-1 flex items-center justify-center gap-1.5 py-3 surface-elevated text-body disabled:opacity-40 active:scale-[0.99] transition-transform"
           >
             {copied ? <Check size={14} className="text-emerald-500" /> : <Copy size={14} />}
-            Notion MD 복사
+            Notion MD
           </button>
           <button
-            onClick={handleDownloadCsv} disabled={exportEntries.length === 0}
-            className="flex-1 flex items-center justify-center gap-1.5 py-3 text-body border border-line rounded-xl active:bg-cream disabled:opacity-40 transition-colors"
+            onClick={handleDownloadCsv}
+            disabled={exportEntries.length === 0}
+            className="flex-1 btn-primary py-3 rounded-xl disabled:opacity-40"
           >
             <Download size={14} />
-            CSV 다운로드
+            CSV
           </button>
         </div>
       </div>

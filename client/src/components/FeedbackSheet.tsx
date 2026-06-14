@@ -17,14 +17,17 @@ export default function FeedbackSheet({ onClose }: { onClose: () => void }) {
   return (
     <div className="fixed inset-0 z-[70] flex items-end justify-center bg-black/40" onClick={onClose}>
       <div
-        className="w-full max-w-lg bg-white rounded-t-3xl px-5 pt-3 pb-8"
+        className="w-full max-w-lg sheet-panel px-5 pt-3 pb-8"
         style={{ animation: "fbUp .28s cubic-bezier(.2,.8,.2,1)" }}
         onClick={(e) => e.stopPropagation()}
       >
         <style>{`@keyframes fbUp{from{transform:translateY(100%)}to{transform:translateY(0)}}`}</style>
         <div className="flex items-center justify-between mb-1">
           <div className="w-8" />
-          <span className="text-body font-medium text-ink">업무 지시</span>
+          <div className="text-center">
+            <p className="text-body font-semibold text-ink">업무 지시</p>
+            <p className="voice-label mt-0.5">회시생에게</p>
+          </div>
           <button onClick={onClose} aria-label="닫기" className="w-8 h-8 flex items-center justify-center text-ink-soft">
             <X size={20} />
           </button>
@@ -39,7 +42,7 @@ export default function FeedbackSheet({ onClose }: { onClose: () => void }) {
           maxLength={500}
           rows={5}
           placeholder="예) 사진 올릴 때 ○○가 불편합니다 / ○○ 기능이 있으면 좋겠습니다"
-          className="w-full border border-line rounded-card px-3.5 py-3 text-body focus:outline-none focus:border-emerald-400 resize-none"
+          className="w-full input-field resize-none py-3"
         />
         <div className="flex items-center justify-between mt-1 mb-3">
           <span className="text-micro text-ink-faint">{text.length}/500</span>
@@ -47,7 +50,7 @@ export default function FeedbackSheet({ onClose }: { onClose: () => void }) {
         <button
           onClick={() => text.trim().length >= 2 && submit.mutate({ text })}
           disabled={submit.isPending || text.trim().length < 2}
-          className="w-full bg-emerald-500 text-white font-medium py-3.5 rounded-2xl flex items-center justify-center gap-2 active:scale-[0.99] disabled:opacity-50 transition-transform"
+          className="w-full btn-primary py-3.5 rounded-2xl disabled:opacity-50"
         >
           {submit.isPending ? <Loader2 size={16} className="animate-spin" /> : <Send size={15} />}
           지시 내리기
