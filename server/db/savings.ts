@@ -1,5 +1,5 @@
 import { desc, eq } from "drizzle-orm";
-import { amountsForProfitKind } from "@shared/profitKinds";
+import { amountsForProfitKind, inferProfitKind, type ProfitKind } from "@shared/profitKinds";
 import { savingsEntries, InsertSavingsEntry } from "../../drizzle/schema";
 import { guessIncomeSource, type IncomeSource } from "@shared/incomeSources";
 import { getDb } from "./client";
@@ -194,6 +194,26 @@ export async function backfillIncomeSources(userId: number) {
     }
   }
   return { classified, remaining: rows.length - classified };
+}
+
+/** 구 기록 profitKind='save' 기본값을 수익원·금액 패턴으로 보정 (표시·내보내기·ops 정합) */
+export async function backfillProfitKinds(userId?: number) {
+  const db = await getDb();
+  if (!db) return { updated: 0, scanned: 0 };
+  const rows = userId
+    ? await db.select().from(savingsEntries).where(eq(savingsEntries.userId, userId))
+    : await db.select().from(savingsEntries);
+  let updated = 0;
+  for (const e of rows) {
+    const inferred = inferProfitKind(e.incomeSource, e.originalAmount, e.actualAmount);
+    const current = (e.profitKind ?? "save") as ProfitKind;
+    if (inferred === current) continue;
+    // 마이그레이션 DEFAULT 'save'만 덮어씀 — 사용자가 save 외 유형을 고른 기록은 유지
+    if (current !== "save") continue;
+    await db.update(savingsEntries).set({ profitKind: inferred }).where(eq(savingsEntries.id, e.id));
+    updated += 1;
+  }
+  return { updated, scanned: rows.length };
 }
 
 

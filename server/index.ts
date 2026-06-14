@@ -7,7 +7,7 @@ import { registerStorageProxy } from "./storageProxy";
 import { appRouter } from "./routers";
 import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
-import { getUserById, getOpsReport } from "./db";
+import { getUserById, getOpsReport, backfillProfitKinds } from "./db";
 import { registerKakaoAuth } from "./kakao";
 import { startPushScheduler } from "./push";
 import { startBackupScheduler, buildBackupDump, lastBackupInfo } from "./backup";
@@ -135,6 +135,12 @@ ${inboxRows}
   <div class="mini"><div class="l">가격 보정</div><div class="v">${r.totals.priceCorrections}</div></div>
   <div class="mini"><div class="l">가격 코멘트</div><div class="v">${r.totals.priceComments}</div></div>
 </div>
+<div class="row3" style="margin-top:8px">
+  <div class="mini"><div class="l">배포 커밋</div><div class="v">${process.env.RAILWAY_GIT_COMMIT_SHA?.slice(0, 7) ?? "—"}</div></div>
+  <div class="mini"><div class="l">마지막 백업</div><div class="v">${esc(lastBackupInfo()?.at?.slice(5) ?? "—")}</div></div>
+  <div class="mini"><div class="l">사진 저장</div><div class="v" style="color:${process.env.UPLOAD_DIR ? "#34d399" : "#f87171"}">${process.env.UPLOAD_DIR ? "Volume ✓" : "⚠ 휘발"}</div></div>
+</div>
+<p class="note">${process.env.UPLOAD_DIR ? "UPLOAD_DIR 설정됨 — 재배포 후에도 사진 유지." : "UPLOAD_DIR 미설정 — Railway 재배포 시 사진 증발 가능. Volume + UPLOAD_DIR=/data/uploads 권장."}</p>
 
 <h2>⑥ 가격 피드백 <span class="d">사장님 반박·보정 — AI 프롬프트 학습 데이터</span></h2>
 ${priceRows}
@@ -174,7 +180,22 @@ ${priceRows}
     try {
       await getUserById(0); // 실제 쿼리로 DB 연결을 가볍게 핑.
       // 배포 검증용 스탬프 (#61): 지금 도는 코드가 어느 커밋인지 + 마지막 자동 백업
-      res.json({ ok: true, db: "up", env, commit: process.env.RAILWAY_GIT_COMMIT_SHA?.slice(0, 7) ?? null, lastBackup: lastBackupInfo() });
+      res.json({
+        ok: true,
+        db: "up",
+        env,
+        commit: process.env.RAILWAY_GIT_COMMIT_SHA?.slice(0, 7) ?? null,
+        lastBackup: lastBackupInfo(),
+        storage: {
+          uploadDirConfigured: !!process.env.UPLOAD_DIR,
+          persistence:
+            process.env.UPLOAD_DIR
+              ? "volume"
+              : process.env.NODE_ENV === "production"
+                ? "ephemeral"
+                : "local-dev",
+        },
+      });
     } catch (e) {
       res
         .status(500)
@@ -214,6 +235,11 @@ ${priceRows}
 
   startPushScheduler();
   startBackupScheduler(); // #61 — 일일 DB 덤프(볼륨, 7일 보존)
+  backfillProfitKinds()
+    .then((r) => {
+      if (r.updated > 0) console.log(`[db] profitKind backfill: ${r.updated}/${r.scanned}`);
+    })
+    .catch((e) => console.warn("[db] profitKind backfill skipped:", e));
   server.listen(port, () => {
     console.log(`Server running on http://localhost:${port}/`);
   });

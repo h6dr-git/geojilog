@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { protectedProcedure, router } from "../trpc";
-import { getSavingsEntries, createSavingsEntry, deleteSavingsEntry, deleteMultipleSavingsEntries, deleteAllSavingsEntries, countSavingsEntriesByCategory, updateSavingsEntry, updateMultipleSavingsEntries, logUsageEvent, upsertItemFromEntry, backfillIncomeSources, isValidIncomeSourceFor } from "../db";
+import { getSavingsEntries, createSavingsEntry, deleteSavingsEntry, deleteMultipleSavingsEntries, deleteAllSavingsEntries, countSavingsEntriesByCategory, updateSavingsEntry, updateMultipleSavingsEntries, logUsageEvent, upsertItemFromEntry, backfillIncomeSources, backfillProfitKinds, isValidIncomeSourceFor } from "../db";
 import { TRPCError } from "@trpc/server";
 import { CUSTOM_SOURCE_NAME_MAX, normalizeSavingsSteps, reconcileSavingsSteps } from "@shared/incomeSources";
 import { amountsForProfitKind, inferProfitKind } from "@shared/profitKinds";
@@ -177,6 +177,10 @@ export const savingsRouter = router({
     // #38 — 미분류 기록 1회 정리 (제목·메모 키워드 휴리스틱, LLM 비용 없음)
     reclassifySources: protectedProcedure
       .mutation(async ({ ctx }) => backfillIncomeSources(ctx.user.id)),
+
+    // profitKind 마이그레이션 DEFAULT 보정 — 구 기록 일괄 추론 (멱등)
+    backfillProfitKinds: protectedProcedure
+      .mutation(async ({ ctx }) => backfillProfitKinds(ctx.user.id)),
 
     deleteAll: protectedProcedure
       .mutation(async ({ ctx }) => {
