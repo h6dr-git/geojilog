@@ -109,11 +109,12 @@ export default function EntryDetailSheet({
   const handleDelete = async () => {
     try {
       await deleteEntry.mutateAsync({ id: entry.id });
-      toast.success("삭제됐습니다");
+      toast.success("삭제됐습니다", { id: "entry-delete" });
       setConfirmDelete(false);
       onClose();
     } catch {
       toast.error("삭제에 실패했습니다");
+      throw new Error("delete failed");
     }
   };
 
@@ -189,7 +190,7 @@ export default function EntryDetailSheet({
               )}
               {!threeLayer && usual != null && (
                 <p className="text-micro text-center -mt-2.5 text-ink-faint">
-                  이 유형 평소 실지출 ₩{fmt(usual)} (최근 {sourceUsual!.sample}건 중앙값)
+                  이 유형 평소 시장에 보낸 돈 ₩{fmt(usual)} (최근 {sourceUsual!.sample}건 중앙값)
                 </p>
               )}
             </div>

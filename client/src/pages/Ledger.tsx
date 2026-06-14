@@ -14,7 +14,7 @@ import {
   Upload, Camera, PenLine, Loader2,
   Copy, ChevronDown, ChevronUp, ChevronRight, ChevronLeft,
   X, RotateCw, Plus, CalendarDays, Search, CheckSquare, CheckCircle2, Circle, Trash2,
-  TrendingUp, TrendingDown,
+  TrendingUp, TrendingDown, Images,
 } from "lucide-react";
 import EntryDetailSheet from "@/components/EntryDetailSheet";
 import ConfirmDialog from "@/components/ConfirmDialog";
@@ -64,6 +64,8 @@ interface QueueItem {
   aiOriginalAmount?: number;
   aiActualAmount?: number;
   savingsSteps?: SavingsStep[]; // #50 연쇄 할인 단계 (내 몫 기준)
+  profitKind: ProfitKind;
+  userPriceNote: string;
 }
 
 // ── 메인 컴포넌트 ─────────────────────────────────────────────
@@ -336,6 +338,8 @@ export default function Ledger({ weekFocusNonce = 0, openAddNonce = 0 }: { weekF
     } catch { /* 크롭 실패 시 원본 유지 */ }
 
     const autoTitle = makeDefaultTitle(date, result.category);
+    const readyOriginal = result.myShare?.originalAmount ?? result.prior?.originalAmount ?? result.estimatedOriginalAmount;
+    const readyActual = result.myShare?.actualAmount ?? result.estimatedActualAmount;
 
     setQueue(prev => prev.map(it => it.id === itemId ? {
       ...it,
@@ -343,6 +347,8 @@ export default function Ledger({ weekFocusNonce = 0, openAddNonce = 0 }: { weekF
       title: autoTitle,
       category: result.category,
       incomeSource: result.incomeSource, // #37+#38 — AI 분류 (큐에서 수정 가능)
+      profitKind: inferProfitKind(result.incomeSource, readyOriginal, readyActual),
+      userPriceNote: "",
       // #43 — 단체면 '내 몫'이 바로 꽂힌다 (서버가 균등 분배 계산). 단독이면 단골 우선(P2).
       originalAmount: String(result.myShare?.originalAmount ?? result.prior?.originalAmount ?? result.estimatedOriginalAmount),
       priorDate: result.prior?.date,
@@ -382,6 +388,7 @@ export default function Ledger({ weekFocusNonce = 0, openAddNonce = 0 }: { weekF
       title: "", category: categoryNames[0] ?? "식비",
       originalAmount: "", actualAmount: "",
       aiReason: "", date: todayStr(), memo: "", incomeSource: null,
+      profitKind: "save", userPriceNote: "",
     }));
 
     setQueue(prev => {
@@ -413,11 +420,11 @@ export default function Ledger({ weekFocusNonce = 0, openAddNonce = 0 }: { weekF
   const handleQueueConfirm = async (item: QueueItem) => {
     const o = Number(item.originalAmount);
     const a = Number(item.actualAmount);
-    if (!item.originalAmount || item.actualAmount === "") {
+    const kind = item.profitKind ?? inferProfitKind(item.incomeSource, o, a);
+    if (!item.originalAmount || (kind !== "earn" && item.actualAmount === "")) {
       toast.error(`${LEDGER_LABELS.original}과 ${LEDGER_LABELS.actual}을 입력해주세요`);
       return;
     }
-    const kind = inferProfitKind(item.incomeSource, o, a);
     const normalized = amountsForProfitKind(kind, o, a);
     setQueue(prev => prev.map(it => it.id === item.id ? { ...it, submitting: true } : it));
     try {
@@ -429,6 +436,7 @@ export default function Ledger({ weekFocusNonce = 0, openAddNonce = 0 }: { weekF
         originalAmount: normalized.originalAmount,
         actualAmount: normalized.actualAmount,
         profitKind: kind,
+        userPriceNote: item.userPriceNote.trim() || undefined,
         aiEstimated: "yes",
         aiOriginalAmount: item.aiOriginalAmount,
         aiActualAmount: item.aiActualAmount,
@@ -1023,10 +1031,12 @@ export default function Ledger({ weekFocusNonce = 0, openAddNonce = 0 }: { weekF
           onConfirm={async () => {
             try {
               await deleteBulk.mutateAsync({ ids: Array.from(selected) });
-              toast.success(`${selected.size}건을 삭제했어요`);
+              toast.success(`${selected.size}건을 삭제했어요`, { id: "entry-delete" });
+              setBulkAction(null);
               exitSelect();
             } catch {
               toast.error("삭제에 실패했어요");
+              throw new Error("delete failed");
             }
           }}
           onCancel={() => setBulkAction(null)}
@@ -1059,23 +1069,32 @@ export default function Ledger({ weekFocusNonce = 0, openAddNonce = 0 }: { weekF
 
             {/* 사진 업로드 영역 — 업로드가 시작되면 큰 드롭존은 내려가고 컴팩트 행으로 (#31) */}
             {queue.length === 0 ? (
-              <section className="mb-5">
-                <div
-                  className="surface-elevated border-2 border-dashed border-emerald-200/60 rounded-card p-6 text-center active:border-emerald-300 cursor-pointer transition-colors"
-                  onClick={() => galleryRef.current?.click()}
-                  onDragOver={(e) => e.preventDefault()}
-                  onDrop={(e) => { e.preventDefault(); handleFiles(e.dataTransfer.files); }}
-                >
-                  <Upload className="w-7 h-7 text-emerald-400 mx-auto mb-2" />
-                  <p className="text-body font-medium text-ink">사진을 올리면 회시생이 번 돈을 두드려요</p>
-                  <p className="text-caption text-ink-soft mt-1">한 번에 여러 장 · 탭해서 선택</p>
+              <section
+                className="mb-5 surface-elevated border-2 border-dashed border-emerald-200/50 rounded-card p-4"
+                onDragOver={(e) => e.preventDefault()}
+                onDrop={(e) => { e.preventDefault(); handleFiles(e.dataTransfer.files); }}
+              >
+                <p className="text-body font-medium text-ink text-center mb-1">증빙 사진을 올리세요</p>
+                <p className="text-caption text-ink-soft text-center mb-4">회시생이 시중가를 두드립니다 · 여러 장 가능</p>
+                <div className="grid grid-cols-2 gap-2.5">
+                  <button
+                    type="button"
+                    onClick={() => galleryRef.current?.click()}
+                    className="flex flex-col items-center justify-center gap-2 py-5 rounded-card btn-primary"
+                  >
+                    <Images size={22} />
+                    <span className="text-body font-medium">보관함</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={openCamera}
+                    className="flex flex-col items-center justify-center gap-2 py-5 rounded-card surface-paper border border-line active:brightness-[0.98]"
+                  >
+                    <Camera size={22} className="text-emerald-600" />
+                    <span className="text-body font-medium text-ink">카메라</span>
+                  </button>
                 </div>
-                <button
-                  onClick={openCamera}
-                  className="mt-2 w-full flex items-center justify-center gap-1.5 py-2.5 text-caption text-ink-soft border border-line rounded-lg active:border-emerald-300 active:text-emerald-600 transition-colors"
-                >
-                  <Camera size={14} /> 카메라로 촬영
-                </button>
+                <p className="text-micro text-ink-faint text-center mt-3">파일을 여기에 끌어다 놓을 수도 있어요</p>
               </section>
             ) : (
               <section className="mb-4 flex gap-2">
@@ -1212,9 +1231,11 @@ export default function Ledger({ weekFocusNonce = 0, openAddNonce = 0 }: { weekF
                                 value={item.incomeSource ?? ""}
                                 onChange={e => {
                                   const v = e.target.value || null;
-                                  // #47 — 고정가 유형은 실지출 자동 채움 (생성 플로우, 수정 가능)
                                   const patch: Partial<QueueItem> = { incomeSource: v };
                                   if (v != null && FIXED_ACTUAL[v] !== undefined) patch.actualAmount = String(FIXED_ACTUAL[v]);
+                                  const o = Number(item.originalAmount) || 0;
+                                  const a = v != null && FIXED_ACTUAL[v] !== undefined ? FIXED_ACTUAL[v] : Number(item.actualAmount) || 0;
+                                  patch.profitKind = inferProfitKind(v, o, a);
                                   updateQueueItem(item.id, patch);
                                 }}
                                 className={`text-caption border-0 border-b border-line focus:outline-none focus:border-emerald-300 bg-transparent ${item.incomeSource ? "text-gold" : "text-ink-faint"}`}
@@ -1227,6 +1248,18 @@ export default function Ledger({ weekFocusNonce = 0, openAddNonce = 0 }: { weekF
                           <button onClick={() => removeQueueItem(item.id)} className="p-1 text-ink-faint active:text-ink-soft flex-shrink-0">
                             <X size={14} />
                           </button>
+                        </div>
+
+                        <div>
+                          <p className="text-micro text-ink-soft mb-1 px-1">수익 유형</p>
+                          <ProfitKindChips
+                            value={item.profitKind}
+                            onChange={(k) => {
+                              const patch: Partial<QueueItem> = { profitKind: k };
+                              if (k === "earn") patch.actualAmount = "0";
+                              updateQueueItem(item.id, patch);
+                            }}
+                          />
                         </div>
 
                         <div className="flex items-baseline justify-between rounded-card bg-emerald-50 px-3 py-2.5">
@@ -1246,7 +1279,7 @@ export default function Ledger({ weekFocusNonce = 0, openAddNonce = 0 }: { weekF
                               className="w-16 border-0 border-b border-line bg-transparent text-right tabular-nums text-ink-soft focus:border-emerald-400 focus:outline-none" />
                           </span>
                           <span className="text-ink-faint">→</span>
-                          <span className="flex items-center gap-1">실제
+                          <span className="flex items-center gap-1">{LEDGER_LABELS.actual}
                             <input type="number" value={item.actualAmount}
                               onChange={e => updateQueueItem(item.id, { actualAmount: e.target.value })}
                               className="w-16 border-0 border-b border-line bg-transparent text-right tabular-nums text-ink-soft focus:border-emerald-400 focus:outline-none" />
@@ -1260,7 +1293,7 @@ export default function Ledger({ weekFocusNonce = 0, openAddNonce = 0 }: { weekF
                         {(() => {
                           const u = incomeSourceUsual(entries as SavingsEntry[], item.incomeSource);
                           return u ? (
-                            <p className="text-micro text-ink-faint px-1">이 유형 평소 실지출 ₩{fmt(u.usualActual)} (최근 {u.sample}건)</p>
+                            <p className="text-micro text-ink-faint px-1">이 유형 평소 시장에 보낸 돈 ₩{fmt(u.usualActual)} (최근 {u.sample}건)</p>
                           ) : null;
                         })()}
 
@@ -1306,7 +1339,20 @@ export default function Ledger({ weekFocusNonce = 0, openAddNonce = 0 }: { weekF
                         />
 
                         {item.aiReason && (
-                          <p className="text-micro text-ink-faint leading-relaxed">{item.aiReason}</p>
+                          <div className="surface-paper px-3 py-2.5">
+                            <p className="text-micro text-ink-soft leading-relaxed">
+                              <span className="text-emerald-600 font-medium">회시생 추정</span> — {item.aiReason}
+                            </p>
+                            <label className="text-micro text-ink-soft block mt-2 mb-1">추정에 대한 코멘트 (선택)</label>
+                            <textarea
+                              value={item.userPriceNote}
+                              onChange={e => updateQueueItem(item.id, { userPriceNote: e.target.value })}
+                              maxLength={500}
+                              rows={2}
+                              placeholder="예: 학식은 4,500원이에요 — 다음부터 반영해 주세요"
+                              className="input-field text-caption py-2 resize-none w-full"
+                            />
+                          </div>
                         )}
 
                         <button
@@ -1376,7 +1422,7 @@ export default function Ledger({ weekFocusNonce = 0, openAddNonce = 0 }: { weekF
                     {(() => {
                       const u = incomeSourceUsual(entries as SavingsEntry[], manualSource);
                       return u ? (
-                        <p className="text-micro text-ink-faint mt-1.5">사장님의 {manualSource} 평소 실지출 — ₩{fmt(u.usualActual)} (최근 {u.sample}건 중앙값)</p>
+                        <p className="text-micro text-ink-faint mt-1.5">사장님의 {manualSource} 평소 시장에 보낸 돈 — ₩{fmt(u.usualActual)} (최근 {u.sample}건 중앙값)</p>
                       ) : null;
                     })()}
                   </div>

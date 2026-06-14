@@ -15,6 +15,7 @@ export default function ReportShareCard({
   amount,
   subline,
   topSource,
+  topProfitKind,
   comment,
   quote,
 }: {
@@ -25,6 +26,7 @@ export default function ReportShareCard({
   amount: number;       // +수익 합계
   subline?: string;     // 예: "5끼 기록 · 최고의 한 수 학식"
   topSource?: { name: string; profit: number } | null;
+  topProfitKind?: { label: string; profit: number } | null;
   comment: string;      // 회시생 평
   quote?: string;       // 도사 어록 (없으면 생략)
 }) {
@@ -45,6 +47,11 @@ export default function ReportShareCard({
       {topSource && (
         <div style={{ fontSize: "11px", color: theme.sub, textAlign: "left", marginTop: "4px", position: "relative" }}>
           주력 수익원 <span style={{ color: theme.accent, fontWeight: 600 }}>{topSource.name}</span> <span style={{ fontFamily: "'JetBrains Mono', ui-monospace, monospace" }}>+₩{fmt(topSource.profit)}</span>
+        </div>
+      )}
+      {topProfitKind && (
+        <div style={{ fontSize: "11px", color: theme.sub, textAlign: "left", marginTop: "4px", position: "relative" }}>
+          주력 유형 <span style={{ color: theme.accent, fontWeight: 600 }}>{topProfitKind.label}</span> <span style={{ fontFamily: "'JetBrains Mono', ui-monospace, monospace" }}>+₩{fmt(topProfitKind.profit)}</span>
         </div>
       )}
       <div style={{ borderTop: `1px solid ${theme.divider}`, margin: "14px 0", position: "relative" }} />

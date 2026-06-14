@@ -16,6 +16,7 @@ import ShareCardSheet from "@/components/ShareCardSheet";
 import ShelfCardViewer, { type ShelfCard } from "@/components/ShelfCardViewer";
 import { themeById } from "@/components/cardSkin";
 import { SavingsEntry, fmt } from "@/lib/ledger";
+import { aggregateTopProfitKind } from "@/lib/report";
 import { cpaWeeklyComment, dosaLineOfDay } from "@/lib/voice";
 import { dayOfWeekRhythm, weeklyTrend, monthlyTrend, monthHeatmap, allTimeRecords, cumulativeCurve } from "@/lib/stats";
 import { intelWeeklyLine, meaningOfTotal } from "@/lib/intel";
@@ -119,6 +120,8 @@ export default function Profile({ onOpenWeekly }: { onOpenWeekly: () => void }) 
     const arr = Object.entries(m).sort((a, b) => b[1] - a[1]);
     return arr[0] ? { name: arr[0][0], profit: arr[0][1] } : null;
   }, [scoped]);
+
+  const topProfitKind = useMemo(() => aggregateTopProfitKind(scoped), [scoped]);
 
   // 비교 한 줄 — 이번 달일 때만 지난달 같은 기간 (공정 비교)
   const monthCompare = useMemo(() => {
@@ -466,6 +469,7 @@ export default function Profile({ onOpenWeekly }: { onOpenWeekly: () => void }) 
           amount={profit}
           subline={`${count}${period === "week" ? "끼" : "건"} 기록${best && best.profit > 0 ? ` · 최고의 한 수 ${best.title}` : ""}`}
           topSource={topSource}
+          topProfitKind={topProfitKind}
           comment={comment}
           quote={dosaLineOfDay()}
           onClose={() => setShowShare(false)}

@@ -1,5 +1,8 @@
 // 거지로그 — 장부 공용 타입·유틸 (Ledger·상세시트·Wrapped 등 공유)
 
+import { PROFIT_KIND_LABELS, resolveProfitKind, type ProfitKind } from "@shared/profitKinds";
+import { LEDGER_LABELS } from "@shared/ledgerLabels";
+
 export interface SavingsEntry {
   id: number;
   date: string;
@@ -82,25 +85,27 @@ export function filterByRange(entries: SavingsEntry[], range: ExportRange, from:
 
 
 export function toMarkdownTable(entries: SavingsEntry[]) {
-  const header = "| 날짜 | 항목 | 카테고리 | 수익원 | 원가 | 실제지출 | 수익 | 메모 |";
-  const sep = "|------|------|----------|--------|------|----------|----------|------|";
-  const rows = entries.map(e =>
-    `| ${e.date} | ${e.title} | ${e.category} | ${e.incomeSource ?? "미분류"} | ${fmt(e.originalAmount)}원 | ${fmt(e.actualAmount)}원 | ${fmt(e.profit)}원 | ${e.memo ?? ""} |`
-  );
+  const header = "| 날짜 | 항목 | 카테고리 | 수익원 | 4분류 | 시중가 | 시장에 보낸 돈 | 수익 | 메모 |";
+  const sep = "|------|------|----------|--------|-------|--------|----------------|------|------|";
+  const rows = entries.map((e) => {
+    const kind = PROFIT_KIND_LABELS[resolveProfitKind(e) as ProfitKind];
+    return `| ${e.date} | ${e.title} | ${e.category} | ${e.incomeSource ?? "미분류"} | ${kind} | ${fmt(e.originalAmount)}원 | ${fmt(e.actualAmount)}원 | ${fmt(e.profit)}원 | ${e.memo ?? ""} |`;
+  });
   const total = entries.reduce((s, e) => s + e.profit, 0);
   return [header, sep, ...rows].join("\n") + `\n\n**총 계상 수익: ${fmt(total)}원** (${entries.length}건)`;
 }
 
 
 export function toCsv(entries: SavingsEntry[]) {
-  const header = "날짜,항목,카테고리,수익원,원가,실제지출,수익,메모,추정";
-  const rows = entries.map(e =>
-    [
-      e.date, `"${e.title}"`, e.category, e.incomeSource ?? "미분류",
+  const header = `날짜,항목,카테고리,수익원,4분류,${LEDGER_LABELS.original},${LEDGER_LABELS.actual},수익,메모,추정`;
+  const rows = entries.map((e) => {
+    const kind = PROFIT_KIND_LABELS[resolveProfitKind(e) as ProfitKind];
+    return [
+      e.date, `"${e.title}"`, e.category, e.incomeSource ?? "미분류", kind,
       e.originalAmount, e.actualAmount, e.profit,
       `"${(e.memo ?? "").replace(/"/g, '""')}"`,
       e.aiEstimated === "yes" ? "Y" : "N",
-    ].join(",")
-  );
+    ].join(",");
+  });
   return [header, ...rows].join("\n");
 }

@@ -89,7 +89,7 @@ export default function IncomeSourceSheet({
           </button>
         </div>
         <p className="text-caption text-ink-soft text-center mb-4">
-          평소가는 유형별 최근 실지출의 중앙값이에요
+          평소가는 유형별 최근 시장에 보낸 돈의 중앙값이에요
         </p>
 
         {/* 미분류 정리 — 있을 때만 */}
@@ -239,7 +239,7 @@ export default function IncomeSourceSheet({
           title="이 유형을 삭제할까요?"
           description={`"${deleteTarget.name}" — 이 유형이던 기록은 ${UNCLASSIFIED}로 돌아가요 (기록 자체는 그대로).`}
           confirmLabel="삭제"
-          onConfirm={() => removeSource.mutate({ id: deleteTarget.id })}
+          onConfirm={async () => { await removeSource.mutateAsync({ id: deleteTarget.id }); }}
           onCancel={() => setDeleteTarget(null)}
         />
       )}

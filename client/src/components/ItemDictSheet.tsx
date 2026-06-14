@@ -128,7 +128,7 @@ export default function ItemDictSheet({ onClose }: { onClose: () => void }) {
                       />
                     </div>
                     <div className="flex-1">
-                      <label className="text-micro text-ink-soft block mb-0.5">실지출</label>
+                      <label className="text-micro text-ink-soft block mb-0.5">시장에 보낸 돈</label>
                       <input
                         type="number"
                         value={form.usualActual}
@@ -160,8 +160,14 @@ export default function ItemDictSheet({ onClose }: { onClose: () => void }) {
           description={`"${deleteTarget.name}" — 기록은 그대로, 사전에서만 빠져요.`}
           confirmLabel="삭제"
           onConfirm={async () => {
-            await removeItem.mutateAsync({ id: deleteTarget.id });
-            setDeleteTarget(null);
+            try {
+              await removeItem.mutateAsync({ id: deleteTarget.id });
+              setDeleteTarget(null);
+              toast.success("단골에서 뺐어요", { id: "item-delete" });
+            } catch {
+              toast.error("삭제에 실패했어요");
+              throw new Error("delete failed");
+            }
           }}
           onCancel={() => setDeleteTarget(null)}
         />

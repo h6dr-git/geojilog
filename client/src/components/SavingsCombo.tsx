@@ -2,6 +2,7 @@
 // 표시 전용. 단계는 상위(QuickRecord)에서 reconcile된 SavingsStep[]을 받는다. 연출은 마운트 1회.
 import { useEffect, useRef, useState } from "react";
 import { won } from "@/lib/format";
+import { LEDGER_LABELS } from "@shared/ledgerLabels";
 import type { SavingsStep } from "@shared/incomeSources";
 import { Coins, UtensilsCrossed, Home, HandHeart, Gift, Tag, Users, Ban, Sparkles } from "lucide-react";
 
@@ -137,7 +138,8 @@ export default function SavingsCombo({ originalAmount, steps, animate = true }: 
         </p>
         {hasSteps ? (
           <p className="text-micro text-ink-faint mt-0.5">
-            남은 실지출 <span className="font-mono tabular-nums">{won(originalAmount - total)}</span>
+            남은 {LEDGER_LABELS.actual}{" "}
+            <span className="font-mono tabular-nums">{won(originalAmount - total)}</span>
           </p>
         ) : null}
       </div>

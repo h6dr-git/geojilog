@@ -243,7 +243,7 @@ export default function QuickRecord({ data, onClose, onSaved }: Props) {
           const u = incomeSourceUsual(allEntries as SavingsEntry[], incomeSource);
           return u ? (
             <p className="text-micro text-ink-faint mb-3">
-              사장님의 {incomeSource} 평소 실지출 — <span className="font-mono text-gold">₩{u.usualActual.toLocaleString("ko-KR")}</span> (최근 {u.sample}건 중앙값)
+              사장님의 {incomeSource} 평소 시장에 보낸 돈 — <span className="font-mono text-gold">₩{u.usualActual.toLocaleString("ko-KR")}</span> (최근 {u.sample}건 중앙값)
             </p>
           ) : <span className="block mb-1" />;
         })()}

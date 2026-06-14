@@ -61,6 +61,7 @@ export default function ShelfCardViewer({
       amount={report.profit}
       subline={`${report.count}${card.periodType === "week" ? "끼" : "건"} 기록${report.best && report.best.profit > 0 ? ` · 최고의 한 수 ${report.best.title}` : ""}`}
       topSource={report.topSource}
+      topProfitKind={report.topProfitKind}
       comment={report.comment}
       quote={quote}
     />
@@ -127,7 +128,7 @@ export default function ShelfCardViewer({
           title="서가에서 뺄까요?"
           description="소장 카드만 빠져요 — 기록은 장부에 그대로."
           confirmLabel="빼기"
-          onConfirm={() => removeCard.mutate({ id: card.id })}
+          onConfirm={async () => { await removeCard.mutateAsync({ id: card.id }); }}
           onCancel={() => setConfirmDelete(false)}
         />
       )}

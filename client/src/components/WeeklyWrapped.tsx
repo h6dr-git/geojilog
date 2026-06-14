@@ -11,6 +11,7 @@ import {
   CARD_THEMES, CARD_STICKERS, type StickerId,
   loadKit, saveKit, themeById,
 } from "@/components/cardSkin";
+import { aggregateTopProfitKind } from "@/lib/report";
 import ReportShareCard from "@/components/ReportShareCard";
 
 const STEPS = 4;
@@ -77,6 +78,7 @@ export default function WeeklyWrapped({
     const arr = Object.entries(m).sort((a, b) => b[1] - a[1]);
     return arr[0] ? { name: arr[0][0], profit: arr[0][1] } : null;
   }, [week]);
+  const topProfitKind = useMemo(() => aggregateTopProfitKind(week), [week]);
   const butler = useMemo(() => cpaWeeklyComment(week.length, profit), [week.length, profit]);
   const dosa = useMemo(dosaLineOfDay, []);
 
@@ -109,6 +111,7 @@ export default function WeeklyWrapped({
       amount={profit}
       subline={`${week.length}끼 기록${best ? ` · 최고의 한 수 ${best.title}` : ""}`}
       topSource={topSource}
+      topProfitKind={topProfitKind}
       comment={butler}
       quote={dosa}
     />
@@ -188,6 +191,11 @@ export default function WeeklyWrapped({
               {topSource && (
                 <p className="text-caption" style={{ color: "#d8cfae" }}>
                   주력 수익원 — <span style={{ color: "#E0A92E" }}>{topSource.name}</span> <span className="font-mono tabular-nums">+₩{fmt(topSource.profit)}</span>
+                </p>
+              )}
+              {topProfitKind && (
+                <p className="text-caption" style={{ color: "#d8cfae" }}>
+                  주력 유형 — <span style={{ color: "#E0A92E" }}>{topProfitKind.label}</span> <span className="font-mono tabular-nums">+₩{fmt(topProfitKind.profit)}</span>
                 </p>
               )}
               {topCat && <p className="text-caption" style={{ color: "#9aa89e" }}>가장 많이 번 카테고리 — {topCat}</p>}

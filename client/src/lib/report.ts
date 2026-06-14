@@ -2,10 +2,13 @@
 // (장부가 원본 원칙 — 기록을 고치면 소장 카드도 따라 바뀐다)
 import { SavingsEntry } from "@/lib/ledger";
 import { cpaWeeklyComment } from "@/lib/voice";
+import { PROFIT_KIND_LABELS, resolveProfitKind, type ProfitKind } from "@shared/profitKinds";
 
 const pad = (n: number) => String(n).padStart(2, "0");
 const iso = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 const mmdd = (s: string) => s.slice(5).replace("-", ".");
+
+export type TopProfitKind = { kind: ProfitKind; label: string; profit: number };
 
 export type ReportData = {
   start: string;
@@ -17,8 +20,20 @@ export type ReportData = {
   count: number;
   best: SavingsEntry | null;
   topSource: { name: string; profit: number } | null;
+  topProfitKind: TopProfitKind | null;
   comment: string;
 };
+
+export function aggregateTopProfitKind(entries: SavingsEntry[]): TopProfitKind | null {
+  const m: Partial<Record<ProfitKind, number>> = {};
+  entries.forEach((e) => {
+    const k = resolveProfitKind(e);
+    m[k] = (m[k] ?? 0) + (e.profit || 0);
+  });
+  const arr = (Object.entries(m) as [ProfitKind, number][]).sort((a, b) => b[1] - a[1]);
+  const top = arr[0];
+  return top && top[1] > 0 ? { kind: top[0], label: PROFIT_KIND_LABELS[top[0]], profit: top[1] } : null;
+}
 
 export function computeReport(
   entries: SavingsEntry[],
@@ -56,6 +71,7 @@ export function computeReport(
   scoped.forEach((e) => { if (e.incomeSource) m[e.incomeSource] = (m[e.incomeSource] ?? 0) + e.profit; });
   const arr = Object.entries(m).sort((a, b) => b[1] - a[1]);
   const topSource = arr[0] ? { name: arr[0][0], profit: arr[0][1] } : null;
+  const topProfitKind = aggregateTopProfitKind(scoped);
   const comment =
     count === 0
       ? "이 기간엔 기록이 없습니다."
@@ -63,5 +79,5 @@ export function computeReport(
         ? cpaWeeklyComment(count, profit)
         : `${count}건을 정리해 두었습니다.`;
 
-  return { start, end, cardLabel, cardPeriod, shelfLabel, profit, count, best, topSource, comment };
+  return { start, end, cardLabel, cardPeriod, shelfLabel, profit, count, best, topSource, topProfitKind, comment };
 }

@@ -16,6 +16,7 @@ export default function ShareCardSheet({
   amount,
   subline,
   topSource,
+  topProfitKind,
   comment,
   quote,
   periodType,
@@ -27,6 +28,7 @@ export default function ShareCardSheet({
   amount: number;
   subline?: string;
   topSource?: { name: string; profit: number } | null;
+  topProfitKind?: { label: string; profit: number } | null;
   comment: string;
   quote?: string;
   periodType: "week" | "month";
@@ -57,7 +59,7 @@ export default function ShareCardSheet({
     <ReportShareCard
       theme={theme} stickers={stickers}
       label={label} period={period} amount={amount}
-      subline={subline} topSource={topSource} comment={comment} quote={quote}
+      subline={subline} topSource={topSource} topProfitKind={topProfitKind} comment={comment} quote={quote}
     />
   );
 
