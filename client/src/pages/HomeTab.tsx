@@ -326,7 +326,7 @@ export default function HomeTab({ onGoRecords, job, onOpenConfirm, onCompleteDra
           </div>
         </div>
       ) : errorJob ? (
-        <button onClick={onOpenConfirm} className="mt-7 w-full flex items-center gap-3 border border-line bg-white rounded-card p-3 text-left shadow-sm active:bg-cream transition-colors">
+        <button onClick={onOpenConfirm} className="mt-7 w-full flex items-center gap-3 surface-elevated p-3 text-left active:scale-[0.99] transition-transform">
           <img src={errorJob.preview} alt="" className="w-12 h-12 rounded-card object-cover shrink-0" />
           <div className="flex-1 min-w-0">
             <p className="text-body font-medium text-ink">분석을 못 했어요</p>

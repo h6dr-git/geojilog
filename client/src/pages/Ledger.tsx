@@ -957,8 +957,11 @@ export default function Ledger({ weekFocusNonce = 0, openAddNonce = 0 }: { weekF
       {/* #46 — 일괄 수익원/카테고리 선택 시트 */}
       {bulkAction === "source" && (
         <div className="fixed inset-0 z-[60] flex items-end justify-center bg-black/40" onClick={() => setBulkAction(null)}>
-          <div className="w-full max-w-lg bg-white rounded-t-3xl px-5 pt-4 pb-8" onClick={(e) => e.stopPropagation()}>
-            <p className="text-body font-medium text-ink text-center mb-1">선택한 {selected.size}건의 수익원</p>
+          <div className="w-full max-w-lg sheet-panel px-5 pt-4 pb-8" onClick={(e) => e.stopPropagation()}>
+            <div className="text-center mb-4">
+              <p className="text-body font-semibold text-ink">선택한 {selected.size}건의 수익원</p>
+              <p className="voice-label mt-0.5">일괄 지정</p>
+            </div>
             <p className="text-micro text-ink-faint text-center mb-3">미분류로 되돌리려면 맨 아래 버튼</p>
             <IncomeSourceChips value={null} onChange={(v) => { if (v) runBulk({ incomeSource: v }); }} />
             <button
@@ -972,14 +975,17 @@ export default function Ledger({ weekFocusNonce = 0, openAddNonce = 0 }: { weekF
       )}
       {bulkAction === "category" && (
         <div className="fixed inset-0 z-[60] flex items-end justify-center bg-black/40" onClick={() => setBulkAction(null)}>
-          <div className="w-full max-w-lg bg-white rounded-t-3xl px-5 pt-4 pb-8" onClick={(e) => e.stopPropagation()}>
-            <p className="text-body font-medium text-ink text-center mb-3">선택한 {selected.size}건의 카테고리</p>
+          <div className="w-full max-w-lg sheet-panel px-5 pt-4 pb-8" onClick={(e) => e.stopPropagation()}>
+            <div className="text-center mb-4">
+              <p className="text-body font-semibold text-ink">선택한 {selected.size}건의 카테고리</p>
+              <p className="voice-label mt-0.5">일괄 변경</p>
+            </div>
             <div className="flex flex-wrap gap-1.5">
               {categoryNames.map((c: string) => (
                 <button
                   key={c}
                   onClick={() => runBulk({ category: c })}
-                  className="px-3 py-1.5 rounded-full text-caption bg-cream text-ink-soft active:bg-line transition-colors"
+                  className="ledger-chip ledger-chip-muted px-3 py-1.5 active:brightness-95 transition-all"
                 >
                   {c}
                 </button>

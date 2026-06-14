@@ -27,8 +27,8 @@ export default function IncomeSourceChips({
           key={s}
           type="button"
           onClick={() => onChange(allowNone && value === s ? null : s)}
-          className={`px-2.5 py-1.5 rounded-full text-caption transition-colors ${
-            value === s ? "bg-gold text-white" : "bg-cream text-ink-soft active:bg-line"
+          className={`ledger-chip px-2.5 py-1.5 transition-all ${
+            value === s ? "ledger-chip-gold font-semibold" : "ledger-chip-muted active:brightness-95"
           }`}
         >
           {s}

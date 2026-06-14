@@ -182,8 +182,8 @@ export default function QuickRecord({ data, onClose, onSaved }: Props) {
             <button
               key={c}
               onClick={() => setCategory(c)}
-              className={`px-3 py-1.5 rounded-full text-caption transition-colors ${
-                category === c ? "bg-emerald-500 text-white" : "bg-cream text-ink-soft active:bg-line"
+              className={`ledger-chip px-3 py-1.5 transition-all ${
+                category === c ? "ledger-chip-emerald-active" : "ledger-chip-emerald active:brightness-95"
               }`}
             >
               {c}

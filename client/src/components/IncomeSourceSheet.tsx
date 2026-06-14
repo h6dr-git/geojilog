@@ -74,24 +74,27 @@ export default function IncomeSourceSheet({
     >
       <style>{`@keyframes isUp{from{transform:translateY(100%)}to{transform:translateY(0)}}@keyframes isFade{from{opacity:0}to{opacity:1}}`}</style>
       <div
-        className="w-full max-w-lg bg-white rounded-t-3xl px-5 pt-3 pb-8 max-h-[88vh] overflow-y-auto overscroll-contain"
+        className="w-full max-w-lg sheet-panel px-5 pt-3 pb-8 max-h-[88vh] overflow-y-auto overscroll-contain"
         style={{ animation: "isUp .28s cubic-bezier(.2,.8,.2,1)" }}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between mb-1">
+        <div className="flex items-center justify-between mb-4">
           <div className="w-8" />
-          <span className="text-body font-medium text-ink">수익원</span>
+          <div className="text-center">
+            <p className="text-body font-semibold text-ink">수익원</p>
+            <p className="voice-label mt-0.5">어떻게 번 돈인지</p>
+          </div>
           <button onClick={onClose} aria-label="닫기" className="w-8 h-8 flex items-center justify-center text-ink-soft">
             <X size={20} />
           </button>
         </div>
-        <p className="text-micro text-ink-faint text-center mb-4">
-          어떻게 번 돈인지의 분류 · 평소가는 유형별 최근 실지출의 중앙값이에요
+        <p className="text-caption text-ink-soft text-center mb-4">
+          평소가는 유형별 최근 실지출의 중앙값이에요
         </p>
 
         {/* 미분류 정리 — 있을 때만 */}
         {unclassified.length > 0 && (
-          <div className="flex items-center gap-2.5 mb-3 px-3.5 py-3 rounded-card border border-gold/30 bg-gold/5">
+          <div className="flex items-center gap-2.5 mb-3 px-3.5 py-3 surface-paper border border-gold/30">
             <button onClick={() => onPick(UNCLASSIFIED_KEY)} className="flex-1 min-w-0 text-left">
               <p className="text-body font-medium text-ink">{UNCLASSIFIED} {unclassified.length}건</p>
               <p className="text-micro text-ink-soft">탭하면 장부에서 모아 볼 수 있어요</p>
@@ -116,8 +119,8 @@ export default function IncomeSourceSheet({
                 key={src}
                 onClick={() => s.count > 0 && onPick(src)}
                 disabled={s.count === 0}
-                className={`w-full flex items-center gap-2 border border-line rounded-card px-3.5 py-3 text-left transition-colors ${
-                  s.count === 0 ? "opacity-40" : "active:bg-cream"
+                className={`w-full flex items-center gap-2 surface-paper px-3.5 py-3 text-left transition-colors ${
+                  s.count === 0 ? "opacity-40" : "active:brightness-[0.98]"
                 }`}
               >
                 <div className="flex-1 min-w-0">
@@ -136,7 +139,7 @@ export default function IncomeSourceSheet({
 
         {/* 내가 만든 유형 (#47) */}
         <div className="flex items-center justify-between mt-5 mb-2">
-          <p className="text-caption font-mono text-ink-soft tracking-widest uppercase">내가 만든 유형</p>
+          <p className="voice-label">내가 만든 유형</p>
           {!adding && (
             <button onClick={() => setAdding(true)} className="flex items-center gap-1 text-caption text-emerald-600 font-medium active:opacity-70">
               <Plus size={13} /> 추가
@@ -152,13 +155,13 @@ export default function IncomeSourceSheet({
               onChange={(e) => setNewName(e.target.value)}
               maxLength={CUSTOM_SOURCE_NAME_MAX}
               placeholder={`예: 중고거래 (${CUSTOM_SOURCE_NAME_MAX}자 이내)`}
-              className="flex-1 text-body border border-line rounded-lg px-3 py-2 focus:outline-none focus:border-emerald-400"
+              className="flex-1 input-field text-body py-2"
               onKeyDown={(e) => { if (e.key === "Enter" && newName.trim()) createSource.mutate({ name: newName }); }}
             />
             <button
               onClick={() => newName.trim() && createSource.mutate({ name: newName })}
               disabled={createSource.isPending || !newName.trim()}
-              className="px-3.5 py-2 bg-emerald-500 text-white text-caption font-medium rounded-lg active:scale-95 disabled:opacity-50 transition-transform"
+              className="btn-primary px-3.5 py-2 text-caption disabled:opacity-50"
             >
               {createSource.isPending ? <Loader2 size={13} className="animate-spin" /> : "추가"}
             </button>
@@ -178,7 +181,7 @@ export default function IncomeSourceSheet({
               const s = statFor(c.name);
               const editing = editingId === c.id;
               return (
-                <div key={c.id} className="flex items-center gap-2 border border-line rounded-card px-3.5 py-3">
+                <div key={c.id} className="flex items-center gap-2 surface-paper px-3.5 py-3">
                   {editing ? (
                     <>
                       <input
@@ -186,7 +189,7 @@ export default function IncomeSourceSheet({
                         value={editName}
                         onChange={(e) => setEditName(e.target.value)}
                         maxLength={CUSTOM_SOURCE_NAME_MAX}
-                        className="flex-1 min-w-0 text-body border border-line rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-emerald-400"
+                        className="flex-1 min-w-0 input-field text-body py-2"
                         onKeyDown={(e) => { if (e.key === "Enter" && editName.trim()) renameSource.mutate({ id: c.id, name: editName }); }}
                       />
                       <button

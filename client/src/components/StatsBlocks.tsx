@@ -16,7 +16,7 @@ export function WeekRhythm({ data }: { data: { day: number; avg: number }[] }) {
   const dayName = (i: number) => KO_DAYS[(i + 1) % 7]; // 0=월 → KO_DAYS[1]
   return (
     <div>
-      <p className="text-micro mb-1.5" style={{ color: LABEL }}>요일 리듬 — 최근 8주 평균</p>
+      <p className="voice-label mb-1.5">요일 리듬 — 최근 8주 평균</p>
       <div className="flex items-end gap-1.5" style={{ height: "56px" }}>
         {data.map((d) => (
           <div key={d.day} className="flex-1 flex flex-col items-center justify-end h-full">
@@ -50,7 +50,7 @@ export function TrendBars({
   const cur = data.find((d) => d.current);
   return (
     <div>
-      <p className="text-micro mb-1.5" style={{ color: LABEL }}>{title}</p>
+      <p className="voice-label mb-1.5">{title}</p>
       <div className="flex items-end gap-1.5" style={{ height: "64px" }}>
         {data.map((d, i) => (
           <div key={i} className="flex-1 flex flex-col items-center justify-end h-full min-w-0">
@@ -91,7 +91,7 @@ export function MonthHeat({
   while (cells.length % 7 !== 0) cells.push(null);
   return (
     <div>
-      <p className="text-micro mb-1.5" style={{ color: LABEL }}>수익 히트맵 — 언제 벌었나</p>
+      <p className="voice-label mb-1.5">수익 히트맵 — 언제 벌었나</p>
       <div className="grid grid-cols-7 gap-1">
         {["월", "화", "수", "목", "금", "토", "일"].map((d) => (
           <div key={d} className="text-center text-micro" style={{ color: LABEL }}>{d}</div>
@@ -165,7 +165,7 @@ export function CumulativeCurve({ points }: { points: { date: string; cum: numbe
   const last = xy[xy.length - 1];
   return (
     <div>
-      <p className="text-micro mb-1.5" style={{ color: LABEL }}>누적 수익 곡선</p>
+      <p className="voice-label mb-1.5">누적 수익 곡선</p>
       <svg viewBox={`0 0 ${W} ${H}`} className="w-full" style={{ height: "72px" }}>
         <path d={area} fill="rgba(52,211,153,0.14)" />
         <path d={path} fill="none" stroke="rgba(16,185,129,0.9)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />

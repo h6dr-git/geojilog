@@ -422,6 +422,17 @@ html {
     color: var(--color-ink-soft);
     border: 1px solid var(--color-line);
   }
+  .ledger-chip-emerald {
+    background: rgba(16, 185, 129, 0.12);
+    color: #047857;
+    border: 1px solid rgba(16, 185, 129, 0.22);
+  }
+  .ledger-chip-emerald-active {
+    background: #10b981;
+    color: #fff;
+    border: 1px solid #059669;
+    font-weight: 600;
+  }
 
   .sheet-panel {
     background: rgba(255, 255, 255, 0.98);

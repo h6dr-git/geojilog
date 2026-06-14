@@ -153,9 +153,9 @@ export default function AccountSheet({ onClose }: { onClose: () => void }) {
                 }}
                 maxLength={20}
                 placeholder="사장님"
-                className="w-40 text-center text-title font-semibold text-ink bg-white border border-gold/50 rounded-lg px-2 py-1 outline-none focus:border-gold"
+                className="w-40 text-center text-title font-semibold text-ink input-field py-1.5"
               />
-              <button onClick={saveName} aria-label="저장" className="w-8 h-8 rounded-lg bg-emerald-500 text-white flex items-center justify-center active:scale-95 transition-transform">
+              <button onClick={saveName} aria-label="저장" className="w-8 h-8 rounded-lg btn-primary flex items-center justify-center p-0">
                 <Check size={16} />
               </button>
               <button onClick={() => setEditing(false)} aria-label="취소" className="w-8 h-8 rounded-lg bg-line text-ink-soft flex items-center justify-center active:scale-95 transition-transform">

@@ -1,6 +1,5 @@
-import { cn } from "@/lib/utils";
-import { AlertTriangle, RotateCcw } from "lucide-react";
 import { Component, ReactNode } from "react";
+import { AlertTriangle, RotateCcw } from "lucide-react";
 
 interface Props {
   children: ReactNode;
@@ -24,31 +23,27 @@ class ErrorBoundary extends Component<Props, State> {
   render() {
     if (this.state.hasError) {
       return (
-        <div className="flex items-center justify-center min-h-screen p-8 bg-background">
-          <div className="flex flex-col items-center w-full max-w-2xl p-8">
-            <AlertTriangle
-              size={48}
-              className="text-destructive mb-6 flex-shrink-0"
-            />
-
-            <h2 className="text-xl mb-4">An unexpected error occurred.</h2>
-
-            <div className="p-4 w-full rounded bg-muted overflow-auto mb-6">
-              <pre className="text-body text-muted-foreground whitespace-break-spaces">
-                {this.state.error?.stack}
-              </pre>
-            </div>
-
+        <div className="page-shell min-h-dvh flex items-center justify-center px-6 py-10">
+          <div className="w-full max-w-md surface-elevated p-6 text-center">
+            <AlertTriangle size={40} className="text-gold mx-auto mb-4" />
+            <p className="voice-label mb-1">회시생 안내</p>
+            <h2 className="text-title font-semibold text-ink">잠깐, 뭔가 꼬였어요</h2>
+            <p className="text-caption text-ink-soft mt-2 leading-relaxed">
+              새로고침하면 대부분 바로 돌아옵니다. 기록은 서버에 남아 있어요.
+            </p>
+            {this.state.error?.message && (
+              <div className="mt-4 surface-paper p-3 text-left overflow-auto max-h-32">
+                <pre className="text-micro text-ink-faint whitespace-pre-wrap break-words">
+                  {this.state.error.message}
+                </pre>
+              </div>
+            )}
             <button
               onClick={() => window.location.reload()}
-              className={cn(
-                "flex items-center gap-2 px-4 py-2 rounded-lg",
-                "bg-primary text-primary-foreground",
-                "hover:opacity-90 cursor-pointer"
-              )}
+              className="mt-5 w-full btn-primary py-3 gap-2"
             >
               <RotateCcw size={16} />
-              Reload Page
+              새로고침
             </button>
           </div>
         </div>
