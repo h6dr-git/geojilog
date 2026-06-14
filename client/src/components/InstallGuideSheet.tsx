@@ -68,25 +68,27 @@ export default function InstallGuideSheet({ onClose }: { onClose: () => void }) 
     >
       <style>{`@keyframes igUp{from{transform:translateY(100%)}to{transform:translateY(0)}}@keyframes igFade{from{opacity:0}to{opacity:1}}`}</style>
       <div
-        className="w-full max-w-lg bg-white rounded-t-3xl px-5 pt-3 pb-9"
+        className="w-full max-w-lg sheet-panel px-5 pt-3 pb-9"
         style={{ animation: "igUp .28s cubic-bezier(.2,.8,.2,1)" }}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between mb-1">
+        <div className="flex items-center justify-between mb-4">
           <div className="w-8" />
-          <span className="text-body font-medium text-ink">홈 화면에 추가</span>
+          <div className="text-center">
+            <p className="text-body font-semibold text-ink">홈 화면에 추가</p>
+            <p className="voice-label mt-0.5">{label} 기준 안내</p>
+          </div>
           <button onClick={onClose} aria-label="닫기" className="w-8 h-8 flex items-center justify-center text-ink-soft">
             <X size={20} />
           </button>
         </div>
-        <p className="text-micro text-gold text-center font-medium mb-1">{label} 기준 안내</p>
         <p className="text-caption text-ink-soft text-center mb-5">
           홈 화면에 두면 앱처럼 열리고, 회시생의 저녁 보고(알림)도 받을 수 있습니다.
         </p>
 
         <div className="space-y-2.5">
           {steps.map((s, i) => (
-            <div key={i} className="flex items-center gap-3 bg-cream rounded-card px-4 py-3">
+            <div key={i} className="flex items-center gap-3 surface-paper px-4 py-3">
               <span className="w-6 h-6 rounded-full bg-emerald-500 text-white text-micro font-bold flex items-center justify-center shrink-0">{i + 1}</span>
               <span className="text-body text-ink flex items-center gap-1.5">{s.icon}{s.text}</span>
             </div>

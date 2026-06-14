@@ -22,7 +22,7 @@ export default function ConfirmDialog({
     >
       <style>{`@keyframes cdFade{from{opacity:0}to{opacity:1}}@keyframes cdPop{from{opacity:0;transform:scale(.95)}to{opacity:1;transform:scale(1)}}`}</style>
       <div
-        className="w-full max-w-xs bg-white rounded-card p-5 shadow-xl"
+        className="w-full max-w-xs surface-elevated p-5"
         style={{ animation: "cdPop .18s cubic-bezier(.2,.8,.2,1)" }}
         onClick={(e) => e.stopPropagation()}
       >
@@ -37,9 +37,11 @@ export default function ConfirmDialog({
           </button>
           <button
             onClick={onConfirm}
-            className={`flex-1 py-2.5 text-body font-medium text-white rounded-xl active:scale-[0.98] transition-transform ${
-              danger ? "bg-red-500" : "bg-emerald-500"
-            }`}
+            className={
+              danger
+                ? "flex-1 py-2.5 text-body font-medium text-white rounded-xl bg-red-500 active:scale-[0.98] transition-transform"
+                : "flex-1 btn-primary py-2.5 text-body"
+            }
           >
             {confirmLabel}
           </button>

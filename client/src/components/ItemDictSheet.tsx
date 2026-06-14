@@ -58,19 +58,22 @@ export default function ItemDictSheet({ onClose }: { onClose: () => void }) {
     >
       <style>{`@keyframes idUp{from{transform:translateY(100%)}to{transform:translateY(0)}}@keyframes idFade{from{opacity:0}to{opacity:1}}`}</style>
       <div
-        className="w-full max-w-lg bg-white rounded-t-3xl px-5 pt-3 pb-8 max-h-[88vh] overflow-y-auto overscroll-contain"
+        className="w-full max-w-lg sheet-panel px-5 pt-3 pb-8 max-h-[88vh] overflow-y-auto overscroll-contain"
         style={{ animation: "idUp .28s cubic-bezier(.2,.8,.2,1)" }}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between mb-1">
+        <div className="flex items-center justify-between mb-4">
           <div className="w-8" />
-          <span className="text-body font-medium text-ink">단골 사전</span>
+          <div className="text-center">
+            <p className="text-body font-semibold text-ink">단골 사전</p>
+            <p className="voice-label mt-0.5">원탭 기록 · 가격 관리</p>
+          </div>
           <button onClick={onClose} aria-label="닫기" className="w-8 h-8 flex items-center justify-center text-ink-soft">
             <X size={20} />
           </button>
         </div>
-        <p className="text-micro text-ink-faint text-center mb-4">
-          원탭 기록에 쓰이는 항목·가격이에요 · 직접 고치면 ★고정
+        <p className="text-caption text-ink-soft text-center mb-4">
+          직접 고치면 ★고정 — 자동 갱신이 멈춥니다
         </p>
 
         {isLoading ? (
@@ -82,7 +85,7 @@ export default function ItemDictSheet({ onClose }: { onClose: () => void }) {
         ) : (
           <div className="space-y-1">
             {(items as Item[]).map((it) => (
-              <div key={it.id} className="border border-line rounded-card px-3.5 py-3">
+              <div key={it.id} className="surface-paper px-3.5 py-3">
                 <div className="flex items-center gap-2">
                   <button
                     onClick={() => updateItem.mutate({ id: it.id, pinned: it.pinned === "yes" ? "no" : "yes" })}
@@ -101,7 +104,7 @@ export default function ItemDictSheet({ onClose }: { onClose: () => void }) {
                         <span className="line-through">₩{fmt(it.usualOriginal)}</span>
                         <span className="mx-1 text-ink-faint">→</span>₩{fmt(it.usualActual)}
                       </p>
-                      <p className="text-micro font-mono text-emerald-600 tabular-nums">평소 +₩{fmt(Math.max(0, it.usualOriginal - it.usualActual))}</p>
+                      <p className="text-micro font-mono text-emerald-600 tabular-nums">수익 +₩{fmt(Math.max(0, it.usualOriginal - it.usualActual))}</p>
                     </button>
                   )}
                   <button
@@ -121,22 +124,22 @@ export default function ItemDictSheet({ onClose }: { onClose: () => void }) {
                         type="number"
                         value={form.usualOriginal}
                         onChange={(e) => setForm((f) => ({ ...f, usualOriginal: e.target.value }))}
-                        className="w-full text-caption border border-line rounded-lg px-2 py-1.5 tabular-nums focus:outline-none focus:border-emerald-400"
+                        className="input-field text-caption py-2 tabular-nums"
                       />
                     </div>
                     <div className="flex-1">
-                      <label className="text-micro text-ink-soft block mb-0.5">평소 내 가격</label>
+                      <label className="text-micro text-ink-soft block mb-0.5">실지출</label>
                       <input
                         type="number"
                         value={form.usualActual}
                         onChange={(e) => setForm((f) => ({ ...f, usualActual: e.target.value }))}
-                        className="w-full text-caption border border-line rounded-lg px-2 py-1.5 tabular-nums focus:outline-none focus:border-emerald-400"
+                        className="input-field text-caption py-2 tabular-nums"
                       />
                     </div>
                     <button
                       onClick={() => saveEdit(it)}
                       disabled={updateItem.isPending}
-                      className="px-3.5 py-1.5 bg-emerald-500 text-white text-caption font-medium rounded-lg active:scale-95 disabled:opacity-50 transition-transform"
+                      className="btn-primary px-3.5 py-2 text-caption disabled:opacity-50"
                     >
                       저장
                     </button>
