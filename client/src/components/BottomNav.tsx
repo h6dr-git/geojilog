@@ -48,8 +48,8 @@ export default function BottomNav({
                 className={`relative z-10 transition-all duration-200 ${active ? "text-ink" : "text-ink-faint"}`}
               />
               <span
-                className={`relative z-10 text-[10px] font-medium tracking-wide transition-all duration-200 ${
-                  active ? "text-ink opacity-100" : "text-ink-faint opacity-0 scale-90"
+                className={`relative z-10 text-[10px] font-medium tracking-wide transition-colors duration-200 ${
+                  active ? "text-ink" : "text-ink-faint"
                 }`}
               >
                 {label}

@@ -197,9 +197,8 @@ export default function Profile({ onOpenWeekly }: { onOpenWeekly: () => void }) 
 
   return (
     <div className="page-shell max-w-lg mx-auto px-5 pt-12 pb-24">
-      <header className="pb-5 animate-fade-up">
+      <header className="pb-5">
         <p className="page-title">서재</p>
-        <p className="page-subtitle">기록이 만든 보고서 · 2차 생산지</p>
       </header>
 
       {list.length === 0 ? (

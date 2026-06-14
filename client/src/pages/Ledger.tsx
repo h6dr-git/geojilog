@@ -560,11 +560,8 @@ export default function Ledger({ weekFocusNonce = 0, openAddNonce = 0 }: { weekF
 
   return (
     <div className="page-shell max-w-lg mx-auto px-5 pb-24">
-      <header className="pt-12 pb-4 flex items-center justify-between animate-fade-up">
-        <div>
-          <p className="page-title">장부</p>
-          <p className="page-subtitle">수익이 계상되는 곳</p>
-        </div>
+      <header className="pt-12 pb-4 flex items-center justify-between">
+        <p className="page-title">장부</p>
         <button
           onClick={() => setShowAdd(true)}
           className="btn-primary"
