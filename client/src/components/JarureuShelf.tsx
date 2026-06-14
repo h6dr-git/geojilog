@@ -76,17 +76,38 @@ const RENDER: Record<string, () => ReactElement> = {
   can: Can, bowl: Bowl, cushion: Cushion, plant: Plant, teapot: Teapot,
 };
 
-export default function JarureuShelf({ score, highlightKey, rail = true }: { score: number; highlightKey?: string | null; rail?: boolean }) {
-  const items = unlockedItems(score);
+export default function JarureuShelf({
+  score,
+  highlightKey,
+  rail = true,
+  showLocked = false,
+}: {
+  score: number;
+  highlightKey?: string | null;
+  rail?: boolean;
+  /** IP 컬렉션 — 미해금 비품 실루엣 표시 */
+  showLocked?: boolean;
+}) {
+  const items = showLocked ? SHELF_ITEMS : unlockedItems(score);
   if (items.length === 0) return null;
   return (
-    <div className="flex flex-col items-center" aria-label="쌀집이의 비품">
-      <div className="flex items-end gap-3 px-2">
+    <div className={`flex flex-col items-center ${showLocked ? "office-prop-row" : ""}`} aria-label="쌀집이의 비품">
+      <div className="flex items-end justify-center gap-2.5 px-1">
         {items.map((it) => {
           const C = RENDER[it.key];
+          const locked = showLocked && score < it.threshold;
           return (
-            <span key={it.key} title={it.name} className={it.key === highlightKey ? "animate-prop-in" : "opacity-90"}>
+            <span
+              key={it.key}
+              title={locked ? `${it.name} (아직)` : it.name}
+              className={`flex flex-col items-center gap-0.5 ${
+                it.key === highlightKey ? "animate-prop-in" : ""
+              } ${locked ? "office-prop--locked" : "office-prop--owned"}`}
+            >
               <C />
+              {showLocked && (
+                <span className="office-prop-label">{it.name}</span>
+              )}
             </span>
           );
         })}
