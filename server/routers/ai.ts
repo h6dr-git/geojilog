@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { protectedProcedure, router } from "../trpc";
-import { countAiCallsToday, logUsageEvent, getLatestEntryByTitle, getItemByName, getIncomeSourceUsual, findEntryByImageSig } from "../db";
+import { countAiCallsToday, logUsageEvent, getLatestEntryByTitle, getItemByName, getIncomeSourceUsual, findEntryByImageSig, getPriceLearningHints, buildPriceLearningPrompt } from "../db";
 import { INCOME_SOURCES, isIncomeSource, normalizeSavingsSteps, reconcileSavingsSteps } from "@shared/incomeSources";
 import { invokeLLM } from "../llm";
 import { storagePut, storageGetSignedUrl } from "../storage";
@@ -46,11 +46,14 @@ export const aiRouter = router({
         );
         const signedUrl = await storageGetSignedUrl(key);
 
+        const priceHints = await getPriceLearningHints(ctx.user.id).catch(() => []);
+        const systemPrompt = IMAGE_ANALYSIS_SYSTEM_PROMPT + buildPriceLearningPrompt(priceHints);
+
         const result = await invokeLLM({
           messages: [
             {
               role: "system",
-              content: IMAGE_ANALYSIS_SYSTEM_PROMPT,
+              content: systemPrompt,
             },
             {
               role: "user",

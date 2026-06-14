@@ -7,6 +7,7 @@
 //   ④ 공유는 직행 — '결산 카드' 버튼 → 시트(카드+스킨+캡처), 스토리 통과 불필요
 import { useMemo, useState } from "react";
 import { UNCLASSIFIED } from "@shared/incomeSources";
+import { PROFIT_KIND_LABELS, resolveProfitKind, type ProfitKind } from "@shared/profitKinds";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/hooks/useAuth";
 import WeeklyWrapped from "@/components/WeeklyWrapped";
@@ -89,12 +90,23 @@ export default function Profile({ onOpenWeekly }: { onOpenWeekly: () => void }) 
     [scoped]
   );
 
-  // 구성 — 수익원(기본) / 카테고리
-  const [compBy, setCompBy] = useState<"source" | "category">("source");
+  // 구성 — 수익원(기본) / 카테고리 / 수익 4분류
+  const [compBy, setCompBy] = useState<"source" | "category" | "kind">("source");
+  const KIND_BAR: Record<string, string> = {
+    절약형: "rgba(52,211,153,0.8)",
+    받음형: "rgba(224,169,46,0.85)",
+    절제형: "rgba(92,86,71,0.65)",
+    실수익: "rgba(22,32,26,0.72)",
+  };
   const composition = useMemo(() => {
     const map: Record<string, number> = {};
     scoped.forEach((e) => {
-      const k = compBy === "source" ? (e.incomeSource ?? UNCLASSIFIED) : e.category;
+      const k =
+        compBy === "source"
+          ? (e.incomeSource ?? UNCLASSIFIED)
+          : compBy === "category"
+            ? e.category
+            : PROFIT_KIND_LABELS[resolveProfitKind(e) as ProfitKind];
       map[k] = (map[k] ?? 0) + e.profit;
     });
     return Object.entries(map).sort((a, b) =>
@@ -267,11 +279,17 @@ export default function Profile({ onOpenWeekly }: { onOpenWeekly: () => void }) 
               </div>
             )}
 
-            {/* 구성 — 수익원(기본)/카테고리 */}
+            {/* 구성 — 수익원(기본)/카테고리/4분류 */}
             {count > 0 && (
               <div className="mt-4">
-                <div className="flex gap-1 mb-2.5">
-                  {([["source", "수익원"], ["category", "카테고리"]] as const).map(([key, label]) => (
+                <div className="flex flex-wrap gap-1 mb-2.5">
+                  {(
+                    [
+                      ["source", "수익원"],
+                      ["category", "카테고리"],
+                      ["kind", "4분류"],
+                    ] as const
+                  ).map(([key, label]) => (
                     <button
                       key={key}
                       onClick={() => setCompBy(key)}
@@ -290,6 +308,14 @@ export default function Profile({ onOpenWeekly }: { onOpenWeekly: () => void }) 
                   {composition.map(([name, p]) => {
                     const pct = profit > 0 ? Math.round((p / profit) * 100) : 0;
                     const dim = name === UNCLASSIFIED;
+                    const barColor =
+                      compBy === "kind"
+                        ? (KIND_BAR[name] ?? "rgba(52,211,153,0.8)")
+                        : dim
+                          ? "#cdbfa0"
+                          : compBy === "source"
+                            ? "rgba(224,169,46,0.85)"
+                            : "rgba(52,211,153,0.8)";
                     return (
                       <div key={name} style={dim ? { opacity: 0.55 } : undefined}>
                         <div className="flex justify-between text-caption mb-0.5">
@@ -299,7 +325,7 @@ export default function Profile({ onOpenWeekly }: { onOpenWeekly: () => void }) 
                         <div className="h-1 rounded-full overflow-hidden" style={{ background: "#efe4cd" }}>
                           <div
                             className="h-full rounded-full transition-all"
-                            style={{ width: `${pct}%`, background: dim ? "#cdbfa0" : compBy === "source" ? "rgba(224,169,46,0.85)" : "rgba(52,211,153,0.8)" }}
+                            style={{ width: `${pct}%`, background: barColor }}
                           />
                         </div>
                       </div>

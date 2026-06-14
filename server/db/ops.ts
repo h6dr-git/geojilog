@@ -4,6 +4,7 @@
 import { gte } from "drizzle-orm";
 import { usageEvents, users, savingsEntries, feedbacks } from "../../drizzle/schema";
 import { getDb } from "./client";
+import { getGlobalPriceFeedback } from "./priceLearning";
 
 const DAY = 24 * 60 * 60 * 1000;
 /** KST 날짜 문자열 (YYYY-MM-DD) */
@@ -33,7 +34,7 @@ export async function getOpsReport() {
   const today = kstDate(new Date());
   const empty = {
     today,
-    totals: { users: 0, entries: 0, aiCallsToday: 0, aiCalls7d: 0, aiCallsAll: 0, captureViews: 0, priceCorrections: 0 },
+    totals: { users: 0, entries: 0, aiCallsToday: 0, aiCalls7d: 0, aiCallsAll: 0, captureViews: 0, priceCorrections: 0, priceComments: 0 },
     kill: {
       conversion: { value: 0, num: 0, den: 0, target: 0.4 },
       d1: { value: 0, num: 0, den: 0 },
@@ -43,6 +44,7 @@ export async function getOpsReport() {
     daily: [] as { date: string; active: number; entries: number; signups: number }[],
     users: [] as OpsUserRow[],
     inbox: [] as { name: string; text: string; when: string }[],
+    priceFeedback: { recent: [] as { when: string; kind: string; text: string; user: string }[] },
   };
   if (!db) return empty;
 
@@ -56,7 +58,7 @@ export async function getOpsReport() {
   for (const e of entryCounts) entriesByUser.set(e.userId, (entriesByUser.get(e.userId) ?? 0) + 1);
 
   const activeDatesByUser = new Map<number, Set<string>>();
-  let aiToday = 0, ai7d = 0, aiAll = 0, captureViews = 0, priceCorrections = 0;
+  let aiToday = 0, ai7d = 0, aiAll = 0, captureViews = 0, priceCorrections = 0, priceComments = 0;
   const sevenDaysAgo = addDays(today, -6);
   const AI = new Set(["ai_analyze_image", "ai_parse_sms"]);
   for (const ev of events) {
@@ -70,6 +72,7 @@ export async function getOpsReport() {
     }
     if (ev.type === "capture_view") captureViews += 1;
     if (ev.type === "price_correction") priceCorrections += 1;
+    if (ev.type === "price_comment") priceComments += 1;
   }
 
   // 사용자 행 + 킬 지표
@@ -137,10 +140,12 @@ export async function getOpsReport() {
     when: kstDate(f.createdAt),
   }));
 
+  const priceFeedback = await getGlobalPriceFeedback(15);
+
   const totalEntries = entryCounts.length;
   return {
     today,
-    totals: { users: allUsers.length, entries: totalEntries, aiCallsToday: aiToday, aiCalls7d: ai7d, aiCallsAll: aiAll, captureViews, priceCorrections },
+    totals: { users: allUsers.length, entries: totalEntries, aiCallsToday: aiToday, aiCalls7d: ai7d, aiCallsAll: aiAll, captureViews, priceCorrections, priceComments },
     kill: {
       conversion: { value: convDen ? convNum / convDen : 0, num: convNum, den: convDen, target: 0.4 },
       d1: { value: d1Den ? d1Num / d1Den : 0, num: d1Num, den: d1Den },
@@ -150,5 +155,6 @@ export async function getOpsReport() {
     daily,
     users: rows,
     inbox,
+    priceFeedback,
   };
 }

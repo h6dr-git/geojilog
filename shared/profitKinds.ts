@@ -40,6 +40,17 @@ export function inferProfitKind(
   return "save";
 }
 
+/** DB에 없거나 구 기록 — 금액·수익원으로 추론 */
+export function resolveProfitKind(entry: {
+  profitKind?: ProfitKind | null;
+  incomeSource?: string | null;
+  originalAmount: number;
+  actualAmount: number;
+}): ProfitKind {
+  if (entry.profitKind && isProfitKind(entry.profitKind)) return entry.profitKind;
+  return inferProfitKind(entry.incomeSource, entry.originalAmount, entry.actualAmount);
+}
+
 /** 실수익형: 벌어들인 금액만 입력 → original=금액, actual=0 */
 export function amountsForProfitKind(
   kind: ProfitKind,

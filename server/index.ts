@@ -80,6 +80,9 @@ async function startServer() {
       const inboxRows = r.inbox.length
         ? r.inbox.map((f) => `<div class="fb"><div class="fbm">${esc(f.text)}</div><div class="fbw">${esc(f.name)} · ${f.when.slice(5)}</div></div>`).join("")
         : '<div class="empty">아직 지시 없음 — 앱의 계정 시트 → 업무 지시로 들어옵니다</div>';
+      const priceRows = r.priceFeedback.recent.length
+        ? r.priceFeedback.recent.map((p) => `<div class="fb"><div class="fbm"><span style="color:#E0A92E;font-size:10px;margin-right:6px">${esc(p.kind)}</span>${esc(p.text)}</div><div class="fbw">${esc(p.user)} · ${p.when.slice(5)}</div></div>`).join("")
+        : '<div class="empty">아직 가격 코멘트/보정 없음 — 확인 시트에서 회시생 추정에 반박하면 쌓입니다</div>';
       res.send(`<!doctype html><html lang="ko"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex">
 <title>거지로그 계기판</title>
@@ -130,7 +133,12 @@ ${inboxRows}
   <div class="mini"><div class="l">AI 누적</div><div class="v">${r.totals.aiCallsAll}</div></div>
   <div class="mini"><div class="l">캡처 진입</div><div class="v">${r.totals.captureViews}</div></div>
   <div class="mini"><div class="l">가격 보정</div><div class="v">${r.totals.priceCorrections}</div></div>
+  <div class="mini"><div class="l">가격 코멘트</div><div class="v">${r.totals.priceComments}</div></div>
 </div>
+
+<h2>⑥ 가격 피드백 <span class="d">사장님 반박·보정 — AI 프롬프트 학습 데이터</span></h2>
+${priceRows}
+<div class="note">코멘트 = userPriceNote · 보정 = AI 추정≠확정 금액 · 다음 분석 시 해당 사용자 프롬프트에 주입됨</div>
 <div class="note">● 달성 · ○ 미달 · &nbsp;· = 판정 전 · 👑 운영자(지표 제외) · 활동 = 앱 열람·기록·AI 등 모든 이벤트</div>
 </body></html>`);
     } catch (e) {
