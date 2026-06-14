@@ -12,7 +12,10 @@ import { FIXED_ACTUAL, reconcileSavingsSteps, fallbackSavingsSteps } from "@shar
 import { incomeSourceUsual, type SavingsEntry } from "@/lib/ledger";
 import { celebrateSave } from "@/lib/celebrate";
 import SavingsCombo from "@/components/SavingsCombo";
+import ProfitKindChips from "@/components/ProfitKindChips";
 import type { Prefill } from "@/lib/capture";
+import { LEDGER_LABELS } from "@shared/ledgerLabels";
+import { amountsForProfitKind, inferProfitKind, type ProfitKind } from "@shared/profitKinds";
 
 const DEFAULT_CATEGORIES = ["식비", "카페", "교통", "쇼핑", "문화/여가", "기타"];
 const onlyDigits = (s: string) => s.replace(/[^0-9]/g, "");
@@ -38,6 +41,10 @@ export default function QuickRecord({ data, onClose, onSaved }: Props) {
   const [original, setOriginal] = useState(data.originalAmount != null ? String(data.originalAmount) : "");
   const [actual, setActual] = useState(data.actualAmount != null ? String(data.actualAmount) : "");
   const [memo, setMemo] = useState(data.memo ?? "");
+  const [userPriceNote, setUserPriceNote] = useState("");
+  const [profitKind, setProfitKind] = useState<ProfitKind>(() =>
+    inferProfitKind(data.incomeSource, data.originalAmount ?? 0, data.actualAmount ?? 0)
+  );
   const [saving, setSaving] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const aiReason = data.aiReason ?? "";
@@ -55,7 +62,8 @@ export default function QuickRecord({ data, onClose, onSaved }: Props) {
 
   const o = parseInt(original || "0", 10) || 0;
   const a = parseInt(actual || "0", 10) || 0;
-  const profit = o - a;
+  const normalized = amountsForProfitKind(profitKind, o, a);
+  const profit = normalized.profit;
   // #50 — 표시/저장용 연쇄 단계: AI가 준 단계 우선, 없으면 수익원 기반 단일 폴백. 항상 (기준가-실지출)에 맞춤.
   const displaySteps = useMemo(
     () =>
@@ -69,8 +77,12 @@ export default function QuickRecord({ data, onClose, onSaved }: Props) {
 
   async function handleSave() {
     if (!title.trim()) return toast.error("항목명을 입력해주세요");
-    if (o <= 0) return toast.error("원가를 입력해주세요");
-    if (a < 0) return toast.error("실제 지출을 확인해주세요");
+    if (profitKind === "earn") {
+      if (o <= 0) return toast.error(`${LEDGER_LABELS.earnAmount}을 입력해주세요`);
+    } else {
+      if (o <= 0) return toast.error(`${LEDGER_LABELS.original}을 입력해주세요`);
+      if (a < 0) return toast.error(`${LEDGER_LABELS.actual}을 확인해주세요`);
+    }
     setSaving(true);
     try {
       await createEntry.mutateAsync({
@@ -78,14 +90,18 @@ export default function QuickRecord({ data, onClose, onSaved }: Props) {
         title: title.trim(),
         category,
         incomeSource: incomeSource ?? undefined,
-        originalAmount: o,
-        actualAmount: a,
+        originalAmount: normalized.originalAmount,
+        actualAmount: normalized.actualAmount,
+        profitKind,
         aiEstimated: isCompleting ? "no" : "yes",
         aiReason: aiReason || undefined,
+        userPriceNote: userPriceNote.trim() || undefined,
+        aiOriginalAmount: data.aiOriginalAmount,
+        aiActualAmount: data.aiActualAmount,
         imageUrl: data.imageUrl || undefined,
         imageSig: data.imageSig, // #48
         memo: memo.trim() || undefined,
-        savingsSteps: displaySteps.length ? displaySteps : undefined,
+        savingsSteps: profitKind === "earn" ? undefined : displaySteps.length ? displaySteps : undefined,
       });
       if (data.draftId) removeDraft(data.draftId);
       const usual = incomeSource === data.incomeSource ? data.sourceUsualActual : undefined;
@@ -155,8 +171,13 @@ export default function QuickRecord({ data, onClose, onSaved }: Props) {
 
         {/* #50 — 연쇄 절약 연출: 기준가 → 단계 할인 → 번 돈 */}
         <div className="mb-4">
-          {profit >= 0 ? (
-            <SavingsCombo originalAmount={o} steps={displaySteps} />
+          {profitKind === "earn" ? (
+            <div className="ledger-hero surface-elevated px-4 py-3.5 text-center mb-2">
+              <p className="voice-label mb-1">실수익</p>
+              <p className="ledger-entry-profit text-title">+₩{profit.toLocaleString("ko-KR")}</p>
+            </div>
+          ) : profit >= 0 ? (
+            <SavingsCombo originalAmount={normalized.originalAmount} steps={displaySteps} />
           ) : (
             <div className="text-center mb-2">
               <p className="text-micro text-ink-soft mb-0.5">이번 지출</p>
@@ -191,6 +212,18 @@ export default function QuickRecord({ data, onClose, onSaved }: Props) {
           ))}
         </div>
 
+        {/* 수익 4분류 */}
+        <label className="text-micro text-ink-soft block mb-1">수익 유형</label>
+        <div className="mb-3">
+          <ProfitKindChips
+            value={profitKind}
+            onChange={(k) => {
+              setProfitKind(k);
+              if (k === "earn") setActual("0");
+            }}
+          />
+        </div>
+
         {/* 수익원 — 어떻게 번 돈인지 (AI가 짚고, 한 탭에 수정) */}
         <label className="text-micro text-ink-soft block mb-1">수익원</label>
         <div className="mb-2">
@@ -198,6 +231,7 @@ export default function QuickRecord({ data, onClose, onSaved }: Props) {
             value={incomeSource}
             onChange={(v) => {
               setIncomeSource(v);
+              setProfitKind(inferProfitKind(v, o, a));
               // #47 — 실지출이 사실상 고정인 유형은 자동 채움 (수정 가능). 새 기록 확정 플로우에만.
               if (v != null && FIXED_ACTUAL[v] !== undefined) setActual(String(FIXED_ACTUAL[v]));
             }}
@@ -214,10 +248,26 @@ export default function QuickRecord({ data, onClose, onSaved }: Props) {
           ) : <span className="block mb-1" />;
         })()}
 
-        {/* 원가 / 실제 지출 */}
+        {/* 시중가 / 시장에 보낸 돈 — 실수익형은 벌어들인 금액만 */}
+        {profitKind === "earn" ? (
+          <div className="mb-2">
+            <label className="text-micro text-ink-soft block mb-1">{LEDGER_LABELS.earnAmount}</label>
+            <div className="flex items-center border border-line rounded-card px-3 input-field py-0">
+              <span className="text-ink-soft text-body mr-1">₩</span>
+              <input
+                value={original ? Number(original).toLocaleString("ko-KR") : ""}
+                onChange={(e) => setOriginal(onlyDigits(e.target.value))}
+                inputMode="numeric"
+                placeholder="0"
+                className="w-full py-2.5 text-body focus:outline-none tabular-nums bg-transparent border-0"
+              />
+            </div>
+            <p className="text-micro text-ink-faint mt-1">{LEDGER_LABELS.earnHint}</p>
+          </div>
+        ) : (
         <div className="flex gap-2.5 mb-2">
           <div className="flex-1">
-            <label className="text-micro text-ink-soft block mb-1">원가 (원래 냈을 값)</label>
+            <label className="text-micro text-ink-soft block mb-1">{LEDGER_LABELS.originalLong}</label>
             <div className="flex items-center border border-line rounded-card px-3">
               <span className="text-ink-soft text-body mr-1">₩</span>
               <input
@@ -230,7 +280,7 @@ export default function QuickRecord({ data, onClose, onSaved }: Props) {
             </div>
           </div>
           <div className="flex-1">
-            <label className="text-micro text-ink-soft block mb-1">실제 지출</label>
+            <label className="text-micro text-ink-soft block mb-1">{LEDGER_LABELS.actual}</label>
             <div className="flex items-center border border-line rounded-card px-3">
               <span className="text-ink-soft text-body mr-1">₩</span>
               <input
@@ -241,8 +291,10 @@ export default function QuickRecord({ data, onClose, onSaved }: Props) {
                 className="w-full py-2.5 text-body focus:outline-none tabular-nums"
               />
             </div>
+            <p className="text-micro text-ink-faint mt-0.5">{LEDGER_LABELS.actualHint}</p>
           </div>
         </div>
+        )}
 
         {/* P2 — 지난 확정가 적용 안내 */}
         {data.priorOriginalAmount != null && (
@@ -264,11 +316,27 @@ export default function QuickRecord({ data, onClose, onSaved }: Props) {
           className="input-field mb-3"
         />
 
-        {/* AI 근거 */}
+        {/* AI 근거 + 사장님 코멘트(반박) */}
         {aiReason && (
-          <p className="text-micro text-ink-soft leading-relaxed mb-3 bg-cream rounded-card px-3 py-2">
-            <span className="text-emerald-500">회시생</span> {aiReason}
-          </p>
+          <div className="mb-3 surface-paper px-3 py-2.5">
+            <p className="text-micro text-ink-soft leading-relaxed">
+              <span className="text-emerald-600 font-medium">회시생 추정</span> — {aiReason}
+            </p>
+            {!isCompleting && (
+              <>
+                <label className="text-micro text-ink-soft block mt-2 mb-1">추정에 대한 코멘트 (선택)</label>
+                <textarea
+                  value={userPriceNote}
+                  onChange={(e) => setUserPriceNote(e.target.value)}
+                  maxLength={500}
+                  rows={2}
+                  placeholder="예: 학식은 4,500원이에요 — 다음부터 반영해 주세요"
+                  className="input-field text-caption py-2 resize-none"
+                />
+                <p className="text-micro text-ink-faint mt-1">반박·보정 의견은 학습 데이터로 쌓입니다</p>
+              </>
+            )}
+          </div>
         )}
 
         {/* 저장 */}

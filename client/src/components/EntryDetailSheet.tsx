@@ -8,7 +8,10 @@ import ConfirmDialog from "@/components/ConfirmDialog";
 import { SavingsEntry, fmt, incomeSourceUsual } from "@/lib/ledger";
 import IncomeSourceChips from "@/components/IncomeSourceChips";
 import SavingsCombo from "@/components/SavingsCombo";
+import ProfitKindChips, { ProfitKindBadge } from "@/components/ProfitKindChips";
 import { UNCLASSIFIED, fallbackSavingsSteps, type SavingsStep } from "@shared/incomeSources";
+import { LEDGER_LABELS } from "@shared/ledgerLabels";
+import { inferProfitKind, type ProfitKind } from "@shared/profitKinds";
 
 export default function EntryDetailSheet({
   entry,
@@ -73,9 +76,11 @@ export default function EntryDetailSheet({
     title: entry.title,
     category: entry.category,
     incomeSource: (entry.incomeSource ?? null) as string | null,
+    profitKind: (entry.profitKind ?? inferProfitKind(entry.incomeSource, entry.originalAmount, entry.actualAmount)) as ProfitKind,
     originalAmount: String(entry.originalAmount),
     actualAmount: String(entry.actualAmount),
     memo: entry.memo ?? "",
+    userPriceNote: entry.userPriceNote ?? "",
   });
 
   const handleSave = async (e: React.FormEvent) => {
@@ -86,10 +91,12 @@ export default function EntryDetailSheet({
         date: form.date,
         title: form.title,
         category: form.category,
-        incomeSource: form.incomeSource as never, // enum 검증은 서버 zod가
+        incomeSource: form.incomeSource as never,
+        profitKind: form.profitKind,
         originalAmount: Number(form.originalAmount),
         actualAmount: Number(form.actualAmount),
         memo: form.memo || null,
+        userPriceNote: form.userPriceNote.trim() || null,
       });
       toast.success("수정됐습니다");
       setEditing(false);
@@ -167,6 +174,7 @@ export default function EntryDetailSheet({
               <span className={`px-2 py-0.5 rounded-full ${entry.incomeSource ? "bg-gold/10 text-gold" : "bg-cream text-ink-faint"}`}>
                 {entry.incomeSource ?? UNCLASSIFIED}
               </span>
+              <ProfitKindBadge kind={entry.profitKind} />
             </div>
 
             <p className="text-title font-semibold text-ink">{entry.title}</p>
@@ -189,7 +197,16 @@ export default function EntryDetailSheet({
             {/* 메모 · AI 근거 */}
             {entry.memo && <p className="text-body text-ink/80 italic leading-relaxed mt-3">“{entry.memo}”</p>}
             {entry.aiReason && (
-              <p className="text-micro text-ink-faint leading-relaxed mt-2 bg-cream rounded-card px-3 py-2">{entry.aiReason}</p>
+              <div className="mt-2 surface-paper px-3 py-2.5">
+                <p className="text-micro text-ink-soft leading-relaxed">
+                  <span className="text-emerald-600 font-medium">회시생 추정</span> — {entry.aiReason}
+                </p>
+                {entry.userPriceNote && (
+                  <p className="text-micro text-ink mt-2 pt-2 border-t border-line leading-relaxed">
+                    <span className="text-gold font-medium">사장님</span> — {entry.userPriceNote}
+                  </p>
+                )}
+              </div>
             )}
 
             {/* 액션 — '공유' 버튼 없음(짜침 방지): 카드는 사진 탭으로 자발적 발견 */}
@@ -229,23 +246,51 @@ export default function EntryDetailSheet({
               <input value={form.title} onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))} className={inputCls} />
             </div>
             <div>
+              <label className="text-caption text-ink-soft mb-1 block">수익 유형</label>
+              <ProfitKindChips
+                value={form.profitKind}
+                onChange={(k) => setForm((f) => ({ ...f, profitKind: k, ...(k === "earn" ? { actualAmount: "0" } : {}) }))}
+              />
+            </div>
+            <div>
               <label className="text-caption text-ink-soft mb-1 block">수익원 — 같은 칩을 다시 누르면 미분류</label>
               <IncomeSourceChips
                 value={form.incomeSource}
-                onChange={(v) => setForm((f) => ({ ...f, incomeSource: v }))}
+                onChange={(v) => setForm((f) => ({
+                  ...f,
+                  incomeSource: v,
+                  profitKind: inferProfitKind(v, Number(f.originalAmount) || 0, Number(f.actualAmount) || 0),
+                }))}
                 allowNone
               />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="text-caption text-ink-soft mb-1 block">원가 (원)</label>
+                <label className="text-caption text-ink-soft mb-1 block">
+                  {form.profitKind === "earn" ? LEDGER_LABELS.earnAmount : LEDGER_LABELS.original}
+                </label>
                 <input type="number" value={form.originalAmount} onChange={(e) => setForm((f) => ({ ...f, originalAmount: e.target.value }))} className={inputCls} />
               </div>
-              <div>
-                <label className="text-caption text-ink-soft mb-1 block">실제 지출 (원)</label>
-                <input type="number" value={form.actualAmount} onChange={(e) => setForm((f) => ({ ...f, actualAmount: e.target.value }))} className={inputCls} />
-              </div>
+              {form.profitKind !== "earn" && (
+                <div>
+                  <label className="text-caption text-ink-soft mb-1 block">{LEDGER_LABELS.actual}</label>
+                  <input type="number" value={form.actualAmount} onChange={(e) => setForm((f) => ({ ...f, actualAmount: e.target.value }))} className={inputCls} />
+                </div>
+              )}
             </div>
+            {entry.aiEstimated === "yes" && (
+              <div>
+                <label className="text-caption text-ink-soft mb-1 block">추정에 대한 코멘트 (선택)</label>
+                <textarea
+                  value={form.userPriceNote}
+                  onChange={(e) => setForm((f) => ({ ...f, userPriceNote: e.target.value }))}
+                  maxLength={500}
+                  rows={2}
+                  placeholder="회시생 추정에 대한 반박·보정 의견"
+                  className={`${inputCls} resize-none`}
+                />
+              </div>
+            )}
             <div>
               <label className="text-caption text-ink-soft mb-1 block">내 썰 한 줄 (선택)</label>
               <input value={form.memo} onChange={(e) => setForm((f) => ({ ...f, memo: e.target.value }))} placeholder="나만 보는 한 줄 일기" className={inputCls} />

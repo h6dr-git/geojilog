@@ -3,6 +3,9 @@ import { protectedProcedure, router } from "../trpc";
 import { getSavingsEntries, createSavingsEntry, deleteSavingsEntry, deleteMultipleSavingsEntries, deleteAllSavingsEntries, countSavingsEntriesByCategory, updateSavingsEntry, updateMultipleSavingsEntries, logUsageEvent, upsertItemFromEntry, backfillIncomeSources, isValidIncomeSourceFor } from "../db";
 import { TRPCError } from "@trpc/server";
 import { CUSTOM_SOURCE_NAME_MAX, normalizeSavingsSteps, reconcileSavingsSteps } from "@shared/incomeSources";
+import { amountsForProfitKind, inferProfitKind } from "@shared/profitKinds";
+
+const profitKindInput = z.enum(["save", "receive", "restrain", "earn"]);
 
 // #47 — 커스텀 유형 허용: 형태는 zod, 실존 여부(기본 9종 ∪ 내 커스텀)는 서버에서 확인
 const incomeSourceInput = z.string().trim().min(1).max(CUSTOM_SOURCE_NAME_MAX);
@@ -47,6 +50,8 @@ export const savingsRouter = router({
         imageUrl: z.string().optional(),
         imageSig: z.string().regex(/^[0-9a-f]{64}$/).optional(), // #48 — 중복 감지 지문
         memo: z.string().optional(),
+        profitKind: profitKindInput.optional(),
+        userPriceNote: z.string().max(500).optional(),
         savingsSteps: z.array(z.object({
           source: z.string().trim().min(1).max(CUSTOM_SOURCE_NAME_MAX),
           label: z.string().trim().min(1).max(20),
@@ -58,8 +63,9 @@ export const savingsRouter = router({
         await assertIncomeSource(ctx.user.id, input.incomeSource);
         const count = await countSavingsEntriesByCategory(ctx.user.id, input.category);
         const ticker = generateTicker(input.category, count);
-        const profit = input.originalAmount - input.actualAmount;
-        const savingsStepsArr = reconcileSavingsSteps(normalizeSavingsSteps(input.savingsSteps), input.originalAmount, input.actualAmount);
+        const kind = input.profitKind ?? inferProfitKind(input.incomeSource, input.originalAmount, input.actualAmount);
+        const { originalAmount, actualAmount, profit } = amountsForProfitKind(kind, input.originalAmount, input.actualAmount);
+        const savingsStepsArr = reconcileSavingsSteps(normalizeSavingsSteps(input.savingsSteps), originalAmount, actualAmount);
         const created = await createSavingsEntry({
           userId: ctx.user.id,
           date: input.date,
@@ -68,9 +74,11 @@ export const savingsRouter = router({
           category: input.category,
           incomeSource: input.incomeSource,
           ticker,
-          originalAmount: input.originalAmount,
-          actualAmount: input.actualAmount,
+          originalAmount,
+          actualAmount,
           profit,
+          profitKind: kind,
+          userPriceNote: input.userPriceNote,
           aiEstimated: input.aiEstimated,
           aiReason: input.aiReason,
           aiPeopleCount: input.aiPeopleCount,
@@ -87,21 +95,29 @@ export const savingsRouter = router({
           await upsertItemFromEntry(ctx.user.id, {
             title: input.title,
             category: input.category,
-            originalAmount: input.originalAmount,
-            actualAmount: input.actualAmount,
+            originalAmount: originalAmount,
+            actualAmount: actualAmount,
             date: input.date,
           });
         } catch { /* 사전 축적 실패 무시 */ }
         // 데이터 해자: AI 추정 기준가 → 사용자 확정 실가격의 '보정'을 쌓는다(클라가 AI 추정 원본값을 보낼 때만 작동).
-        const correctedOrig = input.aiOriginalAmount !== undefined && input.aiOriginalAmount !== input.originalAmount;
-        const correctedActual = input.aiActualAmount !== undefined && input.aiActualAmount !== input.actualAmount;
+        const correctedOrig = input.aiOriginalAmount !== undefined && input.aiOriginalAmount !== originalAmount;
+        const correctedActual = input.aiActualAmount !== undefined && input.aiActualAmount !== actualAmount;
         if (input.aiEstimated === "yes" && (correctedOrig || correctedActual)) {
           await logUsageEvent(ctx.user.id, "price_correction", JSON.stringify({
             category: input.category,
             aiOriginal: input.aiOriginalAmount ?? null,
-            finalOriginal: input.originalAmount,
+            finalOriginal: originalAmount,
             aiActual: input.aiActualAmount ?? null,
-            finalActual: input.actualAmount,
+            finalActual: actualAmount,
+          }));
+        }
+        if (input.aiEstimated === "yes" && input.userPriceNote?.trim()) {
+          await logUsageEvent(ctx.user.id, "price_comment", JSON.stringify({
+            category: input.category,
+            note: input.userPriceNote.trim().slice(0, 500),
+            aiOriginal: input.aiOriginalAmount ?? null,
+            finalOriginal: originalAmount,
           }));
         }
         return created;
@@ -118,6 +134,8 @@ export const savingsRouter = router({
         originalAmount: z.number().int().positive().optional(),
         actualAmount: z.number().int().min(0).optional(),
         memo: z.string().nullable().optional(),
+        profitKind: profitKindInput.optional(),
+        userPriceNote: z.string().max(500).nullable().optional(),
         imageUrl: z.string().optional(), // #24 — 사진 나중에 붙이기/교체
       }))
       .mutation(async ({ ctx, input }) => {

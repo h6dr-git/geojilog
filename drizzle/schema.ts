@@ -43,6 +43,13 @@ export const savingsEntries = sqliteTable("savings_entries", {
   actualAmount: integer("actualAmount").notNull(), // 실제 지출 금액
   profit: integer("profit").notNull(), // originalAmount - actualAmount
 
+  // 수익 4분류 — save|receive|restrain|earn (shared/profitKinds.ts)
+  profitKind: text("profitKind", { enum: ["save", "receive", "restrain", "earn"] })
+    .notNull()
+    .default("save"),
+  // AI 추정 가격에 대한 사장님 코멘트/반박 (학습·보정 데이터용)
+  userPriceNote: text("userPriceNote"),
+
   // AI 추정 관련 메타데이터
   aiEstimated: text("aiEstimated", { enum: ["yes", "no"] })
     .notNull()

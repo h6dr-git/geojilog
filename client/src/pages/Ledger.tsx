@@ -22,6 +22,9 @@ import IncomeSourceChips, { useIncomeSourceList } from "@/components/IncomeSourc
 import IncomeSourceSheet, { UNCLASSIFIED_KEY } from "@/components/IncomeSourceSheet";
 import { UNCLASSIFIED, FIXED_ACTUAL } from "@shared/incomeSources";
 import type { SavingsStep } from "@shared/incomeSources";
+import { LEDGER_LABELS } from "@shared/ledgerLabels";
+import { amountsForProfitKind, inferProfitKind, type ProfitKind } from "@shared/profitKinds";
+import ProfitKindChips, { ProfitKindBadge } from "@/components/ProfitKindChips";
 import SsalCalc from "@/components/SsalCalc";
 import SpeakerBadge from "@/components/SpeakerBadge";
 import { CPA_NAME } from "@/lib/brand";
@@ -272,6 +275,7 @@ export default function Ledger({ weekFocusNonce = 0, openAddNonce = 0 }: { weekF
   const [manualTitleEdited, setManualTitleEdited] = useState(false);
   const [manualSplit, setManualSplit] = useState(""); // #33 엔빵 인원
   const [manualSource, setManualSource] = useState<string | null>(null); // #37+#38 수익원
+  const [manualProfitKind, setManualProfitKind] = useState<ProfitKind>("save");
   const [manualForm, setManualForm] = useState(() => {
     const d = todayStr();
     return { date: d, title: makeDefaultTitle(d, "식비"), category: "식비", originalAmount: "", actualAmount: "", description: "", memo: "" };
@@ -407,10 +411,14 @@ export default function Ledger({ weekFocusNonce = 0, openAddNonce = 0 }: { weekF
   }, [processFile]);
 
   const handleQueueConfirm = async (item: QueueItem) => {
-    if (!item.originalAmount || !item.actualAmount) {
-      toast.error("원가와 실제 지출액을 입력해주세요");
+    const o = Number(item.originalAmount);
+    const a = Number(item.actualAmount);
+    if (!item.originalAmount || item.actualAmount === "") {
+      toast.error(`${LEDGER_LABELS.original}과 ${LEDGER_LABELS.actual}을 입력해주세요`);
       return;
     }
+    const kind = inferProfitKind(item.incomeSource, o, a);
+    const normalized = amountsForProfitKind(kind, o, a);
     setQueue(prev => prev.map(it => it.id === item.id ? { ...it, submitting: true } : it));
     try {
       await createEntry.mutateAsync({
@@ -418,8 +426,9 @@ export default function Ledger({ weekFocusNonce = 0, openAddNonce = 0 }: { weekF
         title: item.title || item.fileName,
         category: item.category,
         incomeSource: item.incomeSource ?? undefined,
-        originalAmount: Number(item.originalAmount),
-        actualAmount: Number(item.actualAmount),
+        originalAmount: normalized.originalAmount,
+        actualAmount: normalized.actualAmount,
+        profitKind: kind,
         aiEstimated: "yes",
         aiOriginalAmount: item.aiOriginalAmount,
         aiActualAmount: item.aiActualAmount,
@@ -433,8 +442,8 @@ export default function Ledger({ weekFocusNonce = 0, openAddNonce = 0 }: { weekF
         imageSig: item.imageSig, // #48
         memo: item.memo || undefined,
       });
-      const saved = Math.max(0, Number(item.originalAmount) - Number(item.actualAmount));
-      const actualNum = Number(item.actualAmount);
+      const saved = normalized.profit;
+      const actualNum = normalized.actualAmount;
       // #37+#38 — 보너스 기준은 유형 평소가(최근 실지출 중앙값). 유형을 바꿨어도 그 유형 기준으로 맞다.
       const su = incomeSourceUsual(entries as SavingsEntry[], item.incomeSource);
       const bonus = su != null && actualNum < su.usualActual ? su.usualActual - actualNum : undefined;
@@ -465,22 +474,27 @@ export default function Ledger({ weekFocusNonce = 0, openAddNonce = 0 }: { weekF
   // ── 수동 등록 ──
   const handleManualSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!manualForm.title || !manualForm.originalAmount || !manualForm.actualAmount) return;
+    const o = Number(manualForm.originalAmount);
+    const a = Number(manualForm.actualAmount);
+    if (!manualForm.title || !manualForm.originalAmount) return;
+    if (manualProfitKind !== "earn" && manualForm.actualAmount === "") return;
+    const normalized = amountsForProfitKind(manualProfitKind, o, a);
     try {
       await createEntry.mutateAsync({
         date: manualForm.date,
         title: manualForm.title,
         category: manualForm.category,
         incomeSource: manualSource ?? undefined,
-        originalAmount: Number(manualForm.originalAmount),
-        actualAmount: Number(manualForm.actualAmount),
+        originalAmount: normalized.originalAmount,
+        actualAmount: normalized.actualAmount,
+        profitKind: manualProfitKind,
         description: manualForm.description || undefined,
         memo: manualForm.memo || undefined,
         aiEstimated: "no",
       });
-      const manualSaved = Number(manualForm.originalAmount) - Number(manualForm.actualAmount);
+      const manualSaved = normalized.profit;
       // #37+#38 — 보너스 기준은 유형 평소가(최근 실지출 중앙값)
-      const manualActual = Number(manualForm.actualAmount);
+      const manualActual = normalized.actualAmount;
       const manualSu = incomeSourceUsual(entries as SavingsEntry[], manualSource);
       const manualBonus = manualSu && manualActual < manualSu.usualActual ? manualSu.usualActual - manualActual : undefined;
       if (manualSaved > 0) celebrateSave({ profit: manualSaved, title: manualForm.title, bonus: manualBonus });
@@ -894,6 +908,7 @@ export default function Ledger({ weekFocusNonce = 0, openAddNonce = 0 }: { weekF
                               {entry.incomeSource
                                 ? <span className="ledger-chip ledger-chip-gold">{entry.incomeSource}</span>
                                 : <span className="ledger-chip ledger-chip-muted">{entry.category}</span>}
+                              <ProfitKindBadge kind={entry.profitKind} />
                               {entry.memo
                                 ? <span className="text-caption text-ink-soft truncate italic max-w-[120px]">{entry.memo}</span>
                                 : entry.incomeSource && <span className="ledger-chip ledger-chip-muted">{entry.category}</span>}
@@ -902,11 +917,17 @@ export default function Ledger({ weekFocusNonce = 0, openAddNonce = 0 }: { weekF
                           <div className="text-right flex-shrink-0 pl-1">
                             <p className="ledger-entry-profit tabular-nums leading-tight">+₩{fmt(entry.profit)}</p>
                             <p className="text-micro text-ink-faint tabular-nums mt-0.5">
-                              <span className="opacity-60">원가</span>{" "}
-                              <span className="line-through opacity-70">₩{fmt(entry.originalAmount)}</span>
-                              <span className="mx-0.5 opacity-50">→</span>
-                              <span className="opacity-60">실지출</span>{" "}
-                              <span>₩{fmt(entry.actualAmount)}</span>
+                              {entry.profitKind === "earn" ? (
+                                <span>{LEDGER_LABELS.earnAmount}</span>
+                              ) : (
+                                <>
+                                  <span className="opacity-60">{LEDGER_LABELS.original}</span>{" "}
+                                  <span className="line-through opacity-70">₩{fmt(entry.originalAmount)}</span>
+                                  <span className="mx-0.5 opacity-50">→</span>
+                                  <span className="opacity-60">{LEDGER_LABELS.actual}</span>{" "}
+                                  <span>₩{fmt(entry.actualAmount)}</span>
+                                </>
+                              )}
                             </p>
                           </div>
                           {!selectMode && <ChevronRight size={15} className="text-ink-faint/70 flex-shrink-0" />}
@@ -1331,12 +1352,22 @@ export default function Ledger({ weekFocusNonce = 0, openAddNonce = 0 }: { weekF
                     </div>
                   </div>
                   <div>
+                    <label className="text-caption text-ink-soft mb-1 block">수익 유형</label>
+                    <ProfitKindChips
+                      value={manualProfitKind}
+                      onChange={(k) => {
+                        setManualProfitKind(k);
+                        if (k === "earn") setManualForm((f) => ({ ...f, actualAmount: "0" }));
+                      }}
+                    />
+                  </div>
+                  <div>
                     <label className="text-caption text-ink-soft mb-1 block">수익원 (어떻게 번 돈인가요?)</label>
                     <IncomeSourceChips
                       value={manualSource}
                       onChange={(v) => {
                         setManualSource(v);
-                        // #47 — 고정가 유형은 실지출 자동 채움 (수정 가능)
+                        setManualProfitKind(inferProfitKind(v, Number(manualForm.originalAmount) || 0, Number(manualForm.actualAmount) || 0));
                         if (v != null && FIXED_ACTUAL[v] !== undefined)
                           setManualForm((f) => ({ ...f, actualAmount: String(FIXED_ACTUAL[v]) }));
                       }}
@@ -1358,19 +1389,24 @@ export default function Ledger({ weekFocusNonce = 0, openAddNonce = 0 }: { weekF
                       }}
                       className="w-full text-body border border-line rounded-lg px-3 py-2 focus:outline-none focus:border-emerald-400" />
                   </div>
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className={`grid gap-3 ${manualProfitKind === "earn" ? "grid-cols-1" : "grid-cols-2"}`}>
                     <div>
-                      <label className="text-caption text-ink-soft mb-1 block">원가 (원)</label>
+                      <label className="text-caption text-ink-soft mb-1 block">
+                        {manualProfitKind === "earn" ? LEDGER_LABELS.earnAmount : LEDGER_LABELS.original}
+                      </label>
                       <input type="number" placeholder="9000" value={manualForm.originalAmount}
                         onChange={e => setManualForm(f => ({ ...f, originalAmount: e.target.value }))}
                         className="w-full text-body border border-line rounded-lg px-3 py-2 focus:outline-none focus:border-emerald-400" />
                     </div>
-                    <div>
-                      <label className="text-caption text-ink-soft mb-1 block">실제 지출 (원)</label>
-                      <input type="number" placeholder="3000" value={manualForm.actualAmount}
-                        onChange={e => setManualForm(f => ({ ...f, actualAmount: e.target.value }))}
-                        className="w-full text-body border border-line rounded-lg px-3 py-2 focus:outline-none focus:border-emerald-400" />
-                    </div>
+                    {manualProfitKind !== "earn" && (
+                      <div>
+                        <label className="text-caption text-ink-soft mb-1 block">{LEDGER_LABELS.actual}</label>
+                        <input type="number" placeholder="3000" value={manualForm.actualAmount}
+                          onChange={e => setManualForm(f => ({ ...f, actualAmount: e.target.value }))}
+                          className="w-full text-body border border-line rounded-lg px-3 py-2 focus:outline-none focus:border-emerald-400" />
+                        <p className="text-micro text-ink-faint mt-0.5">{LEDGER_LABELS.actualHint}</p>
+                      </div>
+                    )}
                   </div>
                   {/* #33 엔빵 — 총액을 적은 뒤 인원으로 나누기 */}
                   <div className="flex items-center gap-2 text-caption text-ink-soft">

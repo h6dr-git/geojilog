@@ -124,6 +124,8 @@ export async function getDb() {
           "ALTER TABLE savings_entries ADD COLUMN savingsSteps TEXT",
           "ALTER TABLE savings_entries ADD COLUMN incomeSource TEXT",
           "ALTER TABLE savings_entries ADD COLUMN imageSig TEXT",
+          "ALTER TABLE savings_entries ADD COLUMN profitKind TEXT DEFAULT 'save'",
+          "ALTER TABLE savings_entries ADD COLUMN userPriceNote TEXT",
           "CREATE INDEX IF NOT EXISTS idx_savings_user_sig ON savings_entries(userId, imageSig)",
         ]) {
           try { await client.execute(ddl); } catch { /* duplicate column — 무시 */ }

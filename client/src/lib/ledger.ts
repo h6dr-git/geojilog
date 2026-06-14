@@ -11,6 +11,8 @@ export interface SavingsEntry {
   originalAmount: number;
   actualAmount: number;
   profit: number;
+  profitKind?: "save" | "receive" | "restrain" | "earn" | null;
+  userPriceNote?: string | null;
   savingsSteps?: string | null; // #50 연쇄 할인 단계 JSON
   aiEstimated: "yes" | "no";
   aiReason?: string | null;

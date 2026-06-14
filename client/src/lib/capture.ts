@@ -19,6 +19,7 @@ export type Prefill = {
   /** 수익원 평소가(최근 실지출 중앙값) — 보너스("평소보다 더 아낀 날") 계산용 */
   sourceUsualActual?: number;
   aiOriginalAmount?: number;
+  aiActualAmount?: number;
   /** 있으면 저장된 미완성을 완성하는 중 */
   draftId?: string;
   /** #48 — 원본 사진 sha256 (중복 감지용, 저장 시 함께 기록) */

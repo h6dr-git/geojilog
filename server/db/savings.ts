@@ -1,4 +1,5 @@
 import { desc, eq } from "drizzle-orm";
+import { amountsForProfitKind } from "@shared/profitKinds";
 import { savingsEntries, InsertSavingsEntry } from "../../drizzle/schema";
 import { guessIncomeSource, type IncomeSource } from "@shared/incomeSources";
 import { getDb } from "./client";
@@ -57,6 +58,8 @@ export async function updateSavingsEntry(
     memo?: string | null;
     imageUrl?: string;
     incomeSource?: string | null;
+    profitKind?: "save" | "receive" | "restrain" | "earn";
+    userPriceNote?: string | null;
   }
 ) {
   const db = await getDb();
@@ -68,17 +71,22 @@ export async function updateSavingsEntry(
   if (data.title !== undefined) updateData.title = data.title;
   if (data.description !== undefined) updateData.description = data.description;
   if (data.category !== undefined) updateData.category = data.category;
-  if (data.originalAmount !== undefined) updateData.originalAmount = data.originalAmount;
-  if (data.actualAmount !== undefined) updateData.actualAmount = data.actualAmount;
   if (data.memo !== undefined) updateData.memo = data.memo;
   if (data.imageUrl !== undefined) updateData.imageUrl = data.imageUrl;
   if (data.incomeSource !== undefined) updateData.incomeSource = data.incomeSource;
-  if (data.originalAmount !== undefined || data.actualAmount !== undefined) {
+  if (data.profitKind !== undefined) updateData.profitKind = data.profitKind;
+  if (data.userPriceNote !== undefined) updateData.userPriceNote = data.userPriceNote;
+  if (data.originalAmount !== undefined || data.actualAmount !== undefined || data.profitKind !== undefined) {
     const existing = await db.select().from(savingsEntries).where(eq(savingsEntries.id, id)).limit(1);
     if (existing[0]) {
-      const orig = data.originalAmount ?? existing[0].originalAmount;
-      const actual = data.actualAmount ?? existing[0].actualAmount;
-      updateData.profit = orig - actual;
+      const kind = data.profitKind ?? (existing[0].profitKind as "save" | "receive" | "restrain" | "earn") ?? "save";
+      const origIn = data.originalAmount ?? existing[0].originalAmount;
+      const actIn = data.actualAmount ?? existing[0].actualAmount;
+      const { originalAmount, actualAmount, profit } = amountsForProfitKind(kind, origIn, actIn);
+      updateData.originalAmount = originalAmount;
+      updateData.actualAmount = actualAmount;
+      updateData.profit = profit;
+      if (data.profitKind !== undefined) updateData.profitKind = kind;
     }
   }
   if (Object.keys(updateData).length === 0) return;
