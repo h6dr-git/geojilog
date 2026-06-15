@@ -49,10 +49,10 @@ async function startServer() {
     res.setHeader("Cache-Control", "no-store");
     try {
       const r = await getOpsReport();
-      const opsKey = esc(String(req.query.key));
       const pct = (v: number) => `${Math.round(v * 100)}%`;
       const dot = (b: boolean | null) => (b === null ? "·" : b ? "●" : "○");
       const esc = (t: string) => t.replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]!));
+      const opsKey = esc(String(req.query.key));
       const k = r.kill;
       const MIN_RATE_DEN = 5;
       const delta = (cur: number, prev: number) => {
