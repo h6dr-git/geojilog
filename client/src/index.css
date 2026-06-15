@@ -469,8 +469,9 @@ html {
     min-width: 0;
     padding: 0.5rem 0.875rem;
     border-radius: 0.625rem;
-    background: linear-gradient(145deg, #2f281c 0%, #1a1610 100%);
-    border: 1px solid rgba(224, 169, 46, 0.35);
+    background: linear-gradient(145deg, #342c1e 0%, #1f1a12 55%, #16120c 100%);
+    border: 1px solid rgba(224, 169, 46, 0.38);
+    box-shadow: 0 2px 8px rgba(26, 26, 23, 0.12);
   }
 
   .home-nameplate-ip-main {
@@ -517,18 +518,24 @@ html {
     align-items: center;
     justify-content: center;
     gap: 0.75rem;
-    padding: 0.75rem 0.5rem;
+    padding: 0.875rem 0.625rem;
     border-radius: 1.25rem;
-    background: linear-gradient(180deg, #2a2520 0%, #1e1a16 55%, #181410 100%);
-    border: 1px solid rgba(224, 169, 46, 0.12);
-    box-shadow: inset 0 0 32px rgba(0, 0, 0, 0.2);
+    background:
+      radial-gradient(ellipse 90% 55% at 50% 8%, rgba(224, 169, 46, 0.14) 0%, transparent 58%),
+      radial-gradient(ellipse 70% 40% at 50% 100%, rgba(0, 0, 0, 0.35) 0%, transparent 65%),
+      linear-gradient(180deg, #2c2620 0%, #1e1a16 50%, #16120e 100%);
+    border: 1px solid rgba(224, 169, 46, 0.14);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.04),
+      inset 0 0 40px rgba(0, 0, 0, 0.22);
   }
 
   .office-tagline {
     font-size: var(--text-micro);
-    color: rgba(224, 169, 46, 0.75);
-    letter-spacing: 0.04em;
+    color: rgba(224, 169, 46, 0.82);
+    letter-spacing: 0.06em;
     text-align: center;
+    font-weight: 500;
   }
 
   .office-desk {
@@ -537,16 +544,28 @@ html {
     align-items: center;
     gap: 0.625rem;
     width: 100%;
-    padding: 0.75rem 0.5rem 0.5rem;
+    padding: 1rem 0.625rem 0.625rem;
     border-radius: 1rem;
-    background: linear-gradient(180deg, #d4bc8f 0%, #c4a872 100%);
-    box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.25);
+    background:
+      repeating-linear-gradient(
+        90deg,
+        transparent 0,
+        transparent 20px,
+        rgba(120, 90, 40, 0.035) 20px,
+        rgba(120, 90, 40, 0.035) 21px
+      ),
+      linear-gradient(180deg, #e4cfa4 0%, #d6c090 40%, #c8b078 100%);
+    box-shadow:
+      inset 0 2px 0 rgba(255, 255, 255, 0.32),
+      inset 0 -3px 8px rgba(120, 90, 40, 0.12),
+      0 6px 16px rgba(0, 0, 0, 0.18);
   }
 
   .office-calc-spot {
     cursor: pointer;
     user-select: none;
     transition: transform 0.15s ease;
+    padding: 0.25rem 0;
   }
   .office-calc-spot:active {
     transform: scale(0.96);
@@ -565,19 +584,21 @@ html {
   }
 
   .office-prop--locked {
-    opacity: 0.28;
-    filter: grayscale(0.6);
+    opacity: 0.22;
+    filter: grayscale(0.75) contrast(0.9);
   }
 
   .office-prop--owned {
     opacity: 1;
+    filter: drop-shadow(0 1px 2px rgba(120, 90, 40, 0.2));
   }
 
   .office-prop-label {
     font-size: 0.5rem;
     line-height: 1;
-    color: #6b5b3e;
-    font-weight: 500;
+    color: #5c4f38;
+    font-weight: 600;
+    letter-spacing: 0.02em;
   }
 
   .office-cast {
@@ -597,8 +618,23 @@ html {
     gap: 0.25rem;
     padding: 0.5rem 0.25rem;
     border-radius: 0.625rem;
-    background: rgba(255, 255, 255, 0.04);
-    border: 1px solid rgba(255, 255, 255, 0.06);
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.07);
+  }
+
+  .office-cast-member--ssal {
+    background: rgba(232, 232, 238, 0.06);
+    border-color: rgba(200, 200, 210, 0.12);
+  }
+
+  .office-cast-member--cpa {
+    background: rgba(224, 169, 46, 0.06);
+    border-color: rgba(224, 169, 46, 0.16);
+  }
+
+  .office-cast-member--dosa {
+    background: rgba(75, 163, 111, 0.06);
+    border-color: rgba(75, 163, 111, 0.14);
   }
 
   .office-cast-name {
@@ -622,10 +658,11 @@ html {
   }
 
   .home-ip-beat {
-    padding: 0.625rem 0.75rem;
+    padding: 0.75rem 0.875rem;
     border-radius: var(--radius-card);
-    background: #fff;
-    border: 1px solid var(--color-line);
+    background: linear-gradient(165deg, #fffef9 0%, #faf6ee 100%);
+    border: 1px solid rgba(224, 169, 46, 0.12);
+    box-shadow: 0 1px 3px rgba(26, 26, 23, 0.04);
   }
 
   .home-ip-beat-head {
@@ -761,6 +798,11 @@ html {
   to { opacity: 1; transform: translateY(0); }
 }
 .animate-fade-up { animation: fade-up 0.35s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+
+/* 쌀집이 486 희귀 — 외곽 글로우 (LCD 펄스는 SVG 내부) */
+.ssal-glow-wrap {
+  filter: drop-shadow(0 0 8px rgba(224, 169, 46, 0.42));
+}
 
 /* 탭바 활성 인디케이터 */
 @keyframes nav-pill {

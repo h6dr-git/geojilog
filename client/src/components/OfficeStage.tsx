@@ -21,7 +21,7 @@ type Props = {
 
 export default function OfficeStage({
   tagline,
-  calcSize = 108,
+  calcSize = 104,
   level,
   analyzing,
   glow,
@@ -54,7 +54,7 @@ export default function OfficeStage({
 
       <div className="office-cast" aria-label="절약사무소 상주">
         {OFFICE_CAST.map((c) => (
-          <div key={c.speaker} className="office-cast-member">
+          <div key={c.speaker} className={`office-cast-member office-cast-member--${c.speaker}`}>
             <SpeakerBadge speaker={c.speaker} size={22} />
             <span className="office-cast-name">{c.name}</span>
             <span className="office-cast-role">{c.role}</span>

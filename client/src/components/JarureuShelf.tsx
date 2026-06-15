@@ -25,9 +25,10 @@ export function unlockedItems(score: number): ShelfItem[] {
 function Can() {
   return (
     <svg width="26" height="30" viewBox="0 0 26 30">
-      <ellipse cx="13" cy="5" rx="9" ry="3" fill="#d8d0bd" stroke="#a39a82" strokeWidth="1.5" />
-      <path d="M4,5 L4,25 C4,27 22,27 22,25 L22,5" fill="#cfc8b8" stroke="#a39a82" strokeWidth="1.5" />
-      <rect x="4" y="12" width="18" height="6" fill="#f2e9d4" />
+      <ellipse cx="13" cy="5" rx="9" ry="3" fill="#e0d8c8" stroke="#a39a82" strokeWidth="1.2" />
+      <path d="M4,5 L4,25 C4,27 22,27 22,25 L22,5" fill="#d8d0c0" stroke="#a39a82" strokeWidth="1.2" />
+      <rect x="4" y="12" width="18" height="6" rx="1" fill="#f5ecd8" stroke="#c9b896" strokeWidth="0.6" />
+      <ellipse cx="13" cy="5" rx="7" ry="1.5" fill="#fff" opacity="0.35" />
     </svg>
   );
 }
