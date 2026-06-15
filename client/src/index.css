@@ -561,6 +561,42 @@ html {
       0 6px 16px rgba(0, 0, 0, 0.18);
   }
 
+  .office-desk__scene {
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    gap: 0.75rem;
+    width: 100%;
+  }
+
+  .office-receipt-tap {
+    flex-shrink: 0;
+    margin-bottom: 0.25rem;
+    padding: 0.125rem;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    transition: transform 0.14s ease;
+    filter: drop-shadow(0 2px 3px rgba(60, 45, 30, 0.22));
+  }
+  .office-receipt-tap:active {
+    transform: scale(0.9) translateY(3px);
+  }
+  .office-receipt-tap__top {
+    transform-origin: 12px 44px;
+    transition: transform 0.2s ease;
+  }
+  .office-receipt-tap:active .office-receipt-tap__top {
+    transform: rotate(-4deg) translateY(2px);
+  }
+  .office-receipt-tap--busy {
+    animation: receipt-busy 1.4s ease-in-out infinite;
+  }
+  @keyframes receipt-busy {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.55; }
+  }
+
   .office-calc-spot {
     cursor: pointer;
     user-select: none;

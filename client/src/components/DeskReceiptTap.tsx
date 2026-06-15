@@ -12,7 +12,7 @@ export default function DeskReceiptTap({ onTap, busy }: Props) {
       type="button"
       onClick={onTap}
       aria-label="영수증 사진"
-      className={`geo-receipt-tap ${busy ? "geo-receipt-tap--busy" : ""}`}
+      className={`office-receipt-tap ${busy ? "office-receipt-tap--busy" : ""}`}
     >
       <svg width="44" height="52" viewBox="0 0 44 52" aria-hidden="true">
         {/* 아래 깔린 영수증 */}
@@ -27,7 +27,7 @@ export default function DeskReceiptTap({ onTap, busy }: Props) {
         <line x1="12" y1="30" x2="26" y2="30" stroke={STROKE} strokeWidth="0.4" opacity="0.4" />
 
         {/* 맨 위 — 살짝 들린 증빙 */}
-        <g className="geo-receipt-tap__top">
+        <g className="office-receipt-tap__top">
           <path
             d="M10,6 L38,6 L38,40 Q38,44 34,44 L14,44 Q10,44 10,40 Z"
             fill="#faf6ec"

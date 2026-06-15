@@ -1,4 +1,4 @@
-// 집무실(홈) = IP 무대 — 쌀집이·사무소 성장·기록 진입. 장부=유틸·목록.
+// 집무실(홈) = IP 무대 — 캐릭터·사무소 성장·기록 진입. 장부=유틸·목록.
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/hooks/useAuth";
 import LoginChip from "@/components/LoginChip";
@@ -124,64 +124,64 @@ export default function HomeTab({ onGoRecords, onRecord, job, onOpenConfirm, onC
   }, [unlockedCount, isAuthenticated]);
 
   const calcCaption = calcStage === "code" && calcCode ? (
-    <p key={calcCode.code} className={`font-mono ${calcCode.rare ? "text-gold" : ""}`}>
+    <p key={calcCode.code} className={`text-micro font-mono ${calcCode.rare ? "text-gold" : "text-ink-soft"}`}>
       {calcCode.rare ? "✨ " : ""}{calcCode.code} — {calcCode.meaning}
     </p>
   ) : null;
 
   return (
-    <div className="geo-office page-shell">
-      <header className="geo-header">
-        <div className="geo-nameplate">
-          <span className="geo-nameplate__text">{displayName} 절약사무소</span>
+    <div className="home-office page-shell">
+      <header className="home-header">
+        <div className="home-nameplate-ip">
+          <span className="home-nameplate-ip-main">{displayName} 절약사무소</span>
         </div>
         <LoginChip onClick={() => setShowAccount(true)} />
       </header>
 
-      <div className="geo-body">
+      <div className="home-body">
         {activeJob && (
-          <section className="geo-job surface-elevated">
+          <section className="home-job surface-elevated">
             {analyzingJob ? (
-              <div className="geo-status-row">
-                <img src={analyzingJob.preview} alt="" className="geo-status-thumb" />
+              <div className="home-status-row">
+                <img src={analyzingJob.preview} alt="" className="home-status-thumb" />
                 <div>
-                  <p className="geo-job__title">회시생이 분석 중</p>
-                  <p className="geo-job__body">잠시만 기다려 주세요</p>
+                  <p className="home-job-title text-emerald-700">회시생이 분석 중</p>
+                  <p className="home-job-body text-emerald-600">잠시만 기다려 주세요</p>
                 </div>
               </div>
             ) : readyJob ? (
-              <button type="button" onClick={onOpenConfirm} className="geo-status-row w-full text-left">
-                <img src={readyJob.preview} alt="" className="geo-status-thumb" />
+              <button type="button" onClick={onOpenConfirm} className="home-status-row w-full text-left">
+                <img src={readyJob.preview} alt="" className="home-status-thumb" />
                 <div className="flex-1 min-w-0">
-                  <p className="geo-job__title truncate">{readyJob.data.title || "분석 완료"}</p>
-                  <p className="geo-job__body text-gold flex items-center gap-0.5">
+                  <p className="home-job-title truncate">{readyJob.data.title || "분석 완료"}</p>
+                  <p className="home-job-body text-emerald-600 flex items-center gap-0.5">
                     <Check size={12} /> 확인하고 저장
                   </p>
                 </div>
-                <ChevronRight size={16} className="text-gold/60 shrink-0" />
+                <ChevronRight size={16} className="text-emerald-400 shrink-0" />
               </button>
             ) : dupJob ? (
               <>
-                <div className="geo-status-row">
-                  <img src={dupJob.preview} alt="" className="geo-status-thumb" />
+                <div className="home-status-row">
+                  <img src={dupJob.preview} alt="" className="home-status-thumb" />
                   <div className="flex-1 min-w-0">
-                    <p className="geo-job__title text-gold">이미 기록한 사진</p>
-                    <p className="geo-job__body truncate">
+                    <p className="home-job-title text-amber-800">이미 기록한 사진</p>
+                    <p className="home-job-body text-amber-700 truncate">
                       {dupJob.dup.date.slice(5).replace("-", ".")} · {dupJob.dup.title}
                     </p>
                   </div>
                 </div>
-                <div className="geo-dup-actions">
-                  <button type="button" onClick={onDismissDup} className="geo-dup-btn">닫기</button>
-                  <button type="button" onClick={onIgnoreDup} className="geo-dup-btn geo-dup-btn--primary">그래도 기록</button>
+                <div className="home-dup-actions">
+                  <button type="button" onClick={onDismissDup} className="home-dup-btn">닫기</button>
+                  <button type="button" onClick={onIgnoreDup} className="home-dup-btn home-dup-btn--primary">그래도 기록</button>
                 </div>
               </>
             ) : errorJob ? (
-              <button type="button" onClick={onOpenConfirm} className="geo-status-row w-full text-left">
-                <img src={errorJob.preview} alt="" className="geo-status-thumb" />
+              <button type="button" onClick={onOpenConfirm} className="home-status-row w-full text-left">
+                <img src={errorJob.preview} alt="" className="home-status-thumb" />
                 <div className="flex-1 min-w-0">
-                  <p className="geo-job__title">분석 실패</p>
-                  <p className="geo-job__body">탭해서 직접 입력</p>
+                  <p className="home-job-title">분석 실패</p>
+                  <p className="home-job-body">탭해서 직접 입력</p>
                 </div>
                 <ChevronRight size={16} className="text-ink-faint shrink-0" />
               </button>
@@ -206,44 +206,44 @@ export default function HomeTab({ onGoRecords, onRecord, job, onOpenConfirm, onC
           highlightKey={newProp}
         />
 
-        <footer className="geo-footer">
-          <div className="geo-quote">
-            <div className="geo-quote__head">
+        <footer className="home-ip-footer">
+          <div className="home-ip-beat">
+            <div className="home-ip-beat-head">
               <SpeakerBadge speaker={ipBeat.speaker} size={18} />
               <span className="voice-label">{IP_BEAT_LABELS[ipBeat.speaker]}</span>
             </div>
-            <p className={`geo-quote__text ${ipBeat.speaker === "dosa" ? "italic" : ipBeat.speaker === "ssal" ? "font-mono" : ""}`}>
+            <p className={`home-ip-beat-text ${ipBeat.speaker === "dosa" ? "italic" : ipBeat.speaker === "ssal" ? "font-mono" : ""}`}>
               {ipBeat.text}
             </p>
           </div>
 
           {!activeJob && (
-            <p className="geo-quote__sub">
+            <p className="home-cpa-whisper">
               <SpeakerBadge speaker="cpa" size={16} />
               <span>{intelDeskLine(entries as unknown as SavingsEntry[], fedToday)}</span>
             </p>
           )}
 
-          <div className="geo-foot">
-            <div className="geo-week" aria-label="이번 주 기록">
+          <div className="home-ip-foot">
+            <div className="home-week-dots" aria-label="이번 주 기록">
               {weekDots.map((d, i) => (
-                <span key={d.ds} className="geo-week__col">
-                  <span className="geo-week__label">{WEEK_LABELS[i]}</span>
+                <span key={d.ds} className="home-week-dot-col">
+                  <span className="home-week-dot-label">{WEEK_LABELS[i]}</span>
                   <span
-                    className={`geo-week__dot ${d.isToday ? "geo-week__dot--today" : ""} ${
-                      d.has ? "geo-week__dot--on" : d.future ? "opacity-40" : ""
+                    className={`home-week-dot ${d.isToday ? "home-week-dot--today" : "home-week-dot--default"} ${
+                      d.has ? "bg-emerald-400" : d.future ? "bg-line/50" : "bg-line"
                     }`}
                   />
                 </span>
               ))}
             </div>
-            <div className="geo-foot__actions">
+            <div className="home-ip-actions">
               {topDraft && (
-                <button type="button" onClick={() => onCompleteDraft(topDraft)} className="geo-link">
+                <button type="button" onClick={() => onCompleteDraft(topDraft)} className="home-link-btn">
                   미완 {drafts.length}
                 </button>
               )}
-              <button type="button" onClick={onGoRecords} className="geo-link geo-link--accent">
+              <button type="button" onClick={onGoRecords} className="home-link-btn home-link-btn--primary">
                 장부로
                 <ChevronRight size={14} />
               </button>
