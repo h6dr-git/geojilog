@@ -5,6 +5,18 @@ import { randomUUID } from "node:crypto";
 
 const UPLOAD_DIR = process.env.UPLOAD_DIR || path.resolve(process.cwd(), "uploads");
 
+/** 계기판·헬스체크용 — 사진 저장 영속성 판정 */
+export function storagePersistenceInfo() {
+  const dir = process.env.UPLOAD_DIR || path.resolve(process.cwd(), "uploads");
+  if (process.env.UPLOAD_DIR) {
+    return { mode: "volume" as const, ok: true, label: "Volume ✓", dir };
+  }
+  if (process.env.NODE_ENV === "production") {
+    return { mode: "ephemeral" as const, ok: false, label: "⚠ 휘발", dir };
+  }
+  return { mode: "local-dev" as const, ok: true, label: "로컬 ✓", dir };
+}
+
 function ensureDir(dir: string) {
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
 }

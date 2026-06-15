@@ -1,5 +1,6 @@
-// 로그인 칩 — 절약사무소 톤
+// 로그인 가시성 칩 — '박CEO' 상태를 숫자 없이 안전하게 보여준다.
 import { useAuth } from "@/hooks/useAuth";
+import { Crown } from "lucide-react";
 
 export default function LoginChip({ onClick }: { onClick?: () => void }) {
   const { user } = useAuth();
@@ -11,30 +12,23 @@ export default function LoginChip({ onClick }: { onClick?: () => void }) {
       type="button"
       onClick={onClick}
       aria-label={isKakao ? `${name} · 카카오 로그인됨` : `${name} · 게스트`}
-      className="flex items-center gap-1.5 rounded-full pl-1.5 pr-2.5 py-1 active:scale-[0.96] transition-transform"
-      style={{
-        background: "var(--color-paper)",
-        border: "1px solid var(--color-parchment)",
-        boxShadow: "0 2px 8px rgba(36,31,24,0.06)",
-      }}
+      className="surface-glass flex items-center gap-1.5 rounded-full pl-1 pr-3 py-1 active:scale-[0.96] transition-transform"
     >
       <span
-        className="w-6 h-6 rounded-full flex items-center justify-center shrink-0 text-micro font-bold"
+        className="w-6 h-6 rounded-full flex items-center justify-center shrink-0"
         style={{
-          background: "var(--color-walnut)",
-          color: "var(--color-gold)",
+          background: "linear-gradient(145deg, #f8edd4 0%, #efe0b8 100%)",
+          boxShadow: "0 1px 3px rgba(224,169,46,0.25) inset",
         }}
       >
-        {name.charAt(0)}
+        <Crown size={12} className="text-gold" strokeWidth={2.2} />
       </span>
-      <span className="text-micro font-semibold text-warm-ink leading-none">{name}</span>
+      <span className="text-caption font-semibold text-ink leading-none tracking-tight">{name}</span>
       <span
         aria-hidden="true"
-        className="w-1.5 h-1.5 rounded-full"
-        style={{
-          background: isKakao ? "#c9a05a" : "var(--color-parchment)",
-          boxShadow: isKakao ? "0 0 4px rgba(201,160,90,0.5)" : undefined,
-        }}
+        className={`w-1.5 h-1.5 rounded-full ring-2 ring-white/80 ${
+          isKakao ? "bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.5)]" : "bg-ink-faint"
+        }`}
       />
     </button>
   );

@@ -11,6 +11,7 @@ import { getUserById, getOpsReport, backfillProfitKinds } from "./db";
 import { registerKakaoAuth } from "./kakao";
 import { startPushScheduler } from "./push";
 import { startBackupScheduler, buildBackupDump, lastBackupInfo } from "./backup";
+import { storagePersistenceInfo } from "./storage";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -116,6 +117,7 @@ async function startServer() {
           <td class="c">${dot(u.d7)}</td>
           <td class="c">${u.todayActive ? "🟢" : ""}</td>
         </tr>`).join("");
+      const storage = storagePersistenceInfo();
       const inboxRows = r.inbox.length
         ? r.inbox.map((f) => `<div class="fb"><div class="fbm">${esc(f.text)}</div><div class="fbw">${esc(f.name)} · ${f.when.slice(5)}</div></div>`).join("")
         : '<div class="empty">아직 지시 없음 — 앱의 계정 시트 → 업무 지시로 들어옵니다</div>';
@@ -213,9 +215,9 @@ ${inboxRows}
 <div class="row3" style="margin-top:8px">
   <div class="mini"><div class="l">배포 커밋</div><div class="v">${process.env.RAILWAY_GIT_COMMIT_SHA?.slice(0, 7) ?? "—"}</div></div>
   <div class="mini"><div class="l">마지막 백업</div><div class="v">${esc(lastBackupInfo()?.at?.slice(5) ?? "—")}</div></div>
-  <div class="mini"><div class="l">사진 저장</div><div class="v" style="color:${process.env.UPLOAD_DIR ? "var(--pass)" : "#f87171"}">${process.env.UPLOAD_DIR ? "Volume ✓" : "⚠ 휘발"}</div></div>
+  <div class="mini"><div class="l">사진 저장</div><div class="v" style="color:${storage.ok ? "var(--pass)" : "#f87171"}">${storage.label}</div></div>
 </div>
-<p class="note">${process.env.UPLOAD_DIR ? "UPLOAD_DIR 설정됨 — 재배포 후에도 사진 유지." : "UPLOAD_DIR 미설정 — Railway 재배포 시 사진 증발 가능. Volume + UPLOAD_DIR=/data/uploads 권장."}</p>
+<p class="note">${storage.mode === "volume" ? `UPLOAD_DIR=${esc(storage.dir)} — 재배포 후에도 사진 유지.` : storage.mode === "local-dev" ? `로컬 ${esc(storage.dir)} — dev 기본 경로(정상). Railway UPLOAD_DIR은 옮기지 말 것.` : "UPLOAD_DIR 미설정 — Railway 재배포 시 사진 증발 가능. Volume + UPLOAD_DIR=/data/uploads 권장."}</p>
 
 <h2>가격 피드백</h2>
 ${priceRows}
@@ -261,15 +263,10 @@ ${priceRows}
         env,
         commit: process.env.RAILWAY_GIT_COMMIT_SHA?.slice(0, 7) ?? null,
         lastBackup: lastBackupInfo(),
-        storage: {
-          uploadDirConfigured: !!process.env.UPLOAD_DIR,
-          persistence:
-            process.env.UPLOAD_DIR
-              ? "volume"
-              : process.env.NODE_ENV === "production"
-                ? "ephemeral"
-                : "local-dev",
-        },
+        storage: (() => {
+          const s = storagePersistenceInfo();
+          return { uploadDirConfigured: !!process.env.UPLOAD_DIR, persistence: s.mode, dir: s.dir };
+        })(),
       });
     } catch (e) {
       res
