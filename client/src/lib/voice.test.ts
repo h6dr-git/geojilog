@@ -45,7 +45,7 @@ describe("말의 경제 (§5) — 회시생은 거의 말하지 않는다", () =
   });
 });
 
-describe("쌀집이 — 숫자어·안전 로비 (§3)", () => {
+describe("쌀집이 — 숫자어·LCD (§3)", () => {
   it("486은 유일한 희귀 코드", () => {
     expect(SSAL_CODES.filter((c) => c.rare).map((c) => c.code)).toEqual(["486"]);
   });

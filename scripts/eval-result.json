@@ -1,0 +1,102 @@
+[
+  {
+    "file": "1780665181482_cf6a5a5c.jpg",
+    "label": {
+      "name": "아이스 아메리카노(매장)",
+      "orig": 4000,
+      "people": 1
+    },
+    "v2": {
+      "reason": "얼음이 들어있는 아이스 아메리카노 한 잔입니다. 일반 카페 기준 1인분으로 추정하며, 사진상으로는 별다른 할인이나 절약 단서가 보이지 않아 기준가와 실지출액이 동일합니다. 절약 단서는 사용자 직접 입력이 필요합니다.",
+      "estimatedPeopleCount": 1,
+      "title": "아이스 아메리카노",
+      "category": "카페",
+      "estimatedOriginalAmount": 4000,
+      "savingsSteps": [],
+      "estimatedActualAmount": 4000,
+      "incomeSource": "기타",
+      "confidence": "high",
+      "cropBox": {
+        "x": 0.5,
+        "y": 0.5
+      }
+    },
+    "v1": {
+      "reason": "사진에는 아이스 아메리카노 한 잔이 보이며, 컵 슬리브의 사과 로고와 배경의 진열장을 볼 때 교내 카페에서 구매한 것으로 추정됩니다. 시중 카페의 아이스 아메리카노 정가를 약 4,000원으로 보고, 교내 카페 할인을 적용하여 절약액을 산출했습니다.",
+      "estimatedPeopleCount": 1,
+      "title": "아이스 아메리카노",
+      "category": "카페",
+      "estimatedOriginalAmount": 4000,
+      "savingsSteps": [
+        {
+          "source": "학식/구내",
+          "label": "교내 카페가",
+          "amount": 1500,
+          "reason": "시중 4천원대 아메리카노를 교내 카페에서 저렴하게 구매"
+        }
+      ],
+      "estimatedActualAmount": 2500,
+      "incomeSource": "학식/구내",
+      "confidence": "high",
+      "cropBox": {
+        "x": 0.5,
+        "y": 0.5
+      }
+    }
+  },
+  {
+    "file": "1780665184867_0ff4976f.jpg",
+    "label": {
+      "name": "새우튀김 텐동",
+      "orig": 12000,
+      "people": 1
+    },
+    "v2": {
+      "reason": "새우, 채소, 김 튀김이 풍성하게 올라간 텐동 1인분입니다. 일반 일식 텐동 전문점 시중가 기준 13,000원으로 추정됩니다. 사진에 명확한 절약 단서가 없어 단계 없이 사용자 입력이 필요합니다.",
+      "estimatedPeopleCount": 1,
+      "title": "새우튀김 텐동",
+      "category": "식비",
+      "estimatedOriginalAmount": 13000,
+      "savingsSteps": [],
+      "estimatedActualAmount": 13000,
+      "incomeSource": "기타",
+      "confidence": "high",
+      "cropBox": {
+        "x": 0.5,
+        "y": 0.5
+      }
+    },
+    "v1": null
+  },
+  {
+    "file": "1780667324777_b18498e6.jpg",
+    "label": {
+      "name": "카레+돈가스 학식",
+      "orig": 9000,
+      "people": 1
+    },
+    "v2": {
+      "reason": "검은색 트레이에 카레 커틀릿 덮밥, 국, 샐러드, 깍두기, 나물 반찬, 요구르트가 정갈하게 담겨 있는 1인분 식사입니다. 트레이 배식과 식기 구성으로 보아 학생식당 또는 구내식당에서 제공된 것으로 추정됩니다.",
+      "estimatedPeopleCount": 1,
+      "title": "카레 커틀릿 덮밥 세트",
+      "category": "식비",
+      "estimatedOriginalAmount": 13000,
+      "savingsSteps": [
+        {
+          "source": "학식/구내",
+          "label": "학생식당가",
+          "amount": 6500,
+          "reason": "트레이 배식 및 식기 구성이 학생식당 단서"
+        }
+      ],
+      "estimatedActualAmount": 6500,
+      "incomeSource": "학식/구내",
+      "confidence": "high",
+      "cropBox": {
+        "x": 0.5,
+        "y": 0.5
+      }
+    },
+    "v1": null
+  }
+]

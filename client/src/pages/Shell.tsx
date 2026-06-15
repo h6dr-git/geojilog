@@ -1,5 +1,5 @@
 // 앱 셸 — 온보딩(첫 방문) + 하단 탭(집무실/장부/서재) + 사진 캡처를 앱 상단에서 관리.
-// 탭바는 순수 탭 3개 — 캡처 진입점은 집무실 메인 버튼·장부 '기록 추가'.
+// 탭바는 순수 탭 3개 — 캡처 진입점은 집무실 책상 영수증·장부 '기록 추가'.
 // 분석은 백그라운드(비차단). 탭을 옮겨다녀도 분석이 끊기지 않고, 끝나면 막지 않고 '확인하기'로만 알린다.
 import { useEffect, useRef, useState, type ChangeEvent } from "react";
 import Ledger from "@/pages/Ledger";
@@ -114,7 +114,7 @@ export default function Shell() {
 
     const preview = URL.createObjectURL(file);
     setJob({ status: "analyzing", preview });
-    setTab("home"); // 촬영 직후 집무실(홈)으로 — 쌀집이이 두드리는 동안 안전한 로비에서 대기
+    setTab("home"); // 촬영 직후 집무실(홈)으로 — 쌀집이가 두드리는 동안 홈에서 대기
 
     // 지난 사진이면 촬영 날짜를 그대로 쓴다 (장부 업로드 경로와 동일 — EXIF 일관성 버그 수정)
     const exifDate = await getExifDate(file).catch(() => null);
@@ -247,6 +247,7 @@ export default function Shell() {
             <div className={tab === "home" ? "" : "hidden"}>
               <HomeTab
                 onGoRecords={() => changeTab("records")}
+                onRecord={triggerCapture}
                 job={job}
                 onOpenConfirm={openConfirmFromJob}
                 onCompleteDraft={completeDraft}

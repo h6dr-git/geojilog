@@ -83,7 +83,7 @@ export const SSAL_CODES: SsalCode[] = [
   { code: "486", meaning: "사랑해", rare: true },
 ];
 
-// 집무실 말풍선(디스플레이) — 오늘 기록 여부에 따라. 숫자/기호만, 안전 로비(금액 노출 금지).
+// 집무실 탭 이스터에그 — 숫자어 코드만(금액 아님). LCD 수익은 별도 상시 표시.
 export function ssalDisplay(fedToday: boolean, exclude?: string | null): SsalCode & { rare: boolean } {
   if (Math.random() < 0.08) {
     const rare = SSAL_CODES.find((c) => c.rare)!;

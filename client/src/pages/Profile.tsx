@@ -251,7 +251,7 @@ export default function Profile({ onOpenWeekly }: { onOpenWeekly: () => void }) 
           )}
 
           {/* ── 단일 보고서 — 탭 없이 스크롤로 전부 읽힌다 ── */}
-          <div className="ledger-hero surface-paper texture-paper p-5 animate-fade-up">
+          <div className="ledger-hero texture-paper p-5 animate-fade-up">
             <div className="flex items-center justify-between mb-2.5">
               <div className="flex items-center gap-2">
                 <SpeakerBadge speaker="cpa" size={22} />

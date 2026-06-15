@@ -156,6 +156,15 @@
   --color-forest: #16201a;       /* 저장카드·온보딩 다크그린 */
   --color-butler: #fbf7ee;       /* 김집사 골드틴트 카드 배경 */
   --color-butler-line: #efe4cd;  /* 김집사 카드 보더 */
+  /* 절약사무소 무드 — IP·집무실·전역 표면 통일 */
+  --color-walnut: #241f18;
+  --color-walnut-mid: #3a3228;
+  --color-desk: #c4a574;
+  --color-desk-deep: #9a7b52;
+  --color-paper: #f6f0e4;
+  --color-parchment: #e8dfd0;
+  --color-warm-ink: #3a342c;
+  --color-lamp: rgba(224, 169, 46, 0.22);
 
   /* 타이포 5단계 (9px 이하 폐기, 본문 14px 기준) */
   --text-micro: 0.6875rem;       /* 11px — 라벨 최소 */
@@ -238,35 +247,34 @@ html {
     background-size: 128px 128px;
   }
 
-  /* 페이지 셸 — 따뜻한 앰비언트 그라데이션 */
+  /* 페이지 셸 — 크림 한지 */
   .page-shell {
     min-height: 100dvh;
-    background: var(--color-cream);
+    background:
+      radial-gradient(ellipse 100% 40% at 50% 0%, rgba(224, 169, 46, 0.05) 0%, transparent 55%),
+      linear-gradient(180deg, #f8f4ec 0%, var(--color-cream) 100%);
   }
 
-  /* 떠 있는 카드 표면 */
   .surface-elevated {
-    background: #fff;
-    border: 1px solid var(--color-line);
+    background: var(--color-paper);
+    border: 1px solid var(--color-parchment);
     border-radius: var(--radius-card);
-    box-shadow: 0 1px 3px rgba(26, 26, 23, 0.05);
+    box-shadow: 0 2px 10px rgba(36, 31, 24, 0.05);
   }
 
-  /* 한지 느낌 카드 — 서재·쪽지용 */
   .surface-paper {
-    background: #fffef9;
-    border: 1px solid var(--color-line);
+    background: linear-gradient(165deg, #faf6ec 0%, var(--color-paper) 100%);
+    border: 1px solid var(--color-parchment);
     border-radius: var(--radius-card);
-    box-shadow: 0 1px 3px rgba(26, 26, 23, 0.04);
+    box-shadow: 0 1px 4px rgba(36, 31, 24, 0.04);
   }
 
-  /* 글래스 표면 — 탭바·칩 */
   .surface-glass {
-    background: rgba(255, 255, 255, 0.92);
-    backdrop-filter: blur(12px) saturate(1.2);
-    -webkit-backdrop-filter: blur(12px) saturate(1.2);
-    border: 1px solid var(--color-line);
-    box-shadow: 0 2px 12px rgba(26, 26, 23, 0.06);
+    background: rgba(246, 240, 228, 0.94);
+    backdrop-filter: blur(14px) saturate(1.1);
+    -webkit-backdrop-filter: blur(14px) saturate(1.1);
+    border: 1px solid var(--color-parchment);
+    box-shadow: 0 4px 16px rgba(36, 31, 24, 0.07);
   }
 
   /* 페이지 타이틀 */
@@ -294,16 +302,15 @@ html {
     border-radius: 9999px;
     font-size: var(--text-caption);
     font-weight: 600;
-    color: white;
-    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-    box-shadow:
-      0 2px 8px rgba(16, 185, 129, 0.35),
-      0 1px 0 rgba(255, 255, 255, 0.2) inset;
+    color: #f5efe3;
+    background: linear-gradient(180deg, #2a3d30 0%, var(--color-forest) 100%);
+    border: 1px solid rgba(224, 169, 46, 0.3);
+    box-shadow: 0 3px 12px rgba(22, 32, 26, 0.22);
     transition: transform 0.15s ease, box-shadow 0.15s ease;
   }
   .btn-primary:active {
     transform: scale(0.96);
-    box-shadow: 0 1px 4px rgba(16, 185, 129, 0.25);
+    box-shadow: 0 1px 6px rgba(22, 32, 26, 0.18);
   }
 
   /* 세그먼트 컨트롤 트랙 */
@@ -311,15 +318,15 @@ html {
     display: flex;
     gap: 0.25rem;
     padding: 0.25rem;
-    background: #fff;
-    border: 1px solid var(--color-line);
+    background: var(--color-paper);
+    border: 1px solid var(--color-parchment);
     border-radius: 9999px;
     box-shadow: none;
   }
   .segment-active {
-    background: var(--color-ink);
-    color: white;
-    box-shadow: 0 2px 8px rgba(26, 26, 23, 0.18);
+    background: var(--color-walnut);
+    color: var(--color-gold);
+    box-shadow: 0 2px 8px rgba(36, 31, 24, 0.15);
   }
 
   /* 수익 숫자 강조 */
@@ -347,8 +354,16 @@ html {
   .ledger-hero {
     position: relative;
     overflow: hidden;
-    border-color: rgba(16, 185, 129, 0.15) !important;
-    background: #fff !important;
+    border-color: rgba(224, 169, 46, 0.22) !important;
+    background: linear-gradient(155deg, #1e2a22 0%, var(--color-forest) 100%) !important;
+    color: #f5efe3;
+  }
+  .ledger-hero .voice-label {
+    color: var(--color-gold);
+  }
+  .ledger-hero .text-caption,
+  .ledger-hero .text-body {
+    color: rgba(245, 239, 227, 0.72);
   }
 
   .ledger-trend-chip {
@@ -373,8 +388,8 @@ html {
   }
 
   .ledger-entry-row {
-    background: #fff;
-    border: 1px solid var(--color-line);
+    background: var(--color-paper);
+    border: 1px solid var(--color-parchment);
     border-radius: var(--radius-card);
     box-shadow: none;
   }
@@ -420,375 +435,415 @@ html {
   }
 
   .sheet-panel {
-    background: rgba(255, 255, 255, 0.98);
+    background: rgba(246, 240, 228, 0.98);
     border-radius: 1.5rem 1.5rem 0 0;
-    box-shadow: 0 -8px 40px rgba(26, 26, 23, 0.12);
+    box-shadow: 0 -8px 40px rgba(36, 31, 24, 0.12);
   }
 
   .input-field {
     width: 100%;
-    border: 1px solid var(--color-line);
+    border: 1px solid var(--color-parchment);
     border-radius: var(--radius-card);
     padding: 0.625rem 0.75rem;
     font-size: var(--text-body);
-    background: white;
+    background: var(--color-paper);
     transition: border-color 0.15s ease;
   }
   .input-field:focus {
     outline: none;
-    border-color: rgba(16, 185, 129, 0.5);
+    border-color: rgba(224, 169, 46, 0.45);
   }
 
-  /* ── 집무실(HomeTab) — IP 무대 · 고정 뷰포트 ── */
-  .home-office {
+  /* ── 집무실 — 저녁 절약사무소 무드 ── */
+  .geo-office {
     height: 100dvh;
     max-height: 100dvh;
     overflow: hidden;
     max-width: 32rem;
     margin-left: auto;
     margin-right: auto;
-    padding-left: 1.25rem;
-    padding-right: 1.25rem;
-    padding-top: env(safe-area-inset-top, 0px);
-    padding-bottom: calc(5.75rem + env(safe-area-inset-bottom, 0px));
+    padding: env(safe-area-inset-top, 0px) 1.125rem calc(5.5rem + env(safe-area-inset-bottom, 0px));
     display: flex;
     flex-direction: column;
+    background: var(--color-cream);
   }
 
-  .home-header {
+  .geo-header {
     flex-shrink: 0;
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 0.75rem;
-    padding-top: 2.5rem;
-    padding-bottom: 0.5rem;
+    padding-top: 2.25rem;
+    padding-bottom: 0.625rem;
   }
 
-  .home-nameplate-ip {
+  .geo-nameplate {
     min-width: 0;
-    padding: 0.5rem 0.875rem;
-    border-radius: 0.625rem;
-    background: linear-gradient(145deg, #342c1e 0%, #1f1a12 55%, #16120c 100%);
-    border: 1px solid rgba(224, 169, 46, 0.38);
-    box-shadow: 0 2px 8px rgba(26, 26, 23, 0.12);
+    padding: 0.4375rem 0.75rem;
+    border-radius: 0.5rem;
+    background: var(--color-walnut);
+    border: 1px solid rgba(224, 169, 46, 0.35);
+    box-shadow: 0 2px 10px rgba(36, 31, 24, 0.18);
   }
 
-  .home-nameplate-ip-main {
+  .geo-nameplate__text {
     display: block;
-    font-size: var(--text-caption);
+    font-size: var(--text-micro);
     font-weight: 700;
-    letter-spacing: 0.01em;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
     color: var(--color-gold);
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
   }
 
-  .home-body {
+  .geo-body {
     flex: 1;
     min-height: 0;
     display: flex;
     flex-direction: column;
-    gap: 0.625rem;
+    gap: 0.5rem;
   }
 
-  .home-job {
+  .geo-job {
     flex-shrink: 0;
-    padding: 0.75rem 1rem;
+    padding: 0.625rem 0.875rem;
+    background: var(--color-paper);
+    border-color: var(--color-parchment);
   }
 
-  .home-job-title {
+  .geo-job__title {
     font-size: var(--text-caption);
     font-weight: 600;
-    color: var(--color-ink);
+    color: var(--color-warm-ink);
   }
 
-  .home-job-body {
+  .geo-job__body {
     font-size: var(--text-micro);
     color: var(--color-ink-soft);
     margin-top: 0.125rem;
   }
 
-  .office-stage {
+  .geo-room {
     flex: 1;
     min-height: 0;
     display: flex;
     flex-direction: column;
-    align-items: center;
+    align-items: stretch;
     justify-content: center;
-    gap: 0.75rem;
-    padding: 0.875rem 0.625rem;
-    border-radius: 1.25rem;
+    gap: 0.625rem;
+    padding: 1rem 0.875rem 0.875rem;
+    border-radius: 1.125rem;
     background:
-      radial-gradient(ellipse 90% 55% at 50% 8%, rgba(224, 169, 46, 0.14) 0%, transparent 58%),
-      radial-gradient(ellipse 70% 40% at 50% 100%, rgba(0, 0, 0, 0.35) 0%, transparent 65%),
-      linear-gradient(180deg, #2c2620 0%, #1e1a16 50%, #16120e 100%);
-    border: 1px solid rgba(224, 169, 46, 0.14);
-    box-shadow:
-      inset 0 1px 0 rgba(255, 255, 255, 0.04),
-      inset 0 0 40px rgba(0, 0, 0, 0.22);
+      radial-gradient(ellipse 85% 45% at 50% 0%, var(--color-lamp) 0%, transparent 62%),
+      linear-gradient(175deg, var(--color-walnut-mid) 0%, var(--color-walnut) 100%);
+    border: 1px solid rgba(224, 169, 46, 0.18);
+    box-shadow: 0 8px 28px rgba(36, 31, 24, 0.2);
   }
 
-  .office-tagline {
+  .geo-room__tag {
     font-size: var(--text-micro);
-    color: rgba(224, 169, 46, 0.82);
-    letter-spacing: 0.06em;
+    color: rgba(224, 169, 46, 0.88);
+    letter-spacing: 0.08em;
     text-align: center;
     font-weight: 500;
   }
 
-  .office-desk {
+  .geo-desk {
     display: flex;
     flex-direction: column;
     align-items: center;
+    gap: 0.5rem;
+    padding: 0.875rem 0.625rem 0.5rem;
+    border-radius: 0.875rem;
+    background:
+      linear-gradient(180deg, #d9bf92 0%, var(--color-desk) 45%, var(--color-desk-deep) 100%);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.35),
+      0 4px 14px rgba(0, 0, 0, 0.2);
+  }
+
+  .geo-desk__scene {
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
     gap: 0.625rem;
     width: 100%;
-    padding: 1rem 0.625rem 0.625rem;
-    border-radius: 1rem;
-    background:
-      repeating-linear-gradient(
-        90deg,
-        transparent 0,
-        transparent 20px,
-        rgba(120, 90, 40, 0.035) 20px,
-        rgba(120, 90, 40, 0.035) 21px
-      ),
-      linear-gradient(180deg, #e4cfa4 0%, #d6c090 40%, #c8b078 100%);
-    box-shadow:
-      inset 0 2px 0 rgba(255, 255, 255, 0.32),
-      inset 0 -3px 8px rgba(120, 90, 40, 0.12),
-      0 6px 16px rgba(0, 0, 0, 0.18);
+    padding: 0 0.125rem;
   }
 
-  .office-calc-spot {
+  .geo-receipt-tap {
+    flex-shrink: 0;
+    margin-bottom: 0.375rem;
+    padding: 0.125rem;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    transition: transform 0.14s ease;
+    filter: drop-shadow(0 2px 3px rgba(60, 45, 30, 0.22));
+  }
+  .geo-receipt-tap:active {
+    transform: scale(0.9) translateY(3px);
+  }
+  .geo-receipt-tap__top {
+    transform-origin: 12px 44px;
+    transition: transform 0.2s ease;
+  }
+  .geo-receipt-tap:active .geo-receipt-tap__top {
+    transform: rotate(-4deg) translateY(2px);
+  }
+  .geo-receipt-tap--busy {
+    animation: receipt-busy 1.4s ease-in-out infinite;
+  }
+  @keyframes receipt-busy {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.55; }
+  }
+
+  .geo-calc {
     cursor: pointer;
     user-select: none;
-    transition: transform 0.15s ease;
-    padding: 0.25rem 0;
+    transition: transform 0.14s ease;
+    padding: 0.125rem 0;
   }
-  .office-calc-spot:active {
-    transform: scale(0.96);
+  .geo-calc:active {
+    transform: scale(0.97);
   }
 
-  .office-calc-caption {
-    min-height: 1rem;
-    margin-top: 0.375rem;
+  .geo-calc__caption {
+    min-height: 0.875rem;
+    margin-top: 0.25rem;
     text-align: center;
-  }
-
-  .office-prop-row {
-    width: 100%;
-    padding-top: 0.25rem;
-    border-top: 1px solid rgba(120, 90, 40, 0.2);
-  }
-
-  .office-prop--locked {
-    opacity: 0.22;
-    filter: grayscale(0.75) contrast(0.9);
-  }
-
-  .office-prop--owned {
-    opacity: 1;
-    filter: drop-shadow(0 1px 2px rgba(120, 90, 40, 0.2));
-  }
-
-  .office-prop-label {
-    font-size: 0.5rem;
-    line-height: 1;
-    color: #5c4f38;
-    font-weight: 600;
-    letter-spacing: 0.02em;
-  }
-
-  .office-cast {
-    display: flex;
-    justify-content: center;
-    gap: 0.5rem;
-    width: 100%;
-    padding: 0 0.25rem;
-  }
-
-  .office-cast-member {
-    flex: 1;
-    min-width: 0;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 0.25rem;
-    padding: 0.5rem 0.25rem;
-    border-radius: 0.625rem;
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid rgba(255, 255, 255, 0.07);
-  }
-
-  .office-cast-member--ssal {
-    background: rgba(232, 232, 238, 0.06);
-    border-color: rgba(200, 200, 210, 0.12);
-  }
-
-  .office-cast-member--cpa {
-    background: rgba(224, 169, 46, 0.06);
-    border-color: rgba(224, 169, 46, 0.16);
-  }
-
-  .office-cast-member--dosa {
-    background: rgba(75, 163, 111, 0.06);
-    border-color: rgba(75, 163, 111, 0.14);
-  }
-
-  .office-cast-name {
     font-size: var(--text-micro);
+    color: #5c4a32;
+  }
+
+  .geo-props {
+    width: 100%;
+    padding-top: 0.375rem;
+    border-top: 1px solid rgba(122, 99, 72, 0.25);
+  }
+
+  .geo-prop--locked {
+    opacity: 0.2;
+  }
+
+  .geo-prop--owned {
+    opacity: 1;
+    filter: drop-shadow(0 1px 1px rgba(90, 70, 45, 0.25));
+  }
+
+  .geo-prop__label {
+    font-size: 0.46875rem;
+    line-height: 1;
+    color: #5c4a32;
     font-weight: 600;
-    color: rgba(250, 248, 243, 0.92);
+    letter-spacing: 0.03em;
   }
 
-  .office-cast-role {
-    font-size: 0.5625rem;
-    line-height: 1.2;
-    color: rgba(250, 248, 243, 0.45);
+  .geo-cast-line {
     text-align: center;
+    font-size: var(--text-micro);
+    color: rgba(245, 239, 227, 0.55);
+    letter-spacing: 0.12em;
   }
 
-  .home-ip-footer {
+  .geo-cast-line strong {
+    color: rgba(245, 239, 227, 0.9);
+    font-weight: 600;
+  }
+
+  .geo-footer {
     flex-shrink: 0;
     display: flex;
     flex-direction: column;
-    gap: 0.5rem;
+    gap: 0.4375rem;
   }
 
-  .home-ip-beat {
-    padding: 0.75rem 0.875rem;
+  .geo-quote {
+    padding: 0.625rem 0.75rem 0.625rem 0.875rem;
     border-radius: var(--radius-card);
-    background: linear-gradient(165deg, #fffef9 0%, #faf6ee 100%);
-    border: 1px solid rgba(224, 169, 46, 0.12);
-    box-shadow: 0 1px 3px rgba(26, 26, 23, 0.04);
+    background: var(--color-paper);
+    border: 1px solid var(--color-parchment);
+    border-left: 3px solid var(--color-gold);
+    box-shadow: 0 2px 8px rgba(36, 31, 24, 0.04);
   }
 
-  .home-ip-beat-head {
+  .geo-quote__head {
     display: flex;
     align-items: center;
     gap: 0.375rem;
     margin-bottom: 0.25rem;
   }
 
-  .home-ip-beat-text {
+  .geo-quote__text {
     font-size: var(--text-caption);
     line-height: var(--text-caption--line-height);
-    color: var(--color-ink-soft);
+    color: var(--color-warm-ink);
   }
 
-  .home-cpa-whisper {
+  .geo-quote__sub {
     display: flex;
     align-items: flex-start;
     gap: 0.375rem;
-    padding: 0 0.25rem;
+    margin-top: 0.375rem;
     font-size: var(--text-micro);
     line-height: var(--text-micro--line-height);
-    color: var(--color-ink-faint);
+    color: var(--color-ink-soft);
   }
 
-  .home-ip-foot {
+  .geo-foot {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 0.75rem;
+    gap: 0.625rem;
     padding: 0 0.125rem;
   }
 
-  .home-ip-actions {
+  .geo-foot__actions {
     display: flex;
     align-items: center;
-    gap: 0.5rem;
+    gap: 0.375rem;
     flex-shrink: 0;
   }
 
-  .home-link-btn {
+  .geo-link {
     display: inline-flex;
     align-items: center;
     gap: 0.125rem;
-    padding: 0.375rem 0.625rem;
+    padding: 0.3125rem 0.5625rem;
     font-size: var(--text-micro);
     font-weight: 500;
     color: var(--color-ink-soft);
     border-radius: 9999px;
-    border: 1px solid var(--color-line);
-    background: #fff;
+    border: 1px solid var(--color-parchment);
+    background: var(--color-paper);
   }
 
-  .home-link-btn--primary {
-    color: var(--color-ink);
+  .geo-link--accent {
+    color: var(--color-walnut);
     font-weight: 600;
+    border-color: rgba(224, 169, 46, 0.35);
   }
 
-  .home-status-row {
+  .geo-status-row {
     display: flex;
     align-items: center;
-    gap: 0.75rem;
+    gap: 0.625rem;
   }
 
-  .home-status-thumb {
-    width: 2.75rem;
-    height: 2.75rem;
-    border-radius: 0.625rem;
+  .geo-status-thumb {
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: 0.5rem;
     object-fit: cover;
     flex-shrink: 0;
   }
 
-  .home-dup-actions {
+  .geo-dup-actions {
     display: flex;
-    gap: 0.5rem;
-    margin-top: 0.625rem;
+    gap: 0.375rem;
+    margin-top: 0.5rem;
   }
 
-  .home-dup-btn {
+  .geo-dup-btn {
     flex: 1;
-    padding: 0.5rem;
+    padding: 0.4375rem;
     font-size: var(--text-micro);
-    border: 1px solid var(--color-line);
+    border: 1px solid var(--color-parchment);
     border-radius: 0.5rem;
     color: var(--color-ink-soft);
-    background: #fff;
-  }
-  .home-dup-btn--primary {
-    font-weight: 600;
-    color: #92400e;
-    border-color: rgba(251, 191, 36, 0.45);
+    background: var(--color-paper);
   }
 
-  .home-week-dots {
+  .geo-dup-btn--primary {
+    background: var(--color-walnut);
+    color: var(--color-gold);
+    border-color: rgba(224, 169, 46, 0.35);
+    font-weight: 600;
+  }
+
+  .geo-week {
     display: flex;
     align-items: flex-end;
-    gap: 0.2rem;
+    gap: 0.1875rem;
   }
 
-  .home-week-dot-col {
+  .geo-week__col {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 0.15rem;
+    gap: 0.125rem;
   }
 
-  .home-week-dot-label {
-    font-size: 0.5rem;
-    line-height: 1;
+  .geo-week__label {
+    font-size: 0.46875rem;
     color: var(--color-ink-faint);
-    font-weight: 500;
+    font-weight: 600;
   }
 
-  .home-week-dot {
+  .geo-week__dot {
     border-radius: 9999px;
-  }
-
-  .home-week-dot--today {
-    width: 0.4375rem;
-    height: 0.4375rem;
-    box-shadow: 0 0 0 1.5px rgba(16, 185, 129, 0.3);
-  }
-
-  .home-week-dot--default {
     width: 0.3125rem;
     height: 0.3125rem;
+    background: var(--color-parchment);
+  }
+
+  .geo-week__dot--today {
+    width: 0.375rem;
+    height: 0.375rem;
+    box-shadow: 0 0 0 1.5px rgba(224, 169, 46, 0.45);
+  }
+
+  .geo-week__dot--on {
+    background: #c9a05a;
+  }
+
+  /* 하단 탭바 — 호두 무드 */
+  .geo-nav__bar {
+    display: flex;
+    align-items: center;
+    height: 58px;
+    padding: 0.25rem;
+    border-radius: 1.125rem;
+    background: var(--color-walnut);
+    border: 1px solid rgba(224, 169, 46, 0.22);
+    box-shadow: 0 6px 24px rgba(36, 31, 24, 0.22);
+  }
+
+  .geo-nav__tab {
+    position: relative;
+    flex: 1;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.125rem;
+    color: rgba(245, 239, 227, 0.42);
+    transition: color 0.15s ease;
+  }
+
+  .geo-nav__tab--active {
+    color: var(--color-gold);
+  }
+
+  .geo-nav__pill {
+    position: absolute;
+    inset: 0.25rem 0.375rem;
+    border-radius: 0.75rem;
+    background: rgba(224, 169, 46, 0.1);
+    border: 1px solid rgba(224, 169, 46, 0.15);
+  }
+
+  .geo-nav__label {
+    position: relative;
+    z-index: 1;
+    font-size: 0.625rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
   }
 }
 
@@ -801,7 +856,7 @@ html {
 
 /* 쌀집이 486 희귀 — 외곽 글로우 (LCD 펄스는 SVG 내부) */
 .ssal-glow-wrap {
-  filter: drop-shadow(0 0 8px rgba(224, 169, 46, 0.42));
+  filter: drop-shadow(0 0 10px rgba(201, 160, 90, 0.5));
 }
 
 /* 탭바 활성 인디케이터 */

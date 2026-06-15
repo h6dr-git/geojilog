@@ -1,5 +1,4 @@
-// 집무실(홈) = IP 무대 — 캐릭터·사무소 성장·세계관 초석. 기록·유틸은 장부 탭.
-// 안전 로비: 수익 상시 노출 금지 · 쌀집이 탭 투 리빌만 허용.
+// 집무실(홈) = IP 무대 — 쌀집이·사무소 성장·기록 진입. 장부=유틸·목록.
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/hooks/useAuth";
 import LoginChip from "@/components/LoginChip";
@@ -29,6 +28,7 @@ function recentWeekProfit(entries: Entry[]): number {
 
 type Props = {
   onGoRecords: () => void;
+  onRecord: () => void;
   job: CaptureJob | null;
   onIgnoreDup?: () => void;
   onDismissDup?: () => void;
@@ -36,7 +36,7 @@ type Props = {
   onCompleteDraft: (d: Draft) => void;
 };
 
-export default function HomeTab({ onGoRecords, job, onOpenConfirm, onCompleteDraft, onIgnoreDup, onDismissDup }: Props) {
+export default function HomeTab({ onGoRecords, onRecord, job, onOpenConfirm, onCompleteDraft, onIgnoreDup, onDismissDup }: Props) {
   const [showAccount, setShowAccount] = useState(false);
   const { isAuthenticated, user } = useAuth();
   const displayName = user?.name || "사장님";
@@ -63,14 +63,7 @@ export default function HomeTab({ onGoRecords, job, onOpenConfirm, onCompleteDra
   const propCount = unlockedItems(score).length;
   const ipBeat = deskNote((entries as Entry[]).length);
 
-  const [revealHintDone, setRevealHintDone] = useState<boolean>(() => {
-    try { return localStorage.getItem("geo_reveal_hint_done") === "1"; } catch { return true; }
-  });
-  function markRevealHintDone() {
-    if (revealHintDone) return;
-    setRevealHintDone(true);
-    try { localStorage.setItem("geo_reveal_hint_done", "1"); } catch {}
-  }
+  const profitDisplay = `+${monthProfit.toLocaleString("ko-KR")}`;
 
   const weekDots = (() => {
     const t = new Date();
@@ -91,23 +84,21 @@ export default function HomeTab({ onGoRecords, job, onOpenConfirm, onCompleteDra
     });
   })();
 
-  type CalcStage = "idle" | "code" | "amount";
-  const [calcStage, setCalcStage] = useState<CalcStage>("idle");
+  type CalcStage = "profit" | "code";
+  const [calcStage, setCalcStage] = useState<CalcStage>("profit");
   const [calcCode, setCalcCode] = useState<(SsalCode & { rare: boolean }) | null>(null);
   const seqTimers = useRef<number[]>([]);
   const lastLine = useRef<string | null>(null);
   function clearSeq() { seqTimers.current.forEach((t) => window.clearTimeout(t)); seqTimers.current = []; }
   function tapCalc() {
-    if (calcStage !== "idle") return;
-    markRevealHintDone();
+    if (calcStage !== "profit") return;
     const c = ssalDisplay(fedToday, lastLine.current);
     lastLine.current = c.code;
     setCalcCode(c);
     setCalcStage("code");
     clearSeq();
     const codeMs = c.rare ? 2600 : 1300;
-    seqTimers.current.push(window.setTimeout(() => setCalcStage("amount"), codeMs));
-    seqTimers.current.push(window.setTimeout(() => { setCalcStage("idle"); setCalcCode(null); }, codeMs + 3000));
+    seqTimers.current.push(window.setTimeout(() => { setCalcStage("profit"); setCalcCode(null); }, codeMs));
   }
   useEffect(() => () => clearSeq(), []);
 
@@ -133,66 +124,64 @@ export default function HomeTab({ onGoRecords, job, onOpenConfirm, onCompleteDra
   }, [unlockedCount, isAuthenticated]);
 
   const calcCaption = calcStage === "code" && calcCode ? (
-    <p key={calcCode.code} className="text-micro font-mono" style={{ color: calcCode.rare ? "#B07F1E" : "#6b5b3e" }}>
+    <p key={calcCode.code} className={`font-mono ${calcCode.rare ? "text-gold" : ""}`}>
       {calcCode.rare ? "✨ " : ""}{calcCode.code} — {calcCode.meaning}
     </p>
-  ) : !revealHintDone ? (
-    <p className="text-micro text-ink-faint">탭하면 이번 달 수익</p>
   ) : null;
 
   return (
-    <div className="home-office page-shell">
-      <header className="home-header">
-        <div className="home-nameplate-ip">
-          <span className="home-nameplate-ip-main">{displayName} 절약사무소</span>
+    <div className="geo-office page-shell">
+      <header className="geo-header">
+        <div className="geo-nameplate">
+          <span className="geo-nameplate__text">{displayName} 절약사무소</span>
         </div>
         <LoginChip onClick={() => setShowAccount(true)} />
       </header>
 
-      <div className="home-body">
+      <div className="geo-body">
         {activeJob && (
-          <section className="home-job surface-elevated">
+          <section className="geo-job surface-elevated">
             {analyzingJob ? (
-              <div className="home-status-row">
-                <img src={analyzingJob.preview} alt="" className="home-status-thumb" />
+              <div className="geo-status-row">
+                <img src={analyzingJob.preview} alt="" className="geo-status-thumb" />
                 <div>
-                  <p className="home-job-title text-emerald-700">회시생이 분석 중</p>
-                  <p className="home-job-body text-emerald-600">잠시만 기다려 주세요</p>
+                  <p className="geo-job__title">회시생이 분석 중</p>
+                  <p className="geo-job__body">잠시만 기다려 주세요</p>
                 </div>
               </div>
             ) : readyJob ? (
-              <button type="button" onClick={onOpenConfirm} className="home-status-row w-full text-left">
-                <img src={readyJob.preview} alt="" className="home-status-thumb" />
+              <button type="button" onClick={onOpenConfirm} className="geo-status-row w-full text-left">
+                <img src={readyJob.preview} alt="" className="geo-status-thumb" />
                 <div className="flex-1 min-w-0">
-                  <p className="home-job-title truncate">{readyJob.data.title || "분석 완료"}</p>
-                  <p className="home-job-body text-emerald-600 flex items-center gap-0.5">
+                  <p className="geo-job__title truncate">{readyJob.data.title || "분석 완료"}</p>
+                  <p className="geo-job__body text-gold flex items-center gap-0.5">
                     <Check size={12} /> 확인하고 저장
                   </p>
                 </div>
-                <ChevronRight size={16} className="text-emerald-400 shrink-0" />
+                <ChevronRight size={16} className="text-gold/60 shrink-0" />
               </button>
             ) : dupJob ? (
               <>
-                <div className="home-status-row">
-                  <img src={dupJob.preview} alt="" className="home-status-thumb" />
+                <div className="geo-status-row">
+                  <img src={dupJob.preview} alt="" className="geo-status-thumb" />
                   <div className="flex-1 min-w-0">
-                    <p className="home-job-title text-amber-800">이미 기록한 사진</p>
-                    <p className="home-job-body text-amber-700 truncate">
+                    <p className="geo-job__title text-gold">이미 기록한 사진</p>
+                    <p className="geo-job__body truncate">
                       {dupJob.dup.date.slice(5).replace("-", ".")} · {dupJob.dup.title}
                     </p>
                   </div>
                 </div>
-                <div className="home-dup-actions">
-                  <button type="button" onClick={onDismissDup} className="home-dup-btn">닫기</button>
-                  <button type="button" onClick={onIgnoreDup} className="home-dup-btn home-dup-btn--primary">그래도 기록</button>
+                <div className="geo-dup-actions">
+                  <button type="button" onClick={onDismissDup} className="geo-dup-btn">닫기</button>
+                  <button type="button" onClick={onIgnoreDup} className="geo-dup-btn geo-dup-btn--primary">그래도 기록</button>
                 </div>
               </>
             ) : errorJob ? (
-              <button type="button" onClick={onOpenConfirm} className="home-status-row w-full text-left">
-                <img src={errorJob.preview} alt="" className="home-status-thumb" />
+              <button type="button" onClick={onOpenConfirm} className="geo-status-row w-full text-left">
+                <img src={errorJob.preview} alt="" className="geo-status-thumb" />
                 <div className="flex-1 min-w-0">
-                  <p className="home-job-title">분석 실패</p>
-                  <p className="home-job-body">탭해서 직접 입력</p>
+                  <p className="geo-job__title">분석 실패</p>
+                  <p className="geo-job__body">탭해서 직접 입력</p>
                 </div>
                 <ChevronRight size={16} className="text-ink-faint shrink-0" />
               </button>
@@ -208,53 +197,53 @@ export default function HomeTab({ onGoRecords, job, onOpenConfirm, onCompleteDra
           display={
             analyzingJob ? "······"
             : calcStage === "code" && calcCode ? calcCode.code
-            : calcStage === "amount" ? `+${monthProfit.toLocaleString("ko-KR")}`
-            : "-----"
+            : profitDisplay
           }
           onTapCalc={tapCalc}
+          onRecord={onRecord}
           calcCaption={calcCaption}
           score={score}
           highlightKey={newProp}
         />
 
-        <footer className="home-ip-footer">
-          <div className="home-ip-beat">
-            <div className="home-ip-beat-head">
+        <footer className="geo-footer">
+          <div className="geo-quote">
+            <div className="geo-quote__head">
               <SpeakerBadge speaker={ipBeat.speaker} size={18} />
               <span className="voice-label">{IP_BEAT_LABELS[ipBeat.speaker]}</span>
             </div>
-            <p className={`home-ip-beat-text ${ipBeat.speaker === "dosa" ? "italic" : ipBeat.speaker === "ssal" ? "font-mono" : ""}`}>
+            <p className={`geo-quote__text ${ipBeat.speaker === "dosa" ? "italic" : ipBeat.speaker === "ssal" ? "font-mono" : ""}`}>
               {ipBeat.text}
             </p>
           </div>
 
           {!activeJob && (
-            <p className="home-cpa-whisper">
+            <p className="geo-quote__sub">
               <SpeakerBadge speaker="cpa" size={16} />
               <span>{intelDeskLine(entries as unknown as SavingsEntry[], fedToday)}</span>
             </p>
           )}
 
-          <div className="home-ip-foot">
-            <div className="home-week-dots" aria-label="이번 주 기록">
+          <div className="geo-foot">
+            <div className="geo-week" aria-label="이번 주 기록">
               {weekDots.map((d, i) => (
-                <span key={d.ds} className="home-week-dot-col">
-                  <span className="home-week-dot-label">{WEEK_LABELS[i]}</span>
+                <span key={d.ds} className="geo-week__col">
+                  <span className="geo-week__label">{WEEK_LABELS[i]}</span>
                   <span
-                    className={`home-week-dot ${d.isToday ? "home-week-dot--today" : "home-week-dot--default"} ${
-                      d.has ? "bg-emerald-400" : d.future ? "bg-line/50" : "bg-line"
+                    className={`geo-week__dot ${d.isToday ? "geo-week__dot--today" : ""} ${
+                      d.has ? "geo-week__dot--on" : d.future ? "opacity-40" : ""
                     }`}
                   />
                 </span>
               ))}
             </div>
-            <div className="home-ip-actions">
+            <div className="geo-foot__actions">
               {topDraft && (
-                <button type="button" onClick={() => onCompleteDraft(topDraft)} className="home-link-btn">
+                <button type="button" onClick={() => onCompleteDraft(topDraft)} className="geo-link">
                   미완 {drafts.length}
                 </button>
               )}
-              <button type="button" onClick={onGoRecords} className="home-link-btn home-link-btn--primary">
+              <button type="button" onClick={onGoRecords} className="geo-link geo-link--accent">
                 장부로
                 <ChevronRight size={14} />
               </button>
