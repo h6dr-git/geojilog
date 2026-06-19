@@ -42,7 +42,7 @@ export function computeReport(
   todayIso?: string
 ): ReportData {
   const today = todayIso ?? iso(new Date());
-  let start = startDate;
+  const start = startDate;
   let end: string;
   let cardLabel: string, cardPeriod: string, shelfLabel: string;
 

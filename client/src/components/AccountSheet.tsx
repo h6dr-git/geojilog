@@ -1,17 +1,17 @@
 // 계정 시트 — 집무실 상단 프로필 칩에서 연다. (구조 재편: 계정 기능은 탭이 아니라 칩 뒤로)
 // 닉네임 수정 · 카카오 로그인/로그아웃 · 데이터 내보내기. "크게 중요하지 않은 기능"이라 조용한 곳에.
-import { useState } from "react";
+import { useState, lazy, Suspense } from "react";
 import { trpc } from "@/lib/trpc";
-import FeedbackSheet from "@/components/FeedbackSheet";
+const FeedbackSheet = lazy(() => import("@/components/FeedbackSheet"));
 import { useAuth } from "@/hooks/useAuth";
 import { CHARACTER_NAME, josa } from "@/lib/brand";
 import Jarureu from "@/components/Jarureu";
-import ExportSheet from "@/components/ExportSheet";
+const ExportSheet = lazy(() => import("@/components/ExportSheet"));
 import type { SavingsEntry } from "@/lib/ledger";
 import { useEffect } from "react";
 import { toast } from "sonner";
 import { MessageSquarePlus, X, Pencil, Check, LogOut, Download, ChevronRight, Bell, BellOff, Loader2, SquarePlus } from "lucide-react";
-import InstallGuideSheet from "@/components/InstallGuideSheet";
+const InstallGuideSheet = lazy(() => import("@/components/InstallGuideSheet"));
 import { useInstall } from "@/lib/install";
 
 export default function AccountSheet({ onClose }: { onClose: () => void }) {
@@ -252,9 +252,21 @@ export default function AccountSheet({ onClose }: { onClose: () => void }) {
         </button>
       </div>
 
-      {showFeedback && <FeedbackSheet onClose={() => setShowFeedback(false)} />}
-      {showExport && <ExportSheet entries={entries as SavingsEntry[]} onClose={() => setShowExport(false)} />}
-      {showInstallGuide && <InstallGuideSheet onClose={() => setShowInstallGuide(false)} />}
+      {showFeedback && (
+        <Suspense fallback={null}>
+          <FeedbackSheet onClose={() => setShowFeedback(false)} />
+        </Suspense>
+      )}
+      {showExport && (
+        <Suspense fallback={null}>
+          <ExportSheet entries={entries as SavingsEntry[]} onClose={() => setShowExport(false)} />
+        </Suspense>
+      )}
+      {showInstallGuide && (
+        <Suspense fallback={null}>
+          <InstallGuideSheet onClose={() => setShowInstallGuide(false)} />
+        </Suspense>
+      )}
     </div>
   );
 }

@@ -4,8 +4,9 @@
 import { SavingsEntry } from "@/lib/ledger";
 import { dayOfWeekRhythm } from "@/lib/stats";
 
+import { won } from "@/lib/format";
+
 const KO = ["일", "월", "화", "수", "목", "금", "토"];
-const won = (n: number) => "₩" + Math.abs(n).toLocaleString("ko-KR");
 const pad = (n: number) => String(n).padStart(2, "0");
 const iso = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 
@@ -78,7 +79,7 @@ export function intelWeeklyLine(
     const sum = (l: SavingsEntry[]) => l.reduce((s, e) => s + e.profit, 0);
     const diff = sum(thisWeek) - sum(lastWeekSame);
     if (diff !== 0) {
-      return `지난주 같은 시점 대비 ${diff > 0 ? "+" : "−"}${won(diff)} ${diff > 0 ? "앞서" : "뒤져"} 있습니다.`;
+      return `지난주 같은 시점 대비 ${diff > 0 ? "+" : "−"}${won(Math.abs(diff))} ${diff > 0 ? "앞서" : "뒤져"} 있습니다.`;
     }
   }
   return null;

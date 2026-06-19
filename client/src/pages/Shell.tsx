@@ -21,17 +21,9 @@ import type { Draft } from "@/lib/drafts";
 import { Loader2, Check, Copy } from "lucide-react";
 import SsalCalc from "@/components/SsalCalc";
 import { onAnalyzingCount } from "@/lib/analyzing";
+import { fileToCompressedBase64 } from "@/lib/compressImage";
 
 const ONBOARDED_KEY = "geojilog:onboarded";
-
-function fileToBase64(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const r = new FileReader();
-    r.onload = () => resolve(String(r.result).split(",")[1] ?? "");
-    r.onerror = () => reject(new Error("파일을 읽지 못했습니다"));
-    r.readAsDataURL(file);
-  });
-}
 
 function emptyData(imageUrl: string, date?: string): Prefill {
   return { imageUrl, title: "", category: "식비", originalAmount: null, actualAmount: null, date };
@@ -120,14 +112,17 @@ export default function Shell() {
     const exifDate = await getExifDate(file).catch(() => null);
     const imageSig = await sha256File(file); // #48
 
-    let base64 = "";
+    let base64: string;
+    let mimeType: string;
     try {
-      base64 = await fileToBase64(file);
+      const compressed = await fileToCompressedBase64(file);
+      base64 = compressed.base64;
+      mimeType = compressed.mimeType;
     } catch {
       setJob({ status: "error", preview, data: emptyData("", exifDate ?? undefined) });
       return;
     }
-    retryCtx.current = { base64, mimeType: file.type || "image/jpeg", preview, exifDate, imageSig };
+    retryCtx.current = { base64, mimeType, preview, exifDate, imageSig };
     await runAnalyze(false);
   }
 

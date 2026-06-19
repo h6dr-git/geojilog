@@ -2,6 +2,9 @@
 
 import { PROFIT_KIND_LABELS, resolveProfitKind, type ProfitKind } from "@shared/profitKinds";
 import { LEDGER_LABELS } from "@shared/ledgerLabels";
+import { fmt } from "@/lib/format";
+
+export { fmt } from "@/lib/format";
 
 export interface SavingsEntry {
   id: number;
@@ -51,7 +54,6 @@ export function incomeSourceUsual(
   return { usualActual, sample: pool.length };
 }
 
-export const fmt = (n: number) => n.toLocaleString("ko-KR");
 export const todayStr = () => new Date().toISOString().split("T")[0];
 export const KO_DAYS = ["일", "월", "화", "수", "목", "금", "토"] as const;
 

@@ -116,3 +116,7 @@ uploads/
 
 # vite/vitest temp
 vitest.config.ts.timestamp-*.mjs
+
+# Word lock files & manual markdown backups
+~$*.docx
+*.bak.md

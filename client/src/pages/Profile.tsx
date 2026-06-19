@@ -5,14 +5,14 @@
 //   ② 시간 단위가 IA의 제1축 — [주간|월간|전체] 세그먼트 + ‹› 기간 이동
 //   ③ 스토리(Wrapped)는 일상 동선이 아니라 이벤트 — 주말(일·월)에만 배너로 등장
 //   ④ 공유는 직행 — '결산 카드' 버튼 → 시트(카드+스킨+캡처), 스토리 통과 불필요
-import { useMemo, useState } from "react";
+import { useMemo, useState, lazy, Suspense } from "react";
 import { UNCLASSIFIED } from "@shared/incomeSources";
 import { PROFIT_KIND_LABELS, resolveProfitKind, type ProfitKind } from "@shared/profitKinds";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/hooks/useAuth";
-import WeeklyWrapped from "@/components/WeeklyWrapped";
+const WeeklyWrapped = lazy(() => import("@/components/WeeklyWrapped"));
+const ShareCardSheet = lazy(() => import("@/components/ShareCardSheet"));
 import SpeakerBadge from "@/components/SpeakerBadge";
-import ShareCardSheet from "@/components/ShareCardSheet";
 import ShelfCardViewer, { type ShelfCard } from "@/components/ShelfCardViewer";
 import { themeById } from "@/components/cardSkin";
 import { SavingsEntry, fmt } from "@/lib/ledger";
@@ -426,24 +426,28 @@ export default function Profile({ onOpenWeekly }: { onOpenWeekly: () => void }) 
       )}
 
       {showWrapped && (
-        <WeeklyWrapped
-          entries={list}
-          onClose={() => setShowWrapped(false)}
-          onGoDetail={() => {
-            setShowWrapped(false);
-            onOpenWeekly();
-          }}
-        />
+        <Suspense fallback={null}>
+          <WeeklyWrapped
+            entries={list}
+            onClose={() => setShowWrapped(false)}
+            onGoDetail={() => {
+              setShowWrapped(false);
+              onOpenWeekly();
+            }}
+          />
+        </Suspense>
       )}
 
       {/* #50 — 지난 주 브리핑 재생 (서가에서) */}
       {briefingRange && (
-        <WeeklyWrapped
-          entries={list}
-          range={briefingRange}
-          onClose={() => setBriefingRange(null)}
-          onGoDetail={() => setBriefingRange(null)}
-        />
+        <Suspense fallback={null}>
+          <WeeklyWrapped
+            entries={list}
+            range={briefingRange}
+            onClose={() => setBriefingRange(null)}
+            onGoDetail={() => setBriefingRange(null)}
+          />
+        </Suspense>
       )}
 
       {/* #50 — 서가 카드 뷰어 */}
@@ -460,19 +464,21 @@ export default function Profile({ onOpenWeekly }: { onOpenWeekly: () => void }) 
       )}
 
       {showShare && range.shelfKey && (
-        <ShareCardSheet
-          label={range.cardLabel}
-          period={range.cardPeriod}
-          periodType={range.shelfKey.periodType}
-          startDate={range.shelfKey.startDate}
-          amount={profit}
-          subline={`${count}${period === "week" ? "끼" : "건"} 기록${best && best.profit > 0 ? ` · 최고의 한 수 ${best.title}` : ""}`}
-          topSource={topSource}
-          topProfitKind={topProfitKind}
-          comment={comment}
-          quote={dosaLineOfDay()}
-          onClose={() => setShowShare(false)}
-        />
+        <Suspense fallback={null}>
+          <ShareCardSheet
+            label={range.cardLabel}
+            period={range.cardPeriod}
+            periodType={range.shelfKey.periodType}
+            startDate={range.shelfKey.startDate}
+            amount={profit}
+            subline={`${count}${period === "week" ? "끼" : "건"} 기록${best && best.profit > 0 ? ` · 최고의 한 수 ${best.title}` : ""}`}
+            topSource={topSource}
+            topProfitKind={topProfitKind}
+            comment={comment}
+            quote={dosaLineOfDay()}
+            onClose={() => setShowShare(false)}
+          />
+        </Suspense>
       )}
     </div>
   );

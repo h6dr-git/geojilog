@@ -21,12 +21,12 @@ export function dosaLineOfDay(): string {
   return DOSA_LINES[day % DOSA_LINES.length];
 }
 
-const won = (n: number) => "+₩" + n.toLocaleString("ko-KR");
+import { fmtSigned } from "@/lib/format";
 
 // ── 회시생 — 저장 직후 보고 (리빌) ──────────────────────────
 // 결(v1.3): 숫자 먼저·사실 먼저. 빈말 금지(신빙성=캐릭터). 자격·시험·신세 언급 금지, 보고 1문장+촌평 1문장.
 export function cpaSaveLine(profit: number): string {
-  const w = won(profit);
+  const w = fmtSigned(profit);
   // v1.3(F1·F6): 빈말·근거 없는 칭찬 금지 — 숫자와 사실이 먼저, 신빙성이 캐릭터다.
   const lines = [
     `사장님, 금일 ${w} 수익 실현하셨습니다. 계상해 두었습니다.`,

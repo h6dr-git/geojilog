@@ -8,6 +8,7 @@ import { createClient } from "@libsql/client";
 const DB_URL = process.env.DATABASE_URL || "file:local.db";
 const DB_AUTH = process.env.TURSO_AUTH_TOKEN || process.env.DATABASE_AUTH_TOKEN;
 
+// 스키마 SSOT: drizzle/schema.ts + drizzle/migrations/. 아래 CREATE/ALTER는 부트스트랩·레거시 DB 호환용.
 const CREATE_TABLES_SQL = `
 CREATE TABLE IF NOT EXISTS users (
   id INTEGER PRIMARY KEY AUTOINCREMENT,

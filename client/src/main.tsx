@@ -7,7 +7,11 @@ import superjson from "superjson";
 import App from "./App";
 import "./index.css";
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: { staleTime: 30_000, gcTime: 5 * 60_000 },
+  },
+});
 
 // [작업1-b] 인증 에러 시 window.location.href 강제 이동 제거.
 //  - 기존: 401 발생 -> 페이지를 통째로 새로고침 -> 업로드 큐(분석 중 사진들)가 전멸.

@@ -17,6 +17,15 @@ export default defineConfig({
   build: {
     outDir: path.resolve(import.meta.dirname, "dist/public"),
     emptyOutDir: true,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          vendor: ["react", "react-dom"],
+          trpc: ["@trpc/client", "@trpc/react-query", "@tanstack/react-query"],
+          ui: ["@radix-ui/react-dialog", "@radix-ui/react-tooltip", "lucide-react"],
+        },
+      },
+    },
   },
   server: {
     host: true,
