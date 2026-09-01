@@ -2,12 +2,16 @@
 import fs from "node:fs";
 import path from "node:path";
 import { randomUUID } from "node:crypto";
+import { activeUploadDir, isLocalMode } from "./localMode";
 
-const UPLOAD_DIR = process.env.UPLOAD_DIR || path.resolve(process.cwd(), "uploads");
+const UPLOAD_DIR = activeUploadDir();
 
 /** 계기판·헬스체크용 — 사진 저장 영속성 판정 */
 export function storagePersistenceInfo() {
-  const dir = process.env.UPLOAD_DIR || path.resolve(process.cwd(), "uploads");
+  const dir = activeUploadDir();
+  if (isLocalMode()) {
+    return { mode: "local-recovery" as const, ok: true, label: "격리 로컬 ✓", dir };
+  }
   if (process.env.UPLOAD_DIR) {
     return { mode: "volume" as const, ok: true, label: "Volume ✓", dir };
   }

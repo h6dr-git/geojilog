@@ -5,12 +5,14 @@
   "license": "MIT",
   "scripts": {
     "dev": "NODE_ENV=development tsx watch server/index.ts",
+    "dev:local": "GEOJILOG_LOCAL_MODE=1 GEOJILOG_LOCAL_DB=local-restored.db GEOJILOG_LOCAL_UPLOAD_DIR=local-restored-uploads GEOJILOG_LOCAL_OWNER_ID=2 NODE_ENV=development tsx watch server/index.ts",
     "build": "vite build && esbuild server/index.ts --platform=node --packages=external --bundle --format=esm --outdir=dist",
     "start": "NODE_ENV=production node dist/index.js",
     "check": "tsc --noEmit",
     "lint": "eslint .",
     "format": "prettier --write .",
     "test": "vitest run",
+    "restore:local": "tsx scripts/restore-local.ts",
     "db:push": "drizzle-kit generate && drizzle-kit migrate"
   },
   "dependencies": {

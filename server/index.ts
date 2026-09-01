@@ -13,6 +13,7 @@ import { startPushScheduler } from "./push";
 import { startBackupScheduler, buildBackupDump, lastBackupInfo } from "./backup";
 import { renderOpsDashboardHtml } from "./opsDashboard";
 import { storagePersistenceInfo } from "./storage";
+import { databaseConnectionConfig, isLocalMode, resolveLocalModeConfig } from "./localMode";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -34,6 +35,11 @@ async function findAvailablePort(startPort: number = 3000): Promise<number> {
 }
 
 async function startServer() {
+  const local = resolveLocalModeConfig();
+  if (local) {
+    console.log(`[local-mode] isolated database=${local.dbPath}`);
+    console.log(`[local-mode] isolated uploads=${local.uploadDir}; owner=${local.ownerId}`);
+  }
   const app = express();
   const server = createServer(app);
   // Railway 등 리버스 프록시 뒤에서 req.protocol/secure 쿠키가 올바르게 동작하도록.
@@ -78,8 +84,12 @@ async function startServer() {
   // 로그인 화면이 뜨면 /api/health 로 "코드 문제 vs 설정(Turso/env) 문제"를 즉시 구분.
   app.get("/api/health", async (_req, res) => {
     const env = {
-      hasDatabaseUrl: !!process.env.DATABASE_URL,
-      hasTursoToken: !!(process.env.TURSO_AUTH_TOKEN || process.env.DATABASE_AUTH_TOKEN),
+      localMode: isLocalMode(),
+      databaseMode: databaseConnectionConfig().mode,
+      hasDatabaseUrl: isLocalMode() ? true : !!process.env.DATABASE_URL,
+      hasTursoToken: isLocalMode()
+        ? false
+        : !!(process.env.TURSO_AUTH_TOKEN || process.env.DATABASE_AUTH_TOKEN),
       hasJwtSecret: !!process.env.JWT_SECRET,
       nodeEnv: process.env.NODE_ENV ?? null,
     };
@@ -94,7 +104,11 @@ async function startServer() {
         lastBackup: lastBackupInfo(),
         storage: (() => {
           const s = storagePersistenceInfo();
-          return { uploadDirConfigured: !!process.env.UPLOAD_DIR, persistence: s.mode, dir: s.dir };
+          return {
+            uploadDirConfigured: isLocalMode() || !!process.env.UPLOAD_DIR,
+            persistence: s.mode,
+            dir: s.dir,
+          };
         })(),
       });
     } catch (e) {
@@ -136,11 +150,15 @@ async function startServer() {
 
   startPushScheduler();
   startBackupScheduler(); // #61 — 일일 DB 덤프(볼륨, 7일 보존)
-  backfillProfitKinds()
-    .then((r) => {
-      if (r.updated > 0) console.log(`[db] profitKind backfill: ${r.updated}/${r.scanned}`);
-    })
-    .catch((e) => console.warn("[db] profitKind backfill skipped:", e));
+  if (isLocalMode()) {
+    console.log("[local-mode] 자동 profitKind 백필 비활성 (복구 데이터 무변경)");
+  } else {
+    backfillProfitKinds()
+      .then((r) => {
+        if (r.updated > 0) console.log(`[db] profitKind backfill: ${r.updated}/${r.scanned}`);
+      })
+      .catch((e) => console.warn("[db] profitKind backfill skipped:", e));
+  }
   server.listen(port, () => {
     console.log(`Server running on http://localhost:${port}/`);
   });

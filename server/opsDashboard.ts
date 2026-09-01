@@ -174,7 +174,7 @@ ${inboxRows}
   <div class="mini"><div class="l">마지막 백업</div><div class="v">${esc(lastBackupInfo()?.at?.slice(5) ?? "—")}</div></div>
   <div class="mini"><div class="l">사진 저장</div><div class="v" style="color:${storage.ok ? "var(--pass)" : "#f87171"}">${storage.label}</div></div>
 </div>
-<p class="note">${storage.mode === "volume" ? `UPLOAD_DIR=${esc(storage.dir)} — 재배포 후에도 사진 유지.` : storage.mode === "local-dev" ? `로컬 ${esc(storage.dir)} — dev 기본 경로(정상). Railway UPLOAD_DIR은 옮기지 말 것.` : "UPLOAD_DIR 미설정 — Railway 재배포 시 사진 증발 가능. Volume + UPLOAD_DIR=/data/uploads 권장."}</p>
+<p class="note">${storage.mode === "local-recovery" ? `격리 복구 사진 ${esc(storage.dir)} — 원본 uploads와 분리됨.` : storage.mode === "volume" ? `UPLOAD_DIR=${esc(storage.dir)} — 재배포 후에도 사진 유지.` : storage.mode === "local-dev" ? `로컬 ${esc(storage.dir)} — dev 기본 경로(정상). Railway UPLOAD_DIR은 옮기지 말 것.` : "UPLOAD_DIR 미설정 — Railway 재배포 시 사진 증발 가능. Volume + UPLOAD_DIR=/data/uploads 권장."}</p>
 
 <h2>가격 피드백</h2>
 ${priceRows}

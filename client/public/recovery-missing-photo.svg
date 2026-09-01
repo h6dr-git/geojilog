@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="720" height="720" viewBox="0 0 720 720">
+  <rect width="720" height="720" fill="#f2eee5"/>
+  <rect x="84" y="84" width="552" height="552" rx="36" fill="none" stroke="#9d968a" stroke-width="8" stroke-dasharray="18 14"/>
+  <path d="M180 492l116-132 88 94 72-76 84 114H180z" fill="#c8c0b2"/>
+  <circle cx="270" cy="250" r="42" fill="#c8c0b2"/>
+  <text x="360" y="580" text-anchor="middle" font-size="34" font-family="system-ui, sans-serif" fill="#655f56">원본 사진 미회수</text>
+</svg>

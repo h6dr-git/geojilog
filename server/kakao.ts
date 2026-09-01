@@ -6,8 +6,13 @@ import * as db from "./db";
 import { readUid, setSessionCookie } from "./context";
 import { COOKIE_NAME } from "@shared/const";
 import { getSessionCookieOptions } from "./cookies";
+import { externalIntegrationsAllowed } from "./localMode";
 
-const KAKAO_REST_API_KEY = process.env.KAKAO_REST_API_KEY || "";
+const KAKAO_REST_API_KEY = externalIntegrationsAllowed()
+  ? process.env.KAKAO_REST_API_KEY || ""
+  : "";
+
+export const kakaoEnabled = !!KAKAO_REST_API_KEY;
 
 // redirect_uri는 요청 호스트 기준으로 구성(prod/local 자동 대응).
 // 필요하면 APP_BASE_URL 환경변수로 직접 지정 가능.

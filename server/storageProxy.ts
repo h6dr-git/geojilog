@@ -3,8 +3,9 @@ import type { Express } from "express";
 import fs from "node:fs";
 import path from "node:path";
 import { readUid } from "./context";
+import { activeUploadDir, isLocalMode } from "./localMode";
 
-const UPLOAD_DIR = process.env.UPLOAD_DIR || path.resolve(process.cwd(), "uploads");
+const UPLOAD_DIR = activeUploadDir();
 
 function mimeFromPath(p: string): string {
   const ext = path.extname(p).toLowerCase();
@@ -26,7 +27,9 @@ export function registerStorageProxy(app: Express) {
     const owner = key.match(/^u(\d+)\//);
     if (owner) {
       const uid = await readUid(req.headers.cookie);
-      if (uid !== Number(owner[1])) {
+      // 복구 DB에는 게스트→Kakao 병합 전에 생성된 다른 u{id}/ 키가 남을 수 있다.
+      // 격리 uploads에는 선택한 복구 사용자의 참조 파일만 복사되므로 로컬 모드에서만 허용.
+      if (!isLocalMode() && uid !== Number(owner[1])) {
         res.status(403).send("Forbidden");
         return;
       }
@@ -38,6 +41,10 @@ export function registerStorageProxy(app: Express) {
       return;
     }
     if (!fs.existsSync(filePath)) {
+      if (isLocalMode()) {
+        res.redirect(302, "/recovery-missing-photo.svg");
+        return;
+      }
       // 로컬 개발 폴백 (#34): 같은 DB(Turso)를 보지만 사진 파일은 배포 서버 디스크에만 있다.
       // ASSET_FALLBACK_BASE(배포 주소)가 설정된 개발 환경이면 배포에서 받아와 로컬에 캐시.
       const base = process.env.ASSET_FALLBACK_BASE;

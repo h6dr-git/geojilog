@@ -5,6 +5,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { getDb } from "./db";
 import * as schema from "../drizzle/schema";
+import { activeUploadDir, isLocalMode } from "./localMode";
 
 const BACKUP_KEEP_DAYS = 7;
 
@@ -25,8 +26,7 @@ export async function buildBackupDump() {
 }
 
 function backupDir(): string {
-  const base = process.env.UPLOAD_DIR || path.resolve(process.cwd(), "uploads");
-  return path.join(base, "backups");
+  return path.join(activeUploadDir(), "backups");
 }
 
 const kstDateStr = () => new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 10);
@@ -49,6 +49,10 @@ async function runDailyBackup(): Promise<void> {
 
 /** 백업 스케줄러 — 15분 간격 체크, KST 04시대에 하루 1번. 실패해도 앱 동작엔 영향 없음. */
 export function startBackupScheduler(): void {
+  if (isLocalMode()) {
+    console.log("[local-mode] 자동 백업 스케줄러 비활성 (복구 검증 중 원본 고정)");
+    return;
+  }
   const tick = async () => {
     const kstHour = (new Date().getUTCHours() + 9) % 24;
     if (kstHour !== 4) return;

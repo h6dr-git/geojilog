@@ -114,6 +114,8 @@ temp/
 client/public/__manus__/version.json
 .project-config.json
 uploads/
+local-restored-uploads/
+*.partial-*
 
 # vite/vitest temp
 vitest.config.ts.timestamp-*.mjs

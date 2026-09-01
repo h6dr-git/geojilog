@@ -9,6 +9,7 @@ import { SignJWT, jwtVerify } from "jose";
 import { parse as parseCookie } from "cookie";
 import { randomUUID } from "node:crypto";
 import * as db from "./db";
+import { localOwnerId } from "./localMode";
 
 export type TrpcContext = {
   req: CreateExpressContextOptions["req"];
@@ -24,6 +25,8 @@ const SECRET = new TextEncoder().encode(
 );
 
 export async function readUid(cookieHeader: string | undefined): Promise<number | null> {
+  const recoveredOwner = localOwnerId();
+  if (recoveredOwner !== null) return recoveredOwner;
   if (!cookieHeader) return null;
   const token = parseCookie(cookieHeader)[COOKIE_NAME];
   if (!token) return null;
@@ -59,6 +62,15 @@ export async function setSessionCookie(res: Response, uid: number): Promise<void
 export async function createContext(
   opts: CreateExpressContextOptions
 ): Promise<TrpcContext> {
+  const recoveredOwner = localOwnerId();
+  if (recoveredOwner !== null) {
+    const user = (await db.getUserById(recoveredOwner)) ?? null;
+    if (!user) {
+      throw new Error(`[local-mode] recovered owner ${recoveredOwner} is missing from the isolated database`);
+    }
+    return { req: opts.req, res: opts.res, user };
+  }
+
   // 1) 쿠키로 기존 사용자 찾기
   const uid = await readUid(opts.req.headers.cookie);
   let user: User | null = uid ? (await db.getUserById(uid)) ?? null : null;

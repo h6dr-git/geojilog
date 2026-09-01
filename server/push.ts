@@ -3,9 +3,10 @@
 // VAPID 키가 없으면 전체 기능이 조용히 꺼진다(클라 토글도 숨김).
 import webpush from "web-push";
 import { getAllPushSubscriptions, deletePushSubscription } from "./db";
+import { externalIntegrationsAllowed, isLocalMode } from "./localMode";
 
-const PUB = process.env.VAPID_PUBLIC_KEY || "";
-const PRIV = process.env.VAPID_PRIVATE_KEY || "";
+const PUB = externalIntegrationsAllowed() ? process.env.VAPID_PUBLIC_KEY || "" : "";
+const PRIV = externalIntegrationsAllowed() ? process.env.VAPID_PRIVATE_KEY || "" : "";
 const SUBJECT = process.env.VAPID_SUBJECT || "mailto:you@example.com";
 
 export const pushEnabled = !!(PUB && PRIV);
@@ -57,6 +58,10 @@ function kstNow(): Date {
 let lastSentDate = ""; // 서버 생존 중 하루 1회 가드 (재시작 시 드물게 중복 가능 — 허용)
 
 export function startPushScheduler() {
+  if (isLocalMode()) {
+    console.log("[local-mode] 웹 푸시 비활성");
+    return;
+  }
   if (!pushEnabled) {
     console.log("[push] VAPID 키 없음 — 푸시 비활성");
     return;
