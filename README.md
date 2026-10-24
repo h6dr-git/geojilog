@@ -1,5 +1,7 @@
 # 거지로그 (geojilog)
 
+[![CI](https://github.com/h6dr-git/geojilog/actions/workflows/ci.yml/badge.svg)](https://github.com/h6dr-git/geojilog/actions/workflows/ci.yml) ![React 19](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=black) ![tRPC](https://img.shields.io/badge/tRPC-11-2596BE?logo=trpc&logoColor=white) ![운영 종료 2026-07](https://img.shields.io/badge/status-%EC%9A%B4%EC%98%81%20%EC%A2%85%EB%A3%8C%202026--07-lightgrey) [![MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
+
 **아낀 돈을 '수익'으로 적는 가계부 웹앱.**
 보통 가계부는 쓴 돈만 적는다. 1,000원짜리 학식을 먹으면 지출 1,000원만 남고, 밖에서 먹었으면 나갔을 6,000원과의 차이는 어디에도 기록되지 않는다. 거지로그는 그 차이를 `+₩5,000`으로 적는다.
 
@@ -91,4 +93,4 @@ pnpm check && pnpm lint && pnpm test
 
 ## 라이선스
 
-MIT
+MIT — [LICENSE](LICENSE)
