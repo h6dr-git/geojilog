@@ -3,7 +3,7 @@
 //   npx tsx scripts/eval-pricing.ts [사진폴더] [--baseline]
 //   기본 폴더: uploads/ai-cropped
 //   --baseline : 직전 커밋(HEAD)의 프롬프트(v1)도 함께 돌려 강화본(v2)과 나란히 비교
-// 라벨: scripts/evalset.labels.json (파일명 → {name, orig, people}). 내가 사진을 직접 보고 매긴 시중 정가.
+// 라벨: scripts/evalset.labels.json (파일명 → {name, orig, people}). 사진을 직접 보고 매긴 시중 정가. 실제 사진의 라벨이라 저장소에는 넣지 않는다(.gitignore).
 import * as fs from "fs";
 import { execSync } from "child_process";
 import { IMAGE_ANALYSIS_SYSTEM_PROMPT } from "../server/prompts";

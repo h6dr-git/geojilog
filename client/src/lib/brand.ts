@@ -12,7 +12,7 @@ export const CHARACTER_NAME = "쌀집이";
 export const CALC_MODEL = "SJ-40B";
 /** 보좌 캐릭터 — 김집사 → 회시생 (#41 v3) */
 export const CPA_NAME = "회시생";
-/** 사용자 호칭 — 회장님 → CEO님(v3) → 사장님(v1.3: 소규모 기업 현실 호칭, 상욱) */
+/** 사용자 호칭 — 회장님 → CEO님(v3) → 사장님(v1.3: 소규모 기업 현실 호칭) */
 export const USER_TITLE = "사장님";
 
 /**

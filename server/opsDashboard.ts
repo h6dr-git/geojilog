@@ -144,7 +144,7 @@ export function renderOpsDashboardHtml(r: OpsReport, opsKey: string): string {
   <div class="verdict-detail">${esc(v.detail)}</div>
 </div>
 
-<h2>킬 신호 <span class="d">가능성 평가 §4 · 운영자 제외 · 비율=${MIN_RATE_DEN}명+</span></h2>
+<h2>킬 신호 <span class="d">운영자 제외 · 비율=${MIN_RATE_DEN}명+</span></h2>
 <div class="siggrid">${signalCards}</div>
 <div class="row6">${pulseHtml}</div>
 

@@ -1,5 +1,5 @@
 // 검증 계기판 (#53) — 첫 무리 4주 킬 기준을 판정하는 지표.
-// 기준 출처: 사업화_자료/거지로그_객관적_가능성_평가.md §4 (가입→첫기록 40%+, D7 ≥15% 등).
+// 기준: 가입→첫기록 40%+, D7 ≥15% 등 (운영 때 정한 내부 기준).
 // 규모가 작으므로(수십 명) 이벤트를 통째로 당겨 JS로 계산 — 단순함이 정확성보다 깨지기 어렵다.
 import { gte } from "drizzle-orm";
 import { usageEvents, users, savingsEntries, feedbacks } from "../../drizzle/schema";
@@ -241,7 +241,7 @@ export async function getOpsReport() {
     {
       id: "d1", label: "D1 재방문", kind: "rate", value: d1Den ? d1Value : null,
       num: d1Num, den: d1Den, target: 0,
-      status: "pending", // §4 킬 기준에 D1 임계 없음 — 참고용
+      status: "pending", // 킬 기준에 D1 임계 없음 — 참고용
       hint: "가입 다음날 활동",
     },
     {

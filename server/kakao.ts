@@ -26,7 +26,7 @@ function getRedirectUri(req: Request): string {
   return `${getBaseUrl(req)}/api/auth/kakao/callback`;
 }
 
-// 카카오 닉네임 → 기본 표시 이름. 성씨 한 글자 + "사장님" (예: 박상욱 → 박사장님). (v1.3 F2)
+// 카카오 닉네임 → 기본 표시 이름. 성씨 한 글자 + "사장님" (예: 홍길동 → 홍사장님). (v1.3 F2)
 // 닉네임이 비어 있으면 그냥 "사장님".
 function toPresidentName(nickname: string | undefined | null): string {
   const surname = Array.from((nickname ?? "").trim())[0];

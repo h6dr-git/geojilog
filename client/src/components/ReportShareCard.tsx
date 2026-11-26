@@ -39,7 +39,7 @@ export default function ReportShareCard({
         {has("crown") && <div style={{ marginTop: "-3px" }}><CrownSticker /></div>}
       </div>
       <div style={{ fontSize: "11px", color: theme.sub, textAlign: "left", fontFamily: "'JetBrains Mono', ui-monospace, monospace", position: "relative" }}>{period}</div>
-      {/* C1 정정(상욱): 외부 설명 금지 — 세계관 안에서 이건 그냥 수익이다. 외부인 목표 반응 = "이거 뭐야?" */}
+      {/* C1 정정: 외부 설명 금지 — 세계관 안에서 이건 그냥 수익이다. 외부인 목표 반응 = "이거 뭐야?" */}
       <div style={{ fontSize: "34px", fontWeight: 800, color: theme.accent, fontFamily: "'JetBrains Mono', ui-monospace, monospace", textAlign: "left", marginTop: "10px", position: "relative" }}>+₩{fmt(amount)}</div>
       {subline && (
         <div style={{ fontSize: "11px", color: theme.sub, textAlign: "left", marginTop: "2px", position: "relative" }}>{subline}</div>

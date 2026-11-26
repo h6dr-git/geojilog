@@ -49,7 +49,7 @@ export function cpaWeeklyComment(count: number, profit: number): string {
 // ── 회시생 — 0원 기록(공짜·얻어먹음) 특수 촌평 ──────────────
 export const CPA_ZERO_LINE = "취득원가 0원. 회계적으로 가장 아름다운 자산입니다.";
 
-// ── 말의 경제 (v1.2 상욱): 회시생은 거의 다 쌀집이(숫자)로 말한다 ──
+// ── 말의 경제 (v1.2): 회시생은 거의 다 쌀집이(숫자)로 말한다 ──
 // 육성(문장)은 '할 말이 있는 날'만: 0원·이스터에그·평소가 초과 등은 반드시, 평일은 ~30%.
 // 침묵하는 날의 리빌은 쌀집이 코드가 대신한다 — "회계사는 말보다 숫자로 말한다."
 export function cpaRevealLine(profit: number, special = false): string | null {
@@ -96,7 +96,7 @@ export function ssalDisplay(fedToday: boolean, exclude?: string | null): SsalCod
   return { ...pick, rare: false };
 }
 
-// ── 금액 이스터에그 (#41 v3 상욱 지시) — 수익 금액 자체가 의미 있는 숫자일 때 ──
+// ── 금액 이스터에그 (#41 v3) — 수익 금액 자체가 의미 있는 숫자일 때 ──
 export function profitEasterEgg(profit: number): string | null {
   const map: Record<number, string> = {
     1004: "천사의 수익입니다.",

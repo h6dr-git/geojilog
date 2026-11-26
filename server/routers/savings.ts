@@ -38,12 +38,12 @@ export const savingsRouter = router({
         incomeSource: incomeSourceInput.optional(), // #37+#38 수익원 (미지정=미분류, 커스텀 허용 #47)
         originalAmount: z.number().int().positive(),
         actualAmount: z.number().int().min(0),
-        // AI가 처음 추정했던 기준가(있으면). 최종 확정값과 다르면 보정 데이터로 기록 → '실가격 데이터 해자'.
+        // AI가 처음 추정했던 기준가(있으면). 최종 확정값과 다르면 보정 데이터로 기록한다.
         aiOriginalAmount: z.number().int().positive().optional(),
         aiActualAmount: z.number().int().min(0).optional(),
         aiEstimated: z.enum(["yes", "no"]).default("no"),
         aiReason: z.string().optional(),
-        // #43 — AI 단체 추론값 (파인튜닝·데이터 해자용 보존)
+        // #43 — AI 단체 추론값 (보정 비교용으로 보존)
         aiPeopleCount: z.number().int().min(1).max(50).optional(),
         aiGroupOriginalAmount: z.number().int().positive().optional(),
         aiGroupActualAmount: z.number().int().min(0).optional(),
@@ -100,7 +100,7 @@ export const savingsRouter = router({
             date: input.date,
           });
         } catch { /* 사전 축적 실패 무시 */ }
-        // 데이터 해자: AI 추정 기준가 → 사용자 확정 실가격의 '보정'을 쌓는다(클라가 AI 추정 원본값을 보낼 때만 작동).
+        // 보정 기록: AI 추정 기준가 → 사용자 확정 실가격의 '보정'을 쌓는다(클라가 AI 추정 원본값을 보낼 때만 작동).
         const correctedOrig = input.aiOriginalAmount !== undefined && input.aiOriginalAmount !== originalAmount;
         const correctedActual = input.aiActualAmount !== undefined && input.aiActualAmount !== actualAmount;
         if (input.aiEstimated === "yes" && (correctedOrig || correctedActual)) {

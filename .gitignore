@@ -123,3 +123,7 @@ vitest.config.ts.timestamp-*.mjs
 # Word lock files & manual markdown backups
 ~$*.docx
 *.bak.md
+
+# 원가 추정 평가 — 실제 사진의 라벨·결과라 저장소에 넣지 않는다
+scripts/evalset.labels.json
+scripts/eval-result.json
